@@ -110,10 +110,6 @@
   .jack:hover{ box-shadow:0 0 8px currentColor; }
   .jacklabel{ font-size:0.55rem; color:var(--text-dim); margin-top:5px; text-align:center; line-height:1.2; }
 
-  .grouplabel{ flex-basis:100%; font-size:0.62rem; letter-spacing:2.5px; text-transform:uppercase;
-    margin:18px 0 -4px; padding-bottom:6px; border-bottom:1px solid; opacity:0.85; }
-  .grouplabel:first-child{ margin-top:0; }
-
   .footrow{ position:relative; z-index:2; margin-top:18px; padding-top:10px; border-top:1px dashed var(--panel-edge);
     display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
   .patchhint{ font-size:0.58rem; color:var(--text-dim); line-height:1.5; max-width:520px; }
@@ -167,39 +163,36 @@
 <script>
 (function(){
   const svgNS = 'http://www.w3.org/2000/svg';
-  const accentBySection = { osc:'var(--violet)', delay:'var(--amber)', mod:'var(--cyan)', fx:'var(--rose)' };
-  const groupLabels = { osc:'Oscillator', delay:'Delay', fx:'Filter & FX', mod:'Modulation' };
+  const accentBySection = { osc:'var(--violet)', loop:'var(--amber)', mod:'var(--cyan)', out:'var(--rose)' };
 
   // ---------- Parameters ----------
   const config = [
-    { id:'pitch',         label:'Pitch',        min:30,   max:600,  def:65,   size:'lg', section:'osc' },
-    { id:'instability',    label:'Instability', min:0,    max:1,    def:0.1,  size:'sm', section:'osc' },
-    { id:'sub',           label:'Sub-Tonic',    min:0,    max:1,    def:0.4,  size:'md', section:'osc' },
-    { id:'tones',         label:'Fold',         min:0,    max:1,    def:0.2,  size:'lg', section:'osc' },
-    { id:'oscWaveMorph',  label:'Wave Tri\u2194Sqr', min:0, max:1,  def:0.25, size:'md', section:'osc' },
-    { id:'pitchB',        label:'Osc B Pitch',  min:5,    max:2000, def:220,  size:'md', section:'osc' },
-    { id:'oscBWaveMorph', label:'Osc B Wave Tri\u2194Sqr', min:0, max:1, def:0.15, size:'sm', section:'osc' },
+    { id:'pitch',        label:'Pitch',        min:30,   max:600,  def:65,   size:'lg', section:'osc' },
+    { id:'instability',   label:'Instability', min:0,    max:1,    def:0.1,  size:'sm', section:'osc' },
+    { id:'sub',          label:'Sub-Tonic',    min:0,    max:1,    def:0.4,  size:'md', section:'osc' },
+    { id:'tones',        label:'Fold',         min:0,    max:1,    def:0.2,  size:'lg', section:'osc' },
+    { id:'oscWaveMorph', label:'Wave Tri\u2194Sqr', min:0, max:1,  def:0.25, size:'md', section:'osc' },
+    { id:'pitchB',       label:'Osc B Pitch',  min:5,    max:2000, def:220,  size:'md', section:'osc' },
 
-    { id:'mix',           label:'Dry/Wet',      min:0,    max:1,    def:0.85, size:'md', section:'delay' },
-    { id:'time',          label:'Delay Time',   min:0.02, max:1.8,  def:0.4,  size:'lg', section:'delay' },
-    { id:'spread',        label:'Spread',       min:0,    max:1,    def:0.5,  size:'md', section:'delay' },
-    { id:'smear',         label:'Head Smear',   min:0,    max:0.3,  def:0.02, size:'sm', section:'delay' },
-    { id:'decay',         label:'Feedback',     min:0,    max:1.08, def:0.6,  size:'lg', section:'delay' },
-    { id:'width',         label:'Stereo Width', min:0,    max:1,    def:0.6,  size:'md', section:'delay' },
+    { id:'time',         label:'Delay Time',   min:0.02, max:1.8,  def:0.4,  size:'lg', section:'loop' },
+    { id:'spread',       label:'Spread',       min:0,    max:1,    def:0.5,  size:'md', section:'loop' },
+    { id:'smear',        label:'Head Smear',   min:0,    max:0.3,  def:0.02, size:'sm', section:'loop' },
+    { id:'decay',        label:'Feedback',     min:0,    max:1.08, def:0.6,  size:'lg', section:'loop' },
+    { id:'absorb',       label:'Absorb Filter',min:80,   max:8000, def:1200, size:'lg', section:'loop' },
+    { id:'width',        label:'Stereo Width', min:0,    max:1,    def:0.6,  size:'md', section:'loop' },
 
-    { id:'rate',          label:'Agitation Rate', min:0.05, max:25, def:1.5,  size:'md', section:'mod' },
-    { id:'woggle',        label:'Woggle Chaos', min:0,    max:1,    def:0.3,  size:'md', section:'mod' },
-    { id:'envAttack',     label:'Env Attack',   min:0.01, max:2,    def:0.08, size:'sm', section:'mod' },
-    { id:'envDecay',      label:'Env Decay',    min:0.01, max:3,    def:0.35, size:'sm', section:'mod' },
-    { id:'envCurve',      label:'Env Curve',    min:-1,   max:1,    def:0,    size:'sm', section:'mod' },
-    { id:'runglerRate',   label:'Rungler Rate', min:0.5,  max:40,   def:6,    size:'md', section:'mod' },
-    { id:'runglerChaos',  label:'Rungler Chaos',min:0,    max:1,    def:0.4,  size:'sm', section:'mod' },
+    { id:'rate',         label:'Agitation Rate', min:0.05, max:25, def:1.5,  size:'md', section:'mod' },
+    { id:'woggle',       label:'Woggle Chaos', min:0,    max:1,    def:0.3,  size:'md', section:'mod' },
+    { id:'envAttack',    label:'Env Attack',   min:0.01, max:2,    def:0.08, size:'sm', section:'mod' },
+    { id:'envDecay',     label:'Env Decay',    min:0.01, max:3,    def:0.35, size:'sm', section:'mod' },
+    { id:'envCurve',     label:'Env Curve',    min:-1,   max:1,    def:0,    size:'sm', section:'mod' },
+    { id:'runglerRate',  label:'Rungler Rate', min:0.5,  max:40,   def:6,    size:'md', section:'mod' },
+    { id:'runglerChaos', label:'Rungler Chaos',min:0,    max:1,    def:0.4,  size:'sm', section:'mod' },
 
-    { id:'absorb',        label:'Absorb Filter',min:80,   max:8000, def:1200, size:'lg', section:'fx' },
-    { id:'activation',    label:'VCA Open',     min:0,    max:1,    def:0.5,  size:'lg', section:'fx' },
-    { id:'drive',         label:'Saturator',    min:1,    max:30,   def:2,    size:'md', section:'fx' },
-    { id:'bitcrush',      label:'Bitcrush',     min:0,    max:0.95, def:0,    size:'sm', section:'fx' },
-    { id:'pan',           label:'Pan',          min:-1,   max:1,    def:0,    size:'sm', section:'fx' },
+    { id:'activation',   label:'VCA Open',     min:0,    max:1,    def:0.5,  size:'lg', section:'out' },
+    { id:'drive',        label:'Saturator',    min:1,    max:30,   def:2,    size:'md', section:'out' },
+    { id:'bitcrush',     label:'Bitcrush',     min:0,    max:0.95, def:0,    size:'sm', section:'out' },
+    { id:'pan',          label:'Pan',          min:-1,   max:1,    def:0,    size:'sm', section:'out' },
   ];
   const params = {};
   const configById = {};
@@ -207,6 +200,7 @@
 
   const touchDef = ['Overload', 'Warp Pitch', 'Time Mod', 'Fold Max', 'Bypass Filter', 'Sub Drone'];
 
+  // Which knobs own a CV input (top, violet) and/or expose an output (bottom, cyan)
   const knobIO = {
     pitch:        { in:['pitch','fm'] },
     tones:        { in:['fold'] },
@@ -221,32 +215,24 @@
     envDecay:     { out:'loopenv' },
     runglerRate:  { out:'rungler' },
   };
+  // pitch also gets an output (Osc A raw waveform) — merged in below since it already has an 'in'
   knobIO.pitch.out = 'oscA';
 
-  const destLabel = { pitch:'Pitch CV', fm:'FM in', fmb:'Osc B FM', fold:'Fold Drive CV', absorb:'Absorb CV',
+  const destLabel = { pitch:'Pitch CV', fm:'FM in', fmb:'Osc B FM', fold:'Fold CV', absorb:'Absorb CV',
     feedback:'Feedback CV', delay:'Delay Time CV', vca:'VCA CV', pan:'Pan CV' };
   const srcLabel = { lfo:'LFO out', random:'Random out', follow:'Follow out', loopenv:'LoopEnv out',
     rungler:'Rungler out', oscA:'Osc A out', oscB:'Osc B out' };
 
-  // ---------- Knobs grouped in space and color by function ----------
-  const groups = [
-    { key:'osc', items:[
-      {t:'knob', id:'pitch'}, {t:'plate', id:1}, {t:'knob', id:'oscWaveMorph'}, {t:'knob', id:'tones'},
-      {t:'plate', id:3}, {t:'knob', id:'sub'}, {t:'knob', id:'pitchB'}, {t:'knob', id:'oscBWaveMorph'},
-      {t:'plate', id:5}, {t:'knob', id:'instability'},
-    ]},
-    { key:'delay', items:[
-      {t:'knob', id:'mix'}, {t:'knob', id:'time'}, {t:'plate', id:2}, {t:'knob', id:'spread'},
-      {t:'knob', id:'smear'}, {t:'knob', id:'decay'}, {t:'plate', id:0}, {t:'knob', id:'width'},
-    ]},
-    { key:'fx', items:[
-      {t:'knob', id:'absorb'}, {t:'plate', id:4}, {t:'knob', id:'drive'}, {t:'knob', id:'bitcrush'},
-      {t:'knob', id:'pan'}, {t:'knob', id:'activation'},
-    ]},
-    { key:'mod', items:[
-      {t:'knob', id:'rate'}, {t:'knob', id:'woggle'}, {t:'knob', id:'envAttack'}, {t:'knob', id:'envDecay'},
-      {t:'knob', id:'envCurve'}, {t:'knob', id:'runglerRate'}, {t:'knob', id:'runglerChaos'}, {t:'src', id:'follow'},
-    ]},
+  // ---------- Chaotic mixed layout: knobs and plates interleaved on purpose ----------
+  const layout = [
+    {t:'knob', id:'pitch'}, {t:'knob', id:'oscWaveMorph'}, {t:'plate', id:1}, {t:'knob', id:'pitchB'},
+    {t:'knob', id:'decay'}, {t:'knob', id:'activation'}, {t:'plate', id:0}, {t:'knob', id:'tones'},
+    {t:'knob', id:'rate'}, {t:'knob', id:'instability'}, {t:'plate', id:3}, {t:'knob', id:'absorb'},
+    {t:'knob', id:'drive'}, {t:'plate', id:4}, {t:'knob', id:'sub'}, {t:'knob', id:'width'},
+    {t:'knob', id:'envAttack'}, {t:'knob', id:'envDecay'}, {t:'knob', id:'envCurve'}, {t:'knob', id:'time'},
+    {t:'plate', id:2}, {t:'knob', id:'spread'}, {t:'knob', id:'smear'}, {t:'plate', id:5},
+    {t:'knob', id:'woggle'}, {t:'knob', id:'bitcrush'}, {t:'knob', id:'pan'}, {t:'knob', id:'runglerRate'},
+    {t:'knob', id:'runglerChaos'}, {t:'src', id:'follow'},
   ];
 
   const itemsHost = document.getElementById('items');
@@ -325,9 +311,9 @@
       if(idx===0){ feedGainL.gain.setTargetAtTime(on?1.35:params.decay, now, 0.015); feedGainR.gain.setTargetAtTime(on?1.35:params.decay, now, 0.015); }
       if(idx===1){ oscTri.frequency.setTargetAtTime(on?params.pitch*4:params.pitch, now, 0.04); oscSqr.frequency.setTargetAtTime(on?params.pitch*4:params.pitch, now, 0.04); }
       if(idx===2) delayTaps.forEach(tp => tp.node.delayTime.setTargetAtTime(on?0.008:params.time*tapRatio(tp.idx,params.spread), now, 0.01));
-      if(idx===3) foldDrive.gain.setTargetAtTime(on?14:(1+params.tones*11), now, 0.02);
+      if(idx===3) foldDrive.gain.setTargetAtTime(on?4:1, now, 0.02);
       if(idx===4) filter.frequency.setTargetAtTime(on?16000:params.absorb, now, 0.02);
-      if(idx===5){ subTri.frequency.setTargetAtTime(on?14:params.pitch/2, now, 0.04); subSqr.frequency.setTargetAtTime(on?14:params.pitch/2, now, 0.04); }
+      if(idx===5) subOsc.frequency.setTargetAtTime(on?14:params.pitch/2, now, 0.04);
     };
     outer.addEventListener('pointerdown', e => { outer.setPointerCapture(e.pointerId); act(true); });
     outer.addEventListener('pointerup', () => act(false));
@@ -343,31 +329,21 @@
     return wrap;
   }
 
-  groups.forEach(g => {
-    const lab = document.createElement('div');
-    lab.className = 'grouplabel';
-    lab.style.color = accentBySection[g.key];
-    lab.style.borderColor = accentBySection[g.key];
-    lab.innerText = groupLabels[g.key];
-    itemsHost.appendChild(lab);
-    g.items.forEach(item => {
-      if(item.t === 'knob') itemsHost.appendChild(buildKnob(configById[item.id]));
-      else if(item.t === 'plate') itemsHost.appendChild(buildPlate(item.id));
-      else if(item.t === 'src') itemsHost.appendChild(buildJackItem('src', item.id, srcLabel[item.id] || item.id));
-      else if(item.t === 'dst') itemsHost.appendChild(buildJackItem('dst', item.id, destLabel[item.id] || item.id));
-    });
+  layout.forEach(item => {
+    if(item.t === 'knob') itemsHost.appendChild(buildKnob(configById[item.id]));
+    else if(item.t === 'plate') itemsHost.appendChild(buildPlate(item.id));
+    else if(item.t === 'src') itemsHost.appendChild(buildJackItem('src', item.id, srcLabel[item.id] || item.id));
+    else if(item.t === 'dst') itemsHost.appendChild(buildJackItem('dst', item.id, destLabel[item.id] || item.id));
   });
   config.forEach(updateKnobVisual);
 
   // ---------- Audio graph ----------
   let ctx;
-  let oscTri, oscSqr, triGain, sqrGain, oscASum;
-  let subTri, subSqr, subTriGain, subSqrGain, subSum, subG, oscMix;
-  let foldDrive, foldNode;
-  let oscBTri, oscBSqr, oscBTriGain, oscBSqrGain, oscBSum;
+  let oscTri, oscSqr, triGain, sqrGain, oscASum, subOsc, subG, oscMix, foldDrive, folder;
+  let oscB;
   let groupLIn, groupRIn, delayTaps = [], tapSumL, tapSumR, merger, filter, dcBlock;
   let fbCompressor, fbClip, fbSplit, feedGainL, feedGainR, crossGainL, crossGainR;
-  let dryGain, wetGain, outPan, driveN, crushN, masterLimiter, mainG;
+  let outPan, driveN, crushN, masterLimiter, mainG;
   let splitAnalyser, analyserL, analyserR;
   let lfoSrc, randSrc, envSrc, envLoopSrc, runglerNode, runglerSilent, plateSrcs = [];
   let recTap, recSilent, recBuffersL = [], recBuffersR = [], isRec = false, isMute = false;
@@ -380,29 +356,10 @@
     const wide = Math.pow(lin, 0.35);
     return clustered*(1-spread) + wide*spread;
   }
-  // Genuine reflection wavefolder: mirrors the signal back at +-1 instead of
-  // clamping, so it keeps folding (never flattens) no matter how hard it's driven.
-  function reflectFold(x){
-    let guard = 0;
-    while((x > 1 || x < -1) && guard < 16){
-      if(x > 1) x = 2 - x;
-      else if(x < -1) x = -2 - x;
-      guard++;
-    }
-    return x;
-  }
-  function setFoldNode(){
-    let prev = 0;
-    foldNode.onaudioprocess = e => {
-      const inp = e.inputBuffer.getChannelData(0), out = e.outputBuffer.getChannelData(0);
-      for(let i=0;i<inp.length;i++){
-        const cur = inp[i];
-        const mid = (prev + cur) * 0.5;
-        // cheap 2x oversample (midpoint + current, averaged) to soften fold aliasing
-        out[i] = (reflectFold(mid) + reflectFold(cur)) * 0.5;
-        prev = cur;
-      }
-    };
+  function setFolderCurve(){
+    const n = 4096, c = new Float32Array(n), k = 3 + params.tones*9;
+    for(let i=0;i<n;i++){ const x = (i*2)/n - 1; c[i] = Math.sin(x*Math.PI*k) / (1+Math.abs(x*k*0.6)); }
+    folder.curve = c;
   }
   function setDriveCurve(d){
     const n = 2048, c = new Float32Array(n);
@@ -436,6 +393,9 @@
       recBuffersR.push(new Float32Array(e.inputBuffer.getChannelData(1)));
     };
   }
+  // Benjolin-style Rungler: two free-running square clocks; clock A shifts a bit
+  // (XOR of clock B and the register's top bit) into an 8-bit register whose
+  // weighted sum is sampled & held as a stepped chaotic CV.
   function setRungler(){
     let phaseA = 0, phaseB = 0, shiftReg = 0, held = 0, prevHigh = false;
     const sr = ctx.sampleRate;
@@ -464,7 +424,7 @@
     if(!AudioCtor){ alert('This browser does not support Web Audio.'); return; }
     ctx = new AudioCtor(); ctx.resume().catch(()=>{});
 
-    // --- Osc A: triangle/square morph ---
+    // --- Complex oscillator: triangle/square morph (softer than a bare sawtooth) ---
     oscTri = ctx.createOscillator(); oscTri.type = 'triangle'; oscTri.frequency.value = params.pitch;
     oscSqr = ctx.createOscillator(); oscSqr.type = 'square'; oscSqr.frequency.value = params.pitch;
     triGain = ctx.createGain(); sqrGain = ctx.createGain();
@@ -473,43 +433,22 @@
     oscTri.connect(triGain).connect(oscASum);
     oscSqr.connect(sqrGain).connect(oscASum);
 
-    // --- Sub oscillator: also a triangle/square morph (was a fixed square before) ---
-    subTri = ctx.createOscillator(); subTri.type = 'triangle'; subTri.frequency.value = params.pitch/2;
-    subSqr = ctx.createOscillator(); subSqr.type = 'square'; subSqr.frequency.value = params.pitch/2;
-    subTriGain = ctx.createGain(); subSqrGain = ctx.createGain();
-    subTriGain.gain.value = 1 - params.oscWaveMorph; subSqrGain.gain.value = params.oscWaveMorph;
-    subSum = ctx.createGain();
-    subTri.connect(subTriGain).connect(subSum);
-    subSqr.connect(subSqrGain).connect(subSum);
+    subOsc = ctx.createOscillator(); subOsc.type = 'square'; subOsc.frequency.value = params.pitch/2;
     subG = ctx.createGain(); subG.gain.value = params.sub;
-    subSum.connect(subG);
-
     oscMix = ctx.createGain(); oscMix.gain.value = 0.9;
-    oscASum.connect(oscMix); subG.connect(oscMix);
+    oscASum.connect(oscMix); subOsc.connect(subG).connect(oscMix);
 
-    // --- Osc B: also triangle/square morph, not mixed into the main path —
-    // it exists purely as a patchable FM / cross-mod source.
-    oscBTri = ctx.createOscillator(); oscBTri.type = 'triangle'; oscBTri.frequency.value = params.pitchB;
-    oscBSqr = ctx.createOscillator(); oscBSqr.type = 'square'; oscBSqr.frequency.value = params.pitchB;
-    oscBTriGain = ctx.createGain(); oscBSqrGain = ctx.createGain();
-    oscBTriGain.gain.value = 1 - params.oscBWaveMorph; oscBSqrGain.gain.value = params.oscBWaveMorph;
-    oscBSum = ctx.createGain();
-    oscBTri.connect(oscBTriGain).connect(oscBSum);
-    oscBSqr.connect(oscBSqrGain).connect(oscBSum);
-    oscBTri.start(); oscBSqr.start();
+    // Osc B: a plain sine, kept out of the main mix — it exists to be patched
+    // as an FM / cross-mod source (its own jack lives under the Osc B Pitch knob).
+    oscB = ctx.createOscillator(); oscB.type = 'sine'; oscB.frequency.value = params.pitchB; oscB.start();
 
-    // --- True wavefolder: reflects at the boundary, never clips ---
-    foldDrive = ctx.createGain(); foldDrive.gain.value = 1 + params.tones*11;
-    foldNode = ctx.createScriptProcessor(1024, 1, 1); setFoldNode();
-    oscMix.connect(foldDrive).connect(foldNode);
+    foldDrive = ctx.createGain(); foldDrive.gain.value = 1;
+    folder = ctx.createWaveShaper(); folder.oversample = '4x';
+    oscMix.connect(foldDrive).connect(folder);
+    setFolderCurve();
 
     const excite = ctx.createGain(); excite.gain.value = 0.55;
-    foldNode.connect(excite);
-
-    // Dry tap, pre-delay — lets the Mix knob blend the raw oscillator/fold
-    // tone in with the delayed/filtered loop instead of always being 100% wet.
-    dryGain = ctx.createGain(); dryGain.gain.value = 1 - params.mix;
-    excite.connect(dryGain);
+    folder.connect(excite);
 
     // --- Stereo feedback loop ---
     groupLIn = ctx.createGain(); groupRIn = ctx.createGain();
@@ -553,9 +492,7 @@
 
     // --- Output chain ---
     outPan = ctx.createStereoPanner(); outPan.pan.value = params.pan;
-    wetGain = ctx.createGain(); wetGain.gain.value = params.mix;
-    filter.connect(wetGain);
-    wetGain.connect(outPan); dryGain.connect(outPan);
+    filter.connect(outPan);
     driveN = ctx.createWaveShaper(); driveN.oversample = '2x'; setDriveCurve(params.drive);
     outPan.connect(driveN);
     crushN = ctx.createScriptProcessor(2048, 2, 2); setCrusher();
@@ -587,15 +524,14 @@
     runglerNode.connect(runglerSilent); runglerSilent.connect(ctx.destination);
     plateSrcs = touchDef.map(() => { const c = ctx.createConstantSource(); c.offset.value = 0; c.start(); return c; });
 
-    oscTri.start(); oscSqr.start(); subTri.start(); subSqr.start();
+    oscTri.start(); oscSqr.start(); subOsc.start();
 
     setInterval(() => {
       if(!ctx || isMute) return;
       const drift = (Math.random()-0.5) * params.instability * 6;
       oscTri.frequency.setTargetAtTime(params.pitch + drift, ctx.currentTime, 0.03);
       oscSqr.frequency.setTargetAtTime(params.pitch + drift, ctx.currentTime, 0.03);
-      subTri.frequency.setTargetAtTime((params.pitch + drift)/2, ctx.currentTime, 0.03);
-      subSqr.frequency.setTargetAtTime((params.pitch + drift)/2, ctx.currentTime, 0.03);
+      subOsc.frequency.setTargetAtTime((params.pitch + drift)/2, ctx.currentTime, 0.03);
       if(params.smear > 0){
         delayTaps.forEach(t => {
           const base = params.time * tapRatio(t.idx, params.spread);
@@ -616,9 +552,9 @@
     }, 220);
 
     destDefs = [
-      { id:'pitch', targets:[{ getParam:()=>oscTri.frequency, sens:250 }, { getParam:()=>oscSqr.frequency, sens:250 }, { getParam:()=>subTri.frequency, sens:125 }, { getParam:()=>subSqr.frequency, sens:125 }] },
+      { id:'pitch', targets:[{ getParam:()=>oscTri.frequency, sens:250 }, { getParam:()=>oscSqr.frequency, sens:250 }, { getParam:()=>subOsc.frequency, sens:125 }] },
       { id:'fm', targets:[{ getParam:()=>oscTri.frequency, sens:700 }, { getParam:()=>oscSqr.frequency, sens:700 }] },
-      { id:'fmb', targets:[{ getParam:()=>oscBTri.frequency, sens:500 }, { getParam:()=>oscBSqr.frequency, sens:500 }] },
+      { id:'fmb', targets:[{ getParam:()=>oscB.frequency, sens:500 }] },
       { id:'fold', targets:[{ getParam:()=>foldDrive.gain, sens:4 }] },
       { id:'absorb', targets:[{ getParam:()=>filter.frequency, sens:3200 }] },
       { id:'feedback', targets:[{ getParam:()=>feedGainL.gain, sens:0.45 }, { getParam:()=>feedGainR.gain, sens:0.45 }] },
@@ -637,24 +573,12 @@
     const now = ctx.currentTime;
     oscTri.frequency.setTargetAtTime(params.pitch, now, 0.01);
     oscSqr.frequency.setTargetAtTime(params.pitch, now, 0.01);
+    subOsc.frequency.setTargetAtTime(params.pitch/2, now, 0.01);
     triGain.gain.setTargetAtTime(1-params.oscWaveMorph, now, 0.02);
     sqrGain.gain.setTargetAtTime(params.oscWaveMorph, now, 0.02);
-
-    subTri.frequency.setTargetAtTime(params.pitch/2, now, 0.01);
-    subSqr.frequency.setTargetAtTime(params.pitch/2, now, 0.01);
-    subTriGain.gain.setTargetAtTime(1-params.oscWaveMorph, now, 0.02);
-    subSqrGain.gain.setTargetAtTime(params.oscWaveMorph, now, 0.02);
+    oscB.frequency.setTargetAtTime(params.pitchB, now, 0.01);
     subG.gain.setTargetAtTime(params.sub, now, 0.02);
-
-    oscBTri.frequency.setTargetAtTime(params.pitchB, now, 0.01);
-    oscBSqr.frequency.setTargetAtTime(params.pitchB, now, 0.01);
-    oscBTriGain.gain.setTargetAtTime(1-params.oscBWaveMorph, now, 0.02);
-    oscBSqrGain.gain.setTargetAtTime(params.oscBWaveMorph, now, 0.02);
-
-    foldDrive.gain.setTargetAtTime(1 + params.tones*11, now, 0.02);
-    dryGain.gain.setTargetAtTime(1 - params.mix, now, 0.02);
-    wetGain.gain.setTargetAtTime(params.mix, now, 0.02);
-
+    setFolderCurve();
     delayTaps.forEach(t => {
       const base = params.time * tapRatio(t.idx, params.spread);
       t.node.delayTime.setTargetAtTime(Math.max(0.001, Math.min(4.9, base)), now, 0.03);
@@ -769,7 +693,7 @@
     if(id === 'loopenv') return envLoopSrc;
     if(id === 'rungler') return runglerNode;
     if(id === 'oscA') return oscASum;
-    if(id === 'oscB') return oscBSum;
+    if(id === 'oscB') return oscB;
     if(id.startsWith('plate')) return plateSrcs[parseInt(id.slice(5), 10)];
   }
   const cableColors = ['#dfb249', '#b98ff2', '#6fd8d0', '#ff9d5d', '#7ad1ff'];
