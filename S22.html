@@ -111,11 +111,7 @@
   }
   .plate.active{ background:linear-gradient(180deg,#fff,#ffe9a8); filter: drop-shadow(0 0 10px rgba(255,255,255,0.7)); }
   .plate .jack{ position:absolute; bottom:-14px; left:50%; transform:translateX(-50%); }
-  .plate .num{ position:absolute; bottom:-19px; left:50%; transform:translateX(-50%); font-size:0.55rem; color:var(--text-dim); }
-  .plate .dot{ position:absolute; top:64%; left:50%; width:7px; height:7px; border-radius:50%;
-    background:#0c0810; transform:translate(-50%,-50%); opacity:0; pointer-events:none; transition:opacity .1s; }
-  .plate.armed .dot{ opacity:1; }
-  .platesrow{ flex-basis:100%; display:flex; justify-content:center; gap:22px; margin-top:34px; padding-top:10px; flex-wrap:wrap; }
+  .platesrow{ flex-basis:100%; display:flex; justify-content:center; gap:22px; margin-top:28px; padding-top:10px; flex-wrap:wrap; }
 
   .jackitem{ display:flex; flex-direction:column; align-items:center; width:52px; }
   .jack{
@@ -134,12 +130,7 @@
   .patchhint{ font-size:0.58rem; color:var(--text-dim); line-height:1.5; max-width:520px; }
 
   .scopewrap{ display:flex; gap:14px; align-items:center; margin-top:16px; flex-wrap:wrap; }
-  .scopebox{ position:relative; }
   canvas{ background:#150f1a; display:block; border:1px solid var(--panel-edge); border-radius:4px; }
-  .terminal{ position:absolute; top:6px; left:9px; right:9px; font-size:0.6rem; line-height:1.45;
-    color:#8ef08e; font-family:'Courier New', monospace; pointer-events:none; text-shadow:0 0 4px rgba(0,0,0,0.9);
-    max-height:130px; overflow:hidden; }
-  .terminal div:last-child{ color:#c8ffc8; }
   .vus{ display:flex; gap:5px; align-items:flex-end; height:150px; }
   .vu{ width:10px; height:100%; background:#150f1a; border:1px solid var(--panel-edge); border-radius:2px; position:relative; overflow:hidden; }
   .vu i{ position:absolute; bottom:0; left:0; right:0; background:linear-gradient(0deg, var(--amber), var(--red)); height:0%; }
@@ -172,10 +163,7 @@
   </div>
 
   <div class="scopewrap">
-    <div class="scopebox">
-      <canvas id="scope" width="640" height="150"></canvas>
-      <div class="terminal" id="terminal"></div>
-    </div>
+    <canvas id="scope" width="640" height="150"></canvas>
     <div>
       <div class="vus">
         <div class="vu"><i id="vuL"></i></div>
@@ -207,13 +195,6 @@
   let envSchedTimer = null;
   let patchCables = [], destDefs = [];
   let audioReady = false;
-  let cvLive = {}, cvSum = {}, cvMonitorNode, cvMonitorSilent;
-  let presets = new Array(10).fill(null);
-  let editingSlot = null;
-  let heldPresetSlot = null, preHoldSnapshot = null;
-  let lissajous = false;
-  let termLines = [];
-  let edPrefix = 0, xyPrefix = 0;
 
   const accentBySection = { osc:'var(--violet)', delay:'var(--amber)', mod:'var(--cyan)', fx:'var(--rose)' };
 
@@ -252,10 +233,7 @@
   const configById = {};
   config.forEach(c => { params[c.id] = c.def; configById[c.id] = c; });
 
-  // Triangles are preset-recall pads now, numbered to match the keyboard row 1..9,0
-  function keyLabel(slot){ return slot === 9 ? '0' : String(slot+1); }
-  function clampv(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
-  function clone(obj){ return JSON.parse(JSON.stringify(obj)); }
+  const touchDef = ['Overload', 'Warp Pitch', 'Time Mod', 'Fold Max', 'Bypass Filter', 'Sub Drone'];
 
   const knobIO = {
     pitch:        { in:['pitch','fm'] },
@@ -268,25 +246,13 @@
     pitchB:       { in:['fmb'], out:'oscB' },
     rate:         { out:'lfo' },
     woggle:       { out:'random' },
-    envAttack:    { in:['envAtk'] },
-    envDecay:     { in:['envDcy'], out:'loopenv' },
+    envDecay:     { out:'loopenv' },
     runglerRate:  { out:'rungler' },
-    oscWaveMorph: { in:['wave'] },
-    oscBWaveMorph:{ in:['waveB'] },
-    sub:          { in:['subton'] },
-    instability:  { in:['instab'] },
-    mix:          { in:['mix'] },
-    spread:       { in:['spread'] },
-    smear:        { in:['smear'] },
-    drive:        { in:['sat'] },
-    bitcrush:     { in:['crush'] },
   };
   knobIO.pitch.out = 'oscA';
 
   const destLabel = { pitch:'Pitch CV', fm:'FM in', fmb:'Osc B FM', fold:'Fold Drive CV', absorb:'Absorb CV',
-    feedback:'Feedback CV', delay:'Delay Time CV', vca:'VCA CV', pan:'Pan CV', envAtk:'Env Attack CV',
-    envDcy:'Env Decay CV', wave:'Wave CV', waveB:'Osc B Wave CV', subton:'Sub Level CV', instab:'Instability CV',
-    mix:'Dry/Wet CV', spread:'Spread CV', smear:'Smear CV', sat:'Saturation CV', crush:'Bitcrush CV' };
+    feedback:'Feedback CV', delay:'Delay Time CV', vca:'VCA CV', pan:'Pan CV' };
   const srcLabel = { lfo:'LFO out', random:'Random out', follow:'Follow out', loopenv:'LoopEnv out',
     rungler:'Rungler out', oscA:'Osc A out', oscB:'Osc B out' };
 
@@ -310,7 +276,7 @@
       {t:'knob', id:'pan'}, {t:'knob', id:'activation'},
     ]},
   ];
-  const plateOrder = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+  const plateOrder = [0, 1, 2, 3, 4, 5];
 
   const itemsHost = document.getElementById('items');
 
@@ -374,28 +340,35 @@
       const range = c.max - c.min, div = baseRange * (e.shiftKey ? 5 : 1);
       const dy = sy - e.clientY;
       params[c.id] = Math.max(c.min, Math.min(c.max, sv + (dy * (range/div))));
-      updateKnobVisual(c); sync(); recordIfEditing();
+      updateKnobVisual(c); sync();
     });
     dial.addEventListener('pointerup', () => dragging = false);
-    dial.addEventListener('dblclick', () => { params[c.id] = c.def; updateKnobVisual(c); sync(); recordIfEditing(); });
+    dial.addEventListener('dblclick', () => { params[c.id] = c.def; updateKnobVisual(c); sync(); });
     return wrap;
   }
   function buildPlate(idx){
     const outer = document.createElement('div');
-    outer.className = 'plate'; outer.id = `plate-${idx}`; outer.title = 'Preset ' + keyLabel(idx);
-    const jack = makeJack('src', 'plate'+idx, 'Preset ' + keyLabel(idx) + ' gate (drag to patch)');
+    outer.className = 'plate'; outer.id = `plate-${idx}`; outer.title = touchDef[idx];
+    const jack = makeJack('src', 'plate'+idx, touchDef[idx] + ' (drag to patch)');
     jack.id = 'jack-src-plate'+idx;
     jack.addEventListener('pointerdown', e => e.stopPropagation());
     outer.appendChild(jack);
-    const dot = document.createElement('div'); dot.className = 'dot';
-    outer.appendChild(dot);
-    const num = document.createElement('div'); num.className = 'num'; num.innerText = keyLabel(idx);
-    outer.appendChild(num);
-    const gate = on => { if(ctx) plateSrcs[idx].offset.setTargetAtTime(on ? 1 : 0, ctx.currentTime, on ? 0.005 : 0.08); };
-    outer.addEventListener('pointerdown', e => { outer.setPointerCapture(e.pointerId); gate(true); playPresetMomentary(idx, true); });
-    outer.addEventListener('pointerup', () => { gate(false); playPresetMomentary(idx, false); });
-    outer.addEventListener('pointercancel', () => { gate(false); playPresetMomentary(idx, false); });
-    outer.addEventListener('pointerleave', () => { gate(false); playPresetMomentary(idx, false); });
+    const act = on => {
+      if(!ctx) return;
+      outer.classList.toggle('active', on);
+      plateSrcs[idx].offset.setTargetAtTime(on ? 1 : 0, ctx.currentTime, on ? 0.005 : 0.08);
+      const now = ctx.currentTime;
+      if(idx===0){ feedGainL.gain.setTargetAtTime(on?1.35:params.decay, now, 0.015); feedGainR.gain.setTargetAtTime(on?1.35:params.decay, now, 0.015); }
+      if(idx===1){ oscTri.frequency.setTargetAtTime(on?params.pitch*4:params.pitch, now, 0.04); oscSqr.frequency.setTargetAtTime(on?params.pitch*4:params.pitch, now, 0.04); }
+      if(idx===2) delayTaps.forEach(tp => tp.node.delayTime.setTargetAtTime(on?0.008:params.time*tapRatio(tp.idx,params.spread), now, 0.01));
+      if(idx===3) foldDrive.gain.setTargetAtTime(on?14:(1+params.tones*11), now, 0.02);
+      if(idx===4) filter.frequency.setTargetAtTime(on?16000:params.absorb, now, 0.02);
+      if(idx===5){ subTri.frequency.setTargetAtTime(on?14:params.pitch/2, now, 0.04); subSqr.frequency.setTargetAtTime(on?14:params.pitch/2, now, 0.04); }
+    };
+    outer.addEventListener('pointerdown', e => { outer.setPointerCapture(e.pointerId); act(true); });
+    outer.addEventListener('pointerup', () => act(false));
+    outer.addEventListener('pointercancel', () => act(false));
+    outer.addEventListener('pointerleave', () => act(false));
     return outer;
   }
   function buildJackItem(kind, id, label){
@@ -467,11 +440,10 @@
     crushN.onaudioprocess = e => {
       const inL = e.inputBuffer.getChannelData(0), inR = e.inputBuffer.getChannelData(1);
       const outL = e.outputBuffer.getChannelData(0), outR = e.outputBuffer.getChannelData(1);
-      const effCrush = clampv(params.bitcrush + (cvLive.crush||0), 0, 0.95);
-      const step = Math.pow(0.5, (1-effCrush)*16);
+      const step = Math.pow(0.5, (1-params.bitcrush)*16);
       for(let i=0;i<inL.length;i++){
-        if(effCrush > 0){
-          phase += effCrush;
+        if(params.bitcrush > 0){
+          phase += params.bitcrush;
           if(phase >= 1){ phase -= 1; holdL = Math.round(inL[i]/step)*step; holdR = Math.round(inR[i]/step)*step; }
           outL[i] = holdL; outR[i] = holdR;
         } else { outL[i] = inL[i]; outR[i] = inR[i]; }
@@ -634,24 +606,21 @@
     runglerNode = ctx.createScriptProcessor(1024, 1, 1); setRungler();
     runglerSilent = ctx.createGain(); runglerSilent.gain.value = 0;
     runglerNode.connect(runglerSilent); runglerSilent.connect(ctx.destination);
-    plateSrcs = plateOrder.map(() => { const c = ctx.createConstantSource(); c.offset.value = 0; c.start(); return c; });
+    plateSrcs = touchDef.map(() => { const c = ctx.createConstantSource(); c.offset.value = 0; c.start(); return c; });
 
     oscTri.start(); oscSqr.start(); subTri.start(); subSqr.start();
 
     setInterval(() => {
       if(!ctx || isMute) return;
-      const effInstability = clampv(params.instability + cvLive.instab, 0, 1);
-      const effSpread = clampv(params.spread + cvLive.spread, 0, 1);
-      const effSmear = clampv(params.smear + cvLive.smear, 0, 0.3);
-      const drift = (Math.random()-0.5) * effInstability * 6;
+      const drift = (Math.random()-0.5) * params.instability * 6;
       oscTri.frequency.setTargetAtTime(params.pitch + drift, ctx.currentTime, 0.03);
       oscSqr.frequency.setTargetAtTime(params.pitch + drift, ctx.currentTime, 0.03);
       subTri.frequency.setTargetAtTime((params.pitch + drift)/2, ctx.currentTime, 0.03);
       subSqr.frequency.setTargetAtTime((params.pitch + drift)/2, ctx.currentTime, 0.03);
-      if(effSmear > 0){
+      if(params.smear > 0){
         delayTaps.forEach(t => {
-          const base = params.time * tapRatio(t.idx, effSpread);
-          const wobble = base * (1 + (Math.random()-0.5) * effSmear * 4);
+          const base = params.time * tapRatio(t.idx, params.spread);
+          const wobble = base * (1 + (Math.random()-0.5) * params.smear * 4);
           t.node.delayTime.setTargetAtTime(Math.max(0.001, Math.min(4.9, wobble)), ctx.currentTime, 0.03);
         });
       }
@@ -667,26 +636,6 @@
       }
     }, 220);
 
-    // --- CV monitor: samples patched modulation for parameters that aren't
-    // live AudioParams (env attack/decay, spread, smear, saturation, bitcrush).
-    // Each gets a summing node CV cables connect into; a small ScriptProcessor
-    // reads the latest sample of each every ~23ms into cvLive for JS to use.
-    const cvNames = ['envAtk','envDcy','instab','spread','smear','sat','crush'];
-    cvNames.forEach(name => { cvSum[name] = ctx.createGain(); cvLive[name] = 0; });
-    const cvMerger = ctx.createChannelMerger(cvNames.length);
-    cvNames.forEach((name,i) => cvSum[name].connect(cvMerger, 0, i));
-    cvMonitorNode = ctx.createScriptProcessor(1024, cvNames.length, 1);
-    cvMonitorNode.onaudioprocess = e => {
-      cvNames.forEach((name,i) => {
-        const data = e.inputBuffer.getChannelData(i);
-        cvLive[name] = data[data.length-1];
-      });
-      setDriveCurve(clampv(params.drive + cvLive.sat, 1, 30));
-    };
-    cvMerger.connect(cvMonitorNode);
-    cvMonitorSilent = ctx.createGain(); cvMonitorSilent.gain.value = 0;
-    cvMonitorNode.connect(cvMonitorSilent); cvMonitorSilent.connect(ctx.destination);
-
     destDefs = [
       { id:'pitch', targets:[{ getParam:()=>oscTri.frequency, sens:250 }, { getParam:()=>oscSqr.frequency, sens:250 }, { getParam:()=>subTri.frequency, sens:125 }, { getParam:()=>subSqr.frequency, sens:125 }] },
       { id:'fm', targets:[{ getParam:()=>oscTri.frequency, sens:700 }, { getParam:()=>oscSqr.frequency, sens:700 }] },
@@ -697,17 +646,6 @@
       { id:'delay', targets: delayTaps.map(t => ({ getParam:()=>t.node.delayTime, sens:0.12 })) },
       { id:'vca', targets:[{ getParam:()=>mainG.gain, sens:0.5 }] },
       { id:'pan', targets:[{ getParam:()=>outPan.pan, sens:1 }] },
-      { id:'wave', targets:[{ getParam:()=>sqrGain.gain, sens:0.5 }, { getParam:()=>triGain.gain, sens:-0.5 }] },
-      { id:'waveB', targets:[{ getParam:()=>oscBSqrGain.gain, sens:0.5 }, { getParam:()=>oscBTriGain.gain, sens:-0.5 }] },
-      { id:'subton', targets:[{ getParam:()=>subG.gain, sens:0.4 }] },
-      { id:'mix', targets:[{ getParam:()=>wetGain.gain, sens:0.4 }, { getParam:()=>dryGain.gain, sens:-0.4 }] },
-      { id:'envAtk', targets:[{ getNode:()=>cvSum.envAtk, sens:0.6 }] },
-      { id:'envDcy', targets:[{ getNode:()=>cvSum.envDcy, sens:1.0 }] },
-      { id:'instab', targets:[{ getNode:()=>cvSum.instab, sens:0.4 }] },
-      { id:'spread', targets:[{ getNode:()=>cvSum.spread, sens:0.4 }] },
-      { id:'smear', targets:[{ getNode:()=>cvSum.smear, sens:0.15 }] },
-      { id:'sat', targets:[{ getNode:()=>cvSum.sat, sens:10 }] },
-      { id:'crush', targets:[{ getNode:()=>cvSum.crush, sens:0.35 }] },
     ];
 
     scheduleEnvLoop();
@@ -768,8 +706,7 @@
   }
   function scheduleEnvLoop(){
     if(!ctx) return;
-    const a = clampv(params.envAttack + (cvLive.envAtk||0), 0.01, 2);
-    const d = clampv(params.envDecay + (cvLive.envDcy||0), 0.01, 3);
+    const a = Math.max(0.01, params.envAttack), d = Math.max(0.01, params.envDecay);
     const now = ctx.currentTime + 0.02;
     envLoopSrc.offset.cancelScheduledValues(now);
     envLoopSrc.offset.setValueCurveAtTime(envCurveArray(true), now, a);
@@ -786,7 +723,7 @@
     powerMuteBtn.classList.toggle('muted', !on);
   }
   powerMuteBtn.addEventListener('click', () => {
-    if(!ctx){ init(); isMute = false; termLog('> online.'); }
+    if(!ctx){ init(); isMute = false; }
     else {
       if(ctx.state === 'suspended') ctx.resume().catch(()=>{});
       isMute = !isMute;
@@ -799,7 +736,6 @@
   document.getElementById('chaos').addEventListener('click', () => {
     config.forEach(c => { params[c.id] = c.min + Math.random()*(c.max-c.min); updateKnobVisual(c); });
     sync();
-    recordIfEditing();
     if(ctx && patchCables.length < 5 && Math.random() < 0.4){
       const srcIds = ['lfo','random','follow','loopenv','rungler','oscA','oscB'];
       const dstIds = destDefs.map(d => d.id);
@@ -886,96 +822,6 @@
     modring.style.setProperty('--modB', (hi*270)+'deg');
     modring.style.opacity = modPct > 0.002 ? '1' : '0';
   }
-
-  // ---------- Terminal (the scope doubles as a status readout) ----------
-  const terminalEl = document.getElementById('terminal');
-  function termLog(msg){
-    termLines.push(msg);
-    if(termLines.length > 6) termLines.shift();
-    terminalEl.innerHTML = termLines.map(l => `<div>${l}</div>`).join('');
-  }
-
-  // ---------- Presets: the 10 triangles, momentary-recall + record mode ----------
-  function setActiveTriangle(slot, on){
-    if(slot === null || slot === undefined) return;
-    const el = document.getElementById('plate-'+slot);
-    if(el) el.classList.toggle('armed', !!on);
-  }
-  function clearAllTriangles(){
-    for(let i=0;i<10;i++) setActiveTriangle(i, false);
-  }
-  function applyPreset(values){
-    Object.assign(params, values);
-    config.forEach(updateKnobVisual);
-    sync();
-  }
-  function playPresetMomentary(slot, isDown){
-    if(!ctx || editingSlot !== null) return;
-    if(isDown){
-      if(heldPresetSlot !== null) return;
-      if(!presets[slot]){ termLog(`preset ${keyLabel(slot)} — empty`); return; }
-      heldPresetSlot = slot;
-      preHoldSnapshot = clone(params);
-      applyPreset(presets[slot]);
-      setActiveTriangle(slot, true);
-      termLog(`> preset ${keyLabel(slot)} playing`);
-    } else {
-      if(heldPresetSlot !== slot) return;
-      heldPresetSlot = null;
-      applyPreset(preHoldSnapshot);
-      setActiveTriangle(slot, false);
-      termLog(`> preset ${keyLabel(slot)} released`);
-    }
-  }
-  function enterEditMode(slot){
-    if(!presets[slot]) presets[slot] = clone(params);
-    editingSlot = slot;
-    clearAllTriangles();
-    setActiveTriangle(slot, true);
-    termLog(`> EDIT MODE — recording to preset ${keyLabel(slot)}`);
-  }
-  function exitEditMode(){
-    if(editingSlot === null) return;
-    termLog(`> preset ${keyLabel(editingSlot)} saved, edit mode off`);
-    setActiveTriangle(editingSlot, false);
-    editingSlot = null;
-  }
-  function recordIfEditing(){
-    if(editingSlot !== null) presets[editingSlot] = clone(params);
-  }
-
-  // ---------- Keyboard: number keys recall presets; e,d,<n> arms edit mode;
-  // x,y,Enter toggles the Lissajous scope ----------
-  window.addEventListener('keydown', e => {
-    if(e.repeat) return;
-    const key = e.key.toLowerCase();
-    if(/^[0-9]$/.test(key)){
-      const slot = key === '0' ? 9 : (parseInt(key,10) - 1);
-      if(edPrefix === 2){
-        edPrefix = 0;
-        if(editingSlot === slot) exitEditMode(); else enterEditMode(slot);
-        return;
-      }
-      edPrefix = 0; xyPrefix = 0;
-      if(editingSlot !== null){ exitEditMode(); return; }
-      playPresetMomentary(slot, true);
-      return;
-    }
-    if(key === 'e'){ edPrefix = 1; xyPrefix = 0; return; }
-    if(key === 'd'){ edPrefix = (edPrefix===1) ? 2 : 0; xyPrefix = 0; return; }
-    if(key === 'x'){ xyPrefix = 1; edPrefix = 0; return; }
-    if(key === 'y'){ xyPrefix = (xyPrefix===1) ? 2 : 0; edPrefix = 0; return; }
-    if(key === 'enter'){ if(xyPrefix===2){ lissajous = !lissajous; termLog(`> lissajous ${lissajous?'on':'off'}`); } xyPrefix=0; edPrefix=0; return; }
-    edPrefix = 0; xyPrefix = 0;
-  });
-  window.addEventListener('keyup', e => {
-    const key = e.key.toLowerCase();
-    if(/^[0-9]$/.test(key)){
-      const slot = key === '0' ? 9 : (parseInt(key,10) - 1);
-      playPresetMomentary(slot, false);
-    }
-  });
-
   const cableColors = ['#dfb249', '#b98ff2', '#6fd8d0', '#ff9d5d', '#7ad1ff'];
   const cableLayer = document.getElementById('cableLayer');
   let dragTemp = null, dragOrigin = null;
@@ -1044,8 +890,7 @@
     srcNode.connect(depthGain);
     const sensGains = dest.targets.map(t => {
       const g = ctx.createGain(); g.gain.value = t.sens;
-      depthGain.connect(g);
-      if(t.getParam) g.connect(t.getParam()); else if(t.getNode) g.connect(t.getNode());
+      depthGain.connect(g); g.connect(t.getParam());
       return g;
     });
     const color = cableColors[patchCables.length % cableColors.length];
@@ -1078,7 +923,6 @@
     patchCables.push(cable);
     applyDepth(cable);
     updateCables();
-    termLog(`> patched ${srcId} \u2192 ${dstId}`);
   }
   function removePatch(cable){
     const srcNode = getSourceNode(cable.srcId);
@@ -1089,7 +933,6 @@
     cable.handleEl.remove();
     patchCables = patchCables.filter(c => c !== cable);
     updateModRing(destOwner[cable.dstId]);
-    termLog(`> removed ${cable.srcId} \u2192 ${cable.dstId}`);
   }
   function updateCables(){
     patchCables.forEach(c => {
@@ -1116,29 +959,18 @@
       if(!analyserL) return;
       analyserL.getByteTimeDomainData(dataL); analyserR.getByteTimeDomainData(dataR);
       sCtx.fillStyle = '#150f1a'; sCtx.fillRect(0,0,canvas.width,canvas.height);
-      if(lissajous){
-        const cx = canvas.width/2, cy = canvas.height/2, scale = Math.min(canvas.width, canvas.height)/2 - 6;
-        sCtx.lineWidth = 1.3; sCtx.strokeStyle = '#b98ff2'; sCtx.beginPath();
+      const sw = canvas.width/len;
+      let peakL = 0, peakR = 0;
+      [{data:dataL, color:'#dfb249'}, {data:dataR, color:'#6fd8d0'}].forEach(ch => {
+        sCtx.lineWidth = 1.6; sCtx.strokeStyle = ch.color; sCtx.beginPath();
+        let x = 0;
         for(let i=0;i<len;i++){
-          const x = cx + ((dataL[i]/128)-1) * scale;
-          const y = cy + ((dataR[i]/128)-1) * scale;
+          const y = (ch.data[i]/128.0) * canvas.height/2;
           if(i===0) sCtx.moveTo(x,y); else sCtx.lineTo(x,y);
+          x += sw;
         }
         sCtx.stroke();
-      } else {
-        const sw = canvas.width/len;
-        [{data:dataL, color:'#dfb249'}, {data:dataR, color:'#6fd8d0'}].forEach(ch => {
-          sCtx.lineWidth = 1.6; sCtx.strokeStyle = ch.color; sCtx.beginPath();
-          let x = 0;
-          for(let i=0;i<len;i++){
-            const y = (ch.data[i]/128.0) * canvas.height/2;
-            if(i===0) sCtx.moveTo(x,y); else sCtx.lineTo(x,y);
-            x += sw;
-          }
-          sCtx.stroke();
-        });
-      }
-      let peakL = 0, peakR = 0;
+      });
       for(let i=0;i<len;i++){ peakL = Math.max(peakL, Math.abs(dataL[i]-128)); peakR = Math.max(peakR, Math.abs(dataR[i]-128)); }
       frame++;
       if(frame % 2 === 0){
