@@ -49,7 +49,6 @@
     background: linear-gradient(180deg, #1d1624, #170f1d);
     border:1px solid var(--panel-edge); border-radius:6px; padding:26px 20px 16px;
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 6px 18px rgba(0,0,0,0.35);
-    -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
   }
   .faceplate::before, .faceplate::after{
     content:''; position:absolute; width:5px; height:5px; border-radius:50%;
@@ -102,7 +101,6 @@
   }
   /* Jacks at the knob level: primary input NW, primary output SE — Buchla/Serge banana-jack style */
   .jack-io{ position:absolute; z-index:4; }
-  .jack-row{ left:50%; transform:translateX(-50%); display:flex; gap:4px; }
   .klabel{ font-size:0.6rem; color:var(--text-dim); margin-top:2px; text-align:center; line-height:1.2; }
 
   .plate{
@@ -151,18 +149,12 @@
   canvas{ background:#150f1a; display:block; border:1px solid var(--panel-edge); border-radius:4px; }
   .terminal{ position:absolute; top:6px; left:9px; right:9px; font-size:0.6rem; line-height:1.45;
     color:#8ef08e; font-family:'Courier New', monospace; pointer-events:none; text-shadow:0 0 4px rgba(0,0,0,0.9);
-    max-height:130px; overflow:hidden; -webkit-user-select:none; user-select:none; }
+    max-height:130px; overflow:hidden; }
   .terminal div:last-child{ color:#c8ffc8; }
-  .vus{ position:absolute; bottom:8px; right:9px; display:flex; gap:4px; align-items:flex-end; height:46px; z-index:5; }
-  .vu{ width:7px; height:100%; background:rgba(21,15,26,0.55); border:1px solid var(--panel-edge); border-radius:2px; position:relative; overflow:hidden; }
+  .vus{ display:flex; gap:5px; align-items:flex-end; height:150px; }
+  .vu{ width:10px; height:100%; background:#150f1a; border:1px solid var(--panel-edge); border-radius:2px; position:relative; overflow:hidden; }
   .vu i{ position:absolute; bottom:0; left:0; right:0; background:linear-gradient(0deg, var(--amber), var(--red)); height:0%; }
-  .cmdinput{
-    position:absolute; bottom:8px; left:9px; width:150px; z-index:5;
-    background:rgba(13,9,18,0.8); border:1px solid var(--amber-dim); color:#c8ffc8;
-    font-family:'Courier New', monospace; font-size:0.65rem; padding:4px 7px; border-radius:3px;
-  }
-  .cmdinput::placeholder{ color:var(--text-dim); }
-  @media (hover:hover) and (pointer:fine){ .cmdinput{ display:none; } }
+  .vulabel{ font-size:0.58rem; color:var(--text-dim); text-align:center; margin-top:3px; }
   .legend{ display:flex; gap:14px; font-size:0.6rem; color:var(--text-dim); margin-top:4px; }
   .legend i{ display:inline-block; width:10px; height:2px; margin-right:4px; vertical-align:middle; }
 </style>
@@ -201,11 +193,13 @@
     <div class="scopebox">
       <canvas id="scope" width="640" height="150"></canvas>
       <div class="terminal" id="terminal"></div>
+    </div>
+    <div>
       <div class="vus">
         <div class="vu"><i id="vuL"></i></div>
         <div class="vu"><i id="vuR"></i></div>
       </div>
-      <input type="text" id="cmdInput" class="cmdinput" placeholder="1-0 / ed3 / xy" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      <div class="vulabel">L&nbsp;&nbsp;R</div>
     </div>
   </div>
   <div class="legend"><span><i style="background:var(--amber);"></i>Left</span><span><i style="background:var(--cyan);"></i>Right</span></div>
@@ -417,12 +411,14 @@
       const modring = document.createElement('div'); modring.className = 'modring';
       dialbox.appendChild(modring);
       if(io.in.length > 1){
-        // Two inputs: centered horizontally above the knob, side by side
-        const row = document.createElement('div');
-        row.className = 'jack-io jack-row';
-        row.style.top = (-O - 6) + 'px';
-        io.in.forEach(destId => row.appendChild(makeJack('dst', destId, destLabel[destId])));
-        dialbox.appendChild(row);
+        // Two inputs: side by side (horizontal), just above the NW corner
+        const rowO = O + 4;
+        io.in.forEach((destId, i) => {
+          const j = makeJack('dst', destId, destLabel[destId]);
+          j.classList.add('jack-io');
+          j.style.left = (-rowO + (i===0 ? -12 : 12)) + 'px'; j.style.top = (-rowO) + 'px';
+          dialbox.appendChild(j);
+        });
       } else {
         const j = makeJack('dst', io.in[0], destLabel[io.in[0]]);
         j.classList.add('jack-io');
@@ -1052,12 +1048,9 @@
   }
 
   // ---------- Keyboard: number keys recall presets; e,d,<n> arms edit mode;
-  // x,y,Enter toggles the Lissajous scope. On PC the window is always
-  // listening for these; typing in the on-screen command field (phones) is
-  // handled separately below so it doesn't also trigger this listener. ----------
+  // x,y,Enter toggles the Lissajous scope ----------
   window.addEventListener('keydown', e => {
     if(e.repeat) return;
-    if(e.target && e.target.tagName === 'INPUT') return;
     const key = e.key.toLowerCase();
     if(/^[0-9]$/.test(key)){
       const slot = key === '0' ? 9 : (parseInt(key,10) - 1);
@@ -1079,40 +1072,11 @@
     edPrefix = 0; xyPrefix = 0;
   });
   window.addEventListener('keyup', e => {
-    if(e.target && e.target.tagName === 'INPUT') return;
     const key = e.key.toLowerCase();
     if(/^[0-9]$/.test(key)){
       const slot = key === '0' ? 9 : (parseInt(key,10) - 1);
       playPresetMomentary(slot, false);
     }
-  });
-
-  // ---------- Typed commands (mainly for phones, where there's no physical
-  // keyboard to hold a key down on) — the on-screen field submits a whole
-  // command at once, so digits get a short auto-release instead of a hold. ----------
-  function runTypedCommand(raw){
-    const str = raw.trim().toLowerCase().replace(/\s+/g,'');
-    if(!str) return;
-    if(str === 'xy'){ lissajous = !lissajous; termLog(`> lissajous ${lissajous?'on':'off'}`); return; }
-    const edMatch = str.match(/^ed([0-9])$/);
-    if(edMatch){
-      const slot = edMatch[1] === '0' ? 9 : (parseInt(edMatch[1],10) - 1);
-      if(editingSlot === slot) exitEditMode(); else enterEditMode(slot);
-      return;
-    }
-    if(/^[0-9]$/.test(str)){
-      const slot = str === '0' ? 9 : (parseInt(str,10) - 1);
-      if(editingSlot !== null){ exitEditMode(); return; }
-      playPresetMomentary(slot, true);
-      setTimeout(() => playPresetMomentary(slot, false), 400);
-      return;
-    }
-    termLog(`> unrecognized command: ${raw}`);
-  }
-  const cmdInput = document.getElementById('cmdInput');
-  cmdInput.addEventListener('keydown', e => {
-    e.stopPropagation();
-    if(e.key === 'Enter'){ e.preventDefault(); runTypedCommand(cmdInput.value); cmdInput.value = ''; }
   });
 
   const cableColors = ['#dfb249', '#b98ff2', '#6fd8d0', '#ff9d5d', '#7ad1ff'];
