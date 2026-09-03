@@ -59,13 +59,14 @@
   #cableLayer{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:1; }
   #cableLayer path{ pointer-events:stroke; }
 
-  .items{ position:relative; z-index:2; display:flex; flex-wrap:wrap; align-items:flex-end; gap: 8px 10px; }
+  .items{ position:relative; z-index:2; display:flex; flex-wrap:wrap; align-items:flex-end; gap: 20px 22px; }
 
-  .knob-wrap{ position:relative; display:flex; flex-direction:column; align-items:center; width: 76px; }
-  .dialbox{ position:relative; margin: 26px 24px 24px; }
+  .knob-wrap{ position:relative; display:flex; flex-direction:column; align-items:center; width: 78px; }
+  .topjacks{ display:flex; gap:6px; margin-bottom:5px; height:15px; }
   .size-sm .dial{ width:36px; height:36px; }
   .size-md .dial{ width:50px; height:50px; }
   .size-lg .dial{ width:68px; height:68px; }
+  .dialbox{ position:relative; }
   .ring{ position:absolute; top:0; left:50%; transform:translateX(-50%); border-radius:50%; pointer-events:none; --pct:0; }
   .size-sm .ring{ width:48px; height:48px; margin-top:-6px; }
   .size-md .ring{ width:62px; height:62px; margin-top:-6px; }
@@ -99,30 +100,30 @@
     border-radius:2px; background:var(--accent, var(--amber)); transform:translateX(-50%);
     box-shadow:0 0 6px rgba(223,178,73,0.8);
   }
-  /* Jacks at the knob level: primary input NW, primary output SE — Buchla/Serge banana-jack style */
-  .jack-io{ position:absolute; z-index:4; }
-  .klabel{ font-size:0.6rem; color:var(--text-dim); margin-top:2px; text-align:center; line-height:1.2; }
+  .bottomjack{ height:15px; margin-top:5px; }
+  .klabel{ font-size:0.6rem; color:var(--text-dim); margin-top:6px; text-align:center; line-height:1.25; }
+  .klabel span{ color:var(--accent, var(--amber)); display:block; font-size:0.65rem; }
 
   .plate{
-    position:relative; width:36px; height:36px; border-radius:50%;
-    background:linear-gradient(180deg,#e8c96a,var(--amber));
+    position:relative; width:58px; height:50px; background:linear-gradient(180deg,#e8c96a,var(--amber));
     cursor:pointer; user-select:none; touch-action:none;
-    display:flex; align-items:center; justify-content:center;
-    font-size:0.62rem; font-weight:bold; color:#1a1420;
-    box-shadow:0 2px 4px rgba(0,0,0,0.45);
+    clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
   }
-  .plate.armed{ background:linear-gradient(180deg,#fff,#ffe9a8); box-shadow:0 0 13px rgba(255,255,255,0.85); }
+  .plate.active{ background:linear-gradient(180deg,#fff,#ffe9a8); filter: drop-shadow(0 0 10px rgba(255,255,255,0.7)); }
+  .plate .jack{ position:absolute; bottom:-14px; left:50%; transform:translateX(-50%); }
+  .plate .num{ position:absolute; bottom:-19px; left:50%; transform:translateX(-50%); font-size:0.55rem; color:var(--text-dim); }
+  .plate .dot{ position:absolute; top:64%; left:50%; width:7px; height:7px; border-radius:50%;
+    background:#0c0810; transform:translate(-50%,-50%); opacity:0; pointer-events:none; transition:opacity .1s; }
+  .plate.armed .dot{ opacity:1; }
+  .platesrow{ flex-basis:100%; display:flex; justify-content:center; gap:22px; margin-top:34px; padding-top:10px; flex-wrap:wrap; }
 
-  .jackitem{ display:flex; flex-direction:column; align-items:center; width:56px; }
+  .jackitem{ display:flex; flex-direction:column; align-items:center; width:52px; }
   .jack{
-    width:21px; height:21px; border-radius:50%;
-    border:4px solid var(--jcolor, var(--cyan));
-    background: radial-gradient(circle at 38% 35%, #3c3c3c 0%, #0a0a0a 65%);
-    box-shadow: inset 0 0 3px rgba(0,0,0,0.9), 0 1px 2px rgba(0,0,0,0.6);
+    width:14px; height:14px; border-radius:50%; border:2px solid var(--cyan); background:#0e1a1a;
     cursor:crosshair; flex-shrink:0; touch-action:none; z-index:3;
   }
-  .jack.dst{ border-color:var(--jcolor, var(--violet)); }
-  .jack:hover{ box-shadow:0 0 10px var(--jcolor, currentColor), inset 0 0 3px rgba(0,0,0,0.9); }
+  .jack.dst{ border-color:var(--violet); background:#180e1f; }
+  .jack:hover{ box-shadow:0 0 8px currentColor; }
   .jacklabel{ font-size:0.55rem; color:var(--text-dim); margin-top:5px; text-align:center; line-height:1.2; }
 
   .groupbreak{ flex-basis:100%; height:22px; }
@@ -131,18 +132,6 @@
   .footrow{ position:relative; z-index:2; margin-top:18px; padding-top:10px; border-top:1px dashed var(--panel-edge);
     display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
   .patchhint{ font-size:0.58rem; color:var(--text-dim); line-height:1.5; max-width:520px; }
-  .cablemenu{ position:absolute; z-index:10; background:#1c1424; border:1px solid var(--amber-dim); border-radius:6px;
-    padding:10px 12px; box-shadow:0 6px 18px rgba(0,0,0,0.5); display:none; width:150px; }
-  .cablemenu-label{ font-size:0.6rem; letter-spacing:1px; color:var(--text-dim); text-transform:uppercase; margin-bottom:6px; }
-  .cablemenu input[type=range]{ width:100%; }
-  .cablemenu-val{ font-size:0.7rem; color:var(--amber); text-align:center; margin:2px 0 8px; }
-  .cablemenu-del{ width:100%; background:#3a1d22; color:var(--red); border:1px solid var(--red); border-radius:3px;
-    padding:5px; font-family:inherit; font-size:0.62rem; cursor:pointer; }
-  .cablemenu-del:hover{ background:var(--red); color:#1a1420; }
-  .minijack-scope{ position:absolute; width:84px; height:84px; border-radius:50%; overflow:hidden;
-    border:2px solid var(--amber); pointer-events:none; z-index:30; display:none;
-    box-shadow:0 4px 16px rgba(0,0,0,0.65); background:#0d0912; }
-  .minijack-scope canvas{ width:100%; height:100%; display:block; }
 
   .scopewrap{ display:flex; gap:14px; align-items:center; margin-top:16px; flex-wrap:wrap; }
   .scopebox{ position:relative; }
@@ -175,16 +164,9 @@
 
   <div class="faceplate">
     <svg id="cableLayer"></svg>
-    <div class="cablemenu" id="cableMenu">
-      <div class="cablemenu-label">Attenuverter</div>
-      <input type="range" id="cableMenuRange" min="-100" max="100" value="50">
-      <div class="cablemenu-val" id="cableMenuVal">+50%</div>
-      <button class="cablemenu-del" id="cableMenuDel">Delete cable</button>
-    </div>
-    <div class="minijack-scope" id="miniScope"><canvas id="miniScopeCanvas" width="84" height="84"></canvas></div>
     <div class="items" id="items"></div>
     <div class="footrow">
-      <div class="patchhint">Cyan jacks are outputs, violet jacks are inputs. Drag between them to patch. Click the dot on a cable for its attenuverter, double-click the dot (or click the cable itself) to remove it.</div>
+      <div class="patchhint">Cyan jacks are outputs, violet jacks are inputs. Drag between them to patch. Drag the dot on a cable up/down to set its depth &amp; polarity (attenuverter). Click the dot, or the cable itself, to remove it.</div>
       <button class="btn" id="clearpatch" style="font-size:0.6rem;">CLEAR PATCHES</button>
     </div>
   </div>
@@ -220,7 +202,7 @@
   let fbCompressor, fbClip, fbSplit, feedGainL, feedGainR, crossGainL, crossGainR;
   let dryGain, wetGain, outPan, driveN, crushN, masterLimiter, mainG;
   let splitAnalyser, analyserL, analyserR;
-  let lfoSrc, randSrc, envSrc, envLoopSrc, runglerNode, runglerSilent;
+  let lfoSrc, randSrc, envSrc, envLoopSrc, runglerNode, runglerSilent, plateSrcs = [];
   let recTap, recSilent, recBuffersL = [], recBuffersR = [], isRec = false, isMute = false;
   let envSchedTimer = null;
   let patchCables = [], destDefs = [];
@@ -232,7 +214,6 @@
   let lissajous = false;
   let termLines = [];
   let edPrefix = 0, xyPrefix = 0;
-  let bulkOp = false;
 
   const accentBySection = { osc:'var(--violet)', delay:'var(--amber)', mod:'var(--cyan)', fx:'var(--rose)' };
 
@@ -275,11 +256,6 @@
   function keyLabel(slot){ return slot === 9 ? '0' : String(slot+1); }
   function clampv(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
   function clone(obj){ return JSON.parse(JSON.stringify(obj)); }
-  // A patched cable "breaks normalization": once a jack has a cable in it,
-  // the knob stops setting that parameter directly and the cable takes over
-  // (the CV swings around a fixed neutral point instead of around the knob).
-  function destPatched(destId){ return patchCables.some(c => c.dstId === destId); }
-  function baseOf(knobId, destId){ return destPatched(destId) ? configById[knobId].def : params[knobId]; }
 
   const knobIO = {
     pitch:        { in:['pitch','fm'] },
@@ -338,46 +314,13 @@
 
   const itemsHost = document.getElementById('items');
 
-  // Buchla/Serge-inspired patch-point color coding, by function
-  const jackColors = {
-    // audio-rate: warm orange
-    pitch:'#e8944a', wave:'#e8944a', waveB:'#e8944a', oscA:'#e8944a', oscB:'#e8944a',
-    // FM inputs get their own shade so a paired input (e.g. Pitch + FM) is easy to tell apart at a glance
-    fm:'#f2c14e', fmb:'#f2c14e',
-    // filter / fold: red
-    absorb:'#e2584f', fold:'#e2584f',
-    // envelope / gate / VCA: yellow
-    vca:'#e8d24a', envAtk:'#e8d24a', envDcy:'#e8d24a', feedback:'#e8d24a', loopenv:'#e8d24a', follow:'#e8d24a',
-    // LFO / random / chaos modulation: blue
-    lfo:'#5a9fe8', random:'#5a9fe8', instab:'#5a9fe8', rungler:'#5a9fe8',
-    // utility / everything else: green
-    pan:'#7fd88a', mix:'#7fd88a', delay:'#7fd88a', spread:'#7fd88a', smear:'#7fd88a', sat:'#7fd88a', crush:'#7fd88a', subton:'#7fd88a',
-  };
-  function jackColorFor(id){
-    if(jackColors[id]) return jackColors[id];
-    if(id.startsWith('plate')) return '#ff8fa3';
-    return null;
-  }
-  // Deterministic pseudo-random per id (0..1) — used to scatter the panel
-  // without it ever jumping around between reloads.
-  function seedRand(str){
-    let h = 0;
-    for(let i=0;i<str.length;i++) h = (h*31 + str.charCodeAt(i)) | 0;
-    return (Math.abs(h) % 1000) / 1000;
-  }
-  function scatter(el, id){
-    const dx = (seedRand(id+'x') - 0.5) * 10;
-    const dy = (seedRand(id+'y') - 0.5) * 8;
-    const rot = (seedRand(id+'r') - 0.5) * 4;
-    el.style.transform = `translate(${dx}px, ${dy}px) rotate(${rot}deg)`;
-  }
-
   function pctOf(c, v){ return (v - c.min) / (c.max - c.min); }
   function updateKnobVisual(c){
     const v = params[c.id];
     const pct = pctOf(c, v);
     const dial = document.getElementById('d-'+c.id);
     dial.style.transform = `rotate(${pct*270-135}deg)`;
+    document.getElementById('v-'+c.id).innerText = v.toFixed(2);
     dial.closest('.dialbox').querySelector('.ring').style.setProperty('--pct', pct);
     updateModRing(c.id);
   }
@@ -387,83 +330,72 @@
     j.dataset.kind = kind; j.dataset.id = id;
     j.id = `jack-${kind==='dst'?'dst':'src'}-${id}`;
     j.title = label || id;
-    const col = jackColorFor(id);
-    if(col) j.style.setProperty('--jcolor', col);
-    if(kind === 'src'){
-      j.addEventListener('pointerenter', () => startMiniScope(id, j));
-      j.addEventListener('pointerleave', stopMiniScope);
-    }
     return j;
   }
-  const jackClear = { sm:21, md:19, lg:17 }; // px offset that just clears each size's modring
   function buildKnob(c){
     const io = knobIO[c.id] || {};
     const wrap = document.createElement('div');
     wrap.className = `knob-wrap size-${c.size}`;
     wrap.style.setProperty('--accent', accentBySection[c.section]);
 
+    const topOutPos = io.out && io.outPos === 'top';
+    if(io.in || topOutPos){
+      const row = document.createElement('div'); row.className = 'topjacks';
+      if(io.in) io.in.forEach(destId => row.appendChild(makeJack('dst', destId, destLabel[destId])));
+      if(topOutPos) row.appendChild(makeJack('src', io.out, srcLabel[io.out]));
+      wrap.appendChild(row);
+    }
+
     const dialbox = document.createElement('div'); dialbox.className = 'dialbox';
     const ring = document.createElement('div'); ring.className = 'ring';
     const dial = document.createElement('div'); dial.className = 'dial'; dial.id = 'd-'+c.id;
     dialbox.appendChild(ring); dialbox.appendChild(dial);
-    const O = jackClear[c.size] || 19;
     if(io.in){
       const modring = document.createElement('div'); modring.className = 'modring';
       dialbox.appendChild(modring);
-      if(io.in.length > 1){
-        // Two inputs: side by side (horizontal), just above the NW corner
-        const rowO = O + 4;
-        io.in.forEach((destId, i) => {
-          const j = makeJack('dst', destId, destLabel[destId]);
-          j.classList.add('jack-io');
-          j.style.left = (-rowO + (i===0 ? -12 : 12)) + 'px'; j.style.top = (-rowO) + 'px';
-          dialbox.appendChild(j);
-        });
-      } else {
-        const j = makeJack('dst', io.in[0], destLabel[io.in[0]]);
-        j.classList.add('jack-io');
-        j.style.left = (-O) + 'px'; j.style.top = (-O) + 'px';
-        dialbox.appendChild(j);
-      }
-    }
-    if(io.out){
-      // Main output: southeast of the knob
-      const j = makeJack('src', io.out, srcLabel[io.out]);
-      j.classList.add('jack-io');
-      j.style.right = (-O) + 'px'; j.style.bottom = (-O) + 'px';
-      dialbox.appendChild(j);
     }
     wrap.appendChild(dialbox);
 
-    const label = document.createElement('div'); label.className = 'klabel';
-    label.innerText = c.label;
-    wrap.appendChild(label);
-    scatter(wrap, c.id);
+    if(io.out && !topOutPos){
+      const bwrap = document.createElement('div'); bwrap.className = 'bottomjack';
+      bwrap.appendChild(makeJack('src', io.out, srcLabel[io.out]));
+      wrap.appendChild(bwrap);
+    }
 
-    let dragging = false, sy = 0, sv = 0, didDrag = false;
+    const label = document.createElement('div'); label.className = 'klabel';
+    label.innerHTML = `${c.label}<span id="v-${c.id}">${params[c.id].toFixed(2)}</span>`;
+    wrap.appendChild(label);
+
+    let dragging = false, sy = 0, sv = 0;
     const baseRange = c.size === 'lg' ? 190 : c.size === 'md' ? 150 : 115;
-    dial.addEventListener('pointerdown', e => { dial.setPointerCapture(e.pointerId); dragging = true; didDrag = false; sy = e.clientY; sv = params[c.id]; });
+    dial.addEventListener('pointerdown', e => { dial.setPointerCapture(e.pointerId); dragging = true; sy = e.clientY; sv = params[c.id]; });
     dial.addEventListener('pointermove', e => {
       if(!dragging) return;
       const range = c.max - c.min, div = baseRange * (e.shiftKey ? 5 : 1);
       const dy = sy - e.clientY;
       params[c.id] = Math.max(c.min, Math.min(c.max, sv + (dy * (range/div))));
-      didDrag = true;
       updateKnobVisual(c); sync(); recordIfEditing();
     });
-    dial.addEventListener('pointerup', () => { dragging = false; if(didDrag) termLog(`> ${c.label}: ${params[c.id].toFixed(2)}`); });
-    dial.addEventListener('dblclick', () => { params[c.id] = c.def; updateKnobVisual(c); sync(); recordIfEditing(); termLog(`> ${c.label} reset: ${c.def}`); });
+    dial.addEventListener('pointerup', () => dragging = false);
+    dial.addEventListener('dblclick', () => { params[c.id] = c.def; updateKnobVisual(c); sync(); recordIfEditing(); });
     return wrap;
   }
   function buildPlate(idx){
     const outer = document.createElement('div');
     outer.className = 'plate'; outer.id = `plate-${idx}`; outer.title = 'Preset ' + keyLabel(idx);
-    outer.innerText = keyLabel(idx);
-    scatter(outer, 'plate'+idx);
-    outer.addEventListener('pointerdown', e => { outer.setPointerCapture(e.pointerId); playPresetMomentary(idx, true); });
-    outer.addEventListener('pointerup', () => playPresetMomentary(idx, false));
-    outer.addEventListener('pointercancel', () => playPresetMomentary(idx, false));
-    outer.addEventListener('pointerleave', () => playPresetMomentary(idx, false));
+    const jack = makeJack('src', 'plate'+idx, 'Preset ' + keyLabel(idx) + ' gate (drag to patch)');
+    jack.id = 'jack-src-plate'+idx;
+    jack.addEventListener('pointerdown', e => e.stopPropagation());
+    outer.appendChild(jack);
+    const dot = document.createElement('div'); dot.className = 'dot';
+    outer.appendChild(dot);
+    const num = document.createElement('div'); num.className = 'num'; num.innerText = keyLabel(idx);
+    outer.appendChild(num);
+    const gate = on => { if(ctx) plateSrcs[idx].offset.setTargetAtTime(on ? 1 : 0, ctx.currentTime, on ? 0.005 : 0.08); };
+    outer.addEventListener('pointerdown', e => { outer.setPointerCapture(e.pointerId); gate(true); playPresetMomentary(idx, true); });
+    outer.addEventListener('pointerup', () => { gate(false); playPresetMomentary(idx, false); });
+    outer.addEventListener('pointercancel', () => { gate(false); playPresetMomentary(idx, false); });
+    outer.addEventListener('pointerleave', () => { gate(false); playPresetMomentary(idx, false); });
     return outer;
   }
   function buildJackItem(kind, id, label){
@@ -474,19 +406,6 @@
     return wrap;
   }
 
-  // Plates are scattered through the knobs rather than clustered — interleave
-  // roughly one plate every few knob items instead of a dedicated row.
-  let plateCursor = 0;
-  let itemsSinceLastPlate = 0;
-  function maybeDropPlate(){
-    if(plateCursor >= plateOrder.length) return;
-    itemsSinceLastPlate++;
-    const gap = 2 + (plateCursor % 3);
-    if(itemsSinceLastPlate >= gap){
-      itemsHost.appendChild(buildPlate(plateOrder[plateCursor]));
-      plateCursor++; itemsSinceLastPlate = 0;
-    }
-  }
   groups.forEach(g => {
     const brk = document.createElement('div'); brk.className = 'groupbreak';
     itemsHost.appendChild(brk);
@@ -494,16 +413,17 @@
       if(item.t === 'knob') itemsHost.appendChild(buildKnob(configById[item.id]));
       else if(item.t === 'src') itemsHost.appendChild(buildJackItem('src', item.id, srcLabel[item.id] || item.id));
       else if(item.t === 'dst') itemsHost.appendChild(buildJackItem('dst', item.id, destLabel[item.id] || item.id));
-      maybeDropPlate();
     });
   });
-  while(plateCursor < plateOrder.length) itemsHost.appendChild(buildPlate(plateOrder[plateCursor++]));
+  const platesRow = document.createElement('div'); platesRow.className = 'platesrow';
+  plateOrder.forEach(idx => platesRow.appendChild(buildPlate(idx)));
+  itemsHost.appendChild(platesRow);
   config.forEach(updateKnobVisual);
 
   // ---------- Audio graph ----------
 
   function tapRatio(i, spread){
-    const lin = (i+1)/4;
+    const lin = (i+1)/6;
     const clustered = 0.72 + 0.28*lin;
     const wide = Math.pow(lin, 0.35);
     return clustered*(1-spread) + wide*spread;
@@ -547,7 +467,7 @@
     crushN.onaudioprocess = e => {
       const inL = e.inputBuffer.getChannelData(0), inR = e.inputBuffer.getChannelData(1);
       const outL = e.outputBuffer.getChannelData(0), outR = e.outputBuffer.getChannelData(1);
-      const effCrush = clampv(baseOf('bitcrush','crush') + (cvLive.crush||0), 0, 0.95);
+      const effCrush = clampv(params.bitcrush + (cvLive.crush||0), 0, 0.95);
       const step = Math.pow(0.5, (1-effCrush)*16);
       for(let i=0;i<inL.length;i++){
         if(effCrush > 0){
@@ -646,11 +566,9 @@
 
     tapSumL = ctx.createGain(); tapSumR = ctx.createGain();
     delayTaps = [];
-    // 4 taps (2 per channel) rather than 6 — fewer, better-spaced reflections
-    // read as a cleaner delay instead of a dense, noisy comb.
-    for(let i=0;i<4;i++){
+    for(let i=0;i<6;i++){
       const d = ctx.createDelay(5.0);
-      const g = ctx.createGain(); g.gain.value = 0.5 / (Math.floor(i/2)+1);
+      const g = ctx.createGain(); g.gain.value = 0.55 / (Math.floor(i/2)+1);
       const isL = i % 2 === 0;
       (isL ? groupLIn : groupRIn).connect(d);
       d.connect(g); g.connect(isL ? tapSumL : tapSumR);
@@ -660,17 +578,15 @@
     merger = ctx.createChannelMerger(2);
     tapSumL.connect(merger, 0, 0); tapSumR.connect(merger, 0, 1);
 
-    filter = ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.Q.value = 1.1;
+    filter = ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.Q.value = 1.3;
     filter.frequency.value = params.absorb;
     merger.connect(filter);
 
-    // Safety net only — high threshold/gentle ratio so it stays out of the way
-    // at normal levels and only steps in to prevent true runaway/NaN.
     dcBlock = ctx.createBiquadFilter(); dcBlock.type = 'highpass'; dcBlock.frequency.value = 12;
     fbCompressor = ctx.createDynamicsCompressor();
-    fbCompressor.threshold.value = -1; fbCompressor.knee.value = 4; fbCompressor.ratio.value = 4;
-    fbCompressor.attack.value = 0.003; fbCompressor.release.value = 0.15;
-    fbClip = ctx.createWaveShaper(); fbClip.oversample = '2x'; setSoftClip(fbClip, 1.15);
+    fbCompressor.threshold.value = -8; fbCompressor.knee.value = 6; fbCompressor.ratio.value = 20;
+    fbCompressor.attack.value = 0.002; fbCompressor.release.value = 0.12;
+    fbClip = ctx.createWaveShaper(); fbClip.oversample = '2x'; setSoftClip(fbClip, 1.4);
     filter.connect(dcBlock).connect(fbCompressor).connect(fbClip);
 
     fbSplit = ctx.createChannelSplitter(2);
@@ -718,24 +634,23 @@
     runglerNode = ctx.createScriptProcessor(1024, 1, 1); setRungler();
     runglerSilent = ctx.createGain(); runglerSilent.gain.value = 0;
     runglerNode.connect(runglerSilent); runglerSilent.connect(ctx.destination);
+    plateSrcs = plateOrder.map(() => { const c = ctx.createConstantSource(); c.offset.value = 0; c.start(); return c; });
 
     oscTri.start(); oscSqr.start(); subTri.start(); subSqr.start();
 
     setInterval(() => {
       if(!ctx || isMute) return;
-      const effInstability = clampv(baseOf('instability','instab') + (cvLive.instab||0), 0, 1);
-      const effSpread = clampv(baseOf('spread','spread') + (cvLive.spread||0), 0, 1);
-      const effSmear = clampv(baseOf('smear','smear') + (cvLive.smear||0), 0, 0.3);
+      const effInstability = clampv(params.instability + cvLive.instab, 0, 1);
+      const effSpread = clampv(params.spread + cvLive.spread, 0, 1);
+      const effSmear = clampv(params.smear + cvLive.smear, 0, 0.3);
       const drift = (Math.random()-0.5) * effInstability * 6;
-      const pitchBase = baseOf('pitch','pitch');
-      oscTri.frequency.setTargetAtTime(pitchBase + drift, ctx.currentTime, 0.03);
-      oscSqr.frequency.setTargetAtTime(pitchBase + drift, ctx.currentTime, 0.03);
-      subTri.frequency.setTargetAtTime((pitchBase + drift)/2, ctx.currentTime, 0.03);
-      subSqr.frequency.setTargetAtTime((pitchBase + drift)/2, ctx.currentTime, 0.03);
+      oscTri.frequency.setTargetAtTime(params.pitch + drift, ctx.currentTime, 0.03);
+      oscSqr.frequency.setTargetAtTime(params.pitch + drift, ctx.currentTime, 0.03);
+      subTri.frequency.setTargetAtTime((params.pitch + drift)/2, ctx.currentTime, 0.03);
+      subSqr.frequency.setTargetAtTime((params.pitch + drift)/2, ctx.currentTime, 0.03);
       if(effSmear > 0){
-        const timeBase = baseOf('time','delay');
         delayTaps.forEach(t => {
-          const base = timeBase * tapRatio(t.idx, effSpread);
+          const base = params.time * tapRatio(t.idx, effSpread);
           const wobble = base * (1 + (Math.random()-0.5) * effSmear * 4);
           t.node.delayTime.setTargetAtTime(Math.max(0.001, Math.min(4.9, wobble)), ctx.currentTime, 0.03);
         });
@@ -766,7 +681,7 @@
         const data = e.inputBuffer.getChannelData(i);
         cvLive[name] = data[data.length-1];
       });
-      setDriveCurve(clampv(baseOf('drive','sat') + cvLive.sat, 1, 30));
+      setDriveCurve(clampv(params.drive + cvLive.sat, 1, 30));
     };
     cvMerger.connect(cvMonitorNode);
     cvMonitorSilent = ctx.createGain(); cvMonitorSilent.gain.value = 0;
@@ -804,47 +719,40 @@
   function sync(){
     if(!ctx) return;
     const now = ctx.currentTime;
-    const pitchBase = baseOf('pitch','pitch');
-    oscTri.frequency.setTargetAtTime(pitchBase, now, 0.01);
-    oscSqr.frequency.setTargetAtTime(pitchBase, now, 0.01);
-    const waveBase = baseOf('oscWaveMorph','wave');
-    triGain.gain.setTargetAtTime(1-waveBase, now, 0.02);
-    sqrGain.gain.setTargetAtTime(waveBase, now, 0.02);
+    oscTri.frequency.setTargetAtTime(params.pitch, now, 0.01);
+    oscSqr.frequency.setTargetAtTime(params.pitch, now, 0.01);
+    triGain.gain.setTargetAtTime(1-params.oscWaveMorph, now, 0.02);
+    sqrGain.gain.setTargetAtTime(params.oscWaveMorph, now, 0.02);
 
-    subTri.frequency.setTargetAtTime(pitchBase/2, now, 0.01);
-    subSqr.frequency.setTargetAtTime(pitchBase/2, now, 0.01);
-    subTriGain.gain.setTargetAtTime(1-waveBase, now, 0.02);
-    subSqrGain.gain.setTargetAtTime(waveBase, now, 0.02);
-    subG.gain.setTargetAtTime(baseOf('sub','subton'), now, 0.02);
+    subTri.frequency.setTargetAtTime(params.pitch/2, now, 0.01);
+    subSqr.frequency.setTargetAtTime(params.pitch/2, now, 0.01);
+    subTriGain.gain.setTargetAtTime(1-params.oscWaveMorph, now, 0.02);
+    subSqrGain.gain.setTargetAtTime(params.oscWaveMorph, now, 0.02);
+    subG.gain.setTargetAtTime(params.sub, now, 0.02);
 
-    const pitchBBase = baseOf('pitchB','fmb');
-    oscBTri.frequency.setTargetAtTime(pitchBBase, now, 0.01);
-    oscBSqr.frequency.setTargetAtTime(pitchBBase, now, 0.01);
-    const waveBBase = baseOf('oscBWaveMorph','waveB');
-    oscBTriGain.gain.setTargetAtTime(1-waveBBase, now, 0.02);
-    oscBSqrGain.gain.setTargetAtTime(waveBBase, now, 0.02);
+    oscBTri.frequency.setTargetAtTime(params.pitchB, now, 0.01);
+    oscBSqr.frequency.setTargetAtTime(params.pitchB, now, 0.01);
+    oscBTriGain.gain.setTargetAtTime(1-params.oscBWaveMorph, now, 0.02);
+    oscBSqrGain.gain.setTargetAtTime(params.oscBWaveMorph, now, 0.02);
 
-    foldDrive.gain.setTargetAtTime(1 + baseOf('tones','fold')*11, now, 0.02);
-    const mixBase = baseOf('mix','mix');
-    dryGain.gain.setTargetAtTime(1 - mixBase, now, 0.02);
-    wetGain.gain.setTargetAtTime(mixBase, now, 0.02);
+    foldDrive.gain.setTargetAtTime(1 + params.tones*11, now, 0.02);
+    dryGain.gain.setTargetAtTime(1 - params.mix, now, 0.02);
+    wetGain.gain.setTargetAtTime(params.mix, now, 0.02);
 
-    const timeBase = baseOf('time','delay'), spreadBase = baseOf('spread','spread');
     delayTaps.forEach(t => {
-      const base = timeBase * tapRatio(t.idx, spreadBase);
+      const base = params.time * tapRatio(t.idx, params.spread);
       t.node.delayTime.setTargetAtTime(Math.max(0.001, Math.min(4.9, base)), now, 0.03);
     });
-    const decayBase = baseOf('decay','feedback');
-    feedGainL.gain.setTargetAtTime(decayBase, now, 0.02);
-    feedGainR.gain.setTargetAtTime(decayBase, now, 0.02);
+    feedGainL.gain.setTargetAtTime(params.decay, now, 0.02);
+    feedGainR.gain.setTargetAtTime(params.decay, now, 0.02);
     const cross = (1-params.width)*0.6;
     crossGainL.gain.setTargetAtTime(cross, now, 0.05);
     crossGainR.gain.setTargetAtTime(cross, now, 0.05);
-    filter.frequency.setTargetAtTime(baseOf('absorb','absorb'), now, 0.01);
+    filter.frequency.setTargetAtTime(params.absorb, now, 0.01);
     lfoSrc.frequency.setTargetAtTime(params.rate, now, 0.02);
-    outPan.pan.setTargetAtTime(baseOf('pan','pan'), now, 0.02);
-    setDriveCurve(clampv(baseOf('drive','sat') + (cvLive.sat||0), 1, 30));
-    if(!isMute) mainG.gain.setTargetAtTime(baseOf('activation','vca'), now, 0.02);
+    outPan.pan.setTargetAtTime(params.pan, now, 0.02);
+    setDriveCurve(params.drive);
+    if(!isMute) mainG.gain.setTargetAtTime(params.activation, now, 0.02);
   }
 
   // ---------- Looping AD envelope ----------
@@ -860,8 +768,8 @@
   }
   function scheduleEnvLoop(){
     if(!ctx) return;
-    const a = clampv(baseOf('envAttack','envAtk') + (cvLive.envAtk||0), 0.01, 2);
-    const d = clampv(baseOf('envDecay','envDcy') + (cvLive.envDcy||0), 0.01, 3);
+    const a = clampv(params.envAttack + (cvLive.envAtk||0), 0.01, 2);
+    const d = clampv(params.envDecay + (cvLive.envDcy||0), 0.01, 3);
     const now = ctx.currentTime + 0.02;
     envLoopSrc.offset.cancelScheduledValues(now);
     envLoopSrc.offset.setValueCurveAtTime(envCurveArray(true), now, a);
@@ -948,6 +856,7 @@
     if(id === 'rungler') return runglerNode;
     if(id === 'oscA') return oscASum;
     if(id === 'oscB') return oscBSum;
+    if(id.startsWith('plate')) return plateSrcs[parseInt(id.slice(5), 10)];
   }
   // Reverse map: destId -> the knob whose ring should show modulation range for it
   const destOwner = {};
@@ -995,22 +904,10 @@
   function clearAllTriangles(){
     for(let i=0;i<10;i++) setActiveTriangle(i, false);
   }
-  function snapshotState(){
-    return { values: clone(params), cables: patchCables.map(c => ({ srcId:c.srcId, dstId:c.dstId, depth:c.depth })) };
-  }
-  function applyPreset(state){
-    Object.assign(params, state.values);
+  function applyPreset(values){
+    Object.assign(params, values);
     config.forEach(updateKnobVisual);
     sync();
-    bulkOp = true;
-    [...patchCables].forEach(removePatch);
-    (state.cables || []).forEach(c => {
-      addPatch(c.srcId, c.dstId);
-      const added = patchCables[patchCables.length-1];
-      if(added){ added.depth = c.depth; applyDepth(added); }
-    });
-    bulkOp = false;
-    termLog(`> ${(state.cables||[]).length} cable(s) restored`);
   }
   function playPresetMomentary(slot, isDown){
     if(!ctx || editingSlot !== null) return;
@@ -1018,7 +915,7 @@
       if(heldPresetSlot !== null) return;
       if(!presets[slot]){ termLog(`preset ${keyLabel(slot)} — empty`); return; }
       heldPresetSlot = slot;
-      preHoldSnapshot = snapshotState();
+      preHoldSnapshot = clone(params);
       applyPreset(presets[slot]);
       setActiveTriangle(slot, true);
       termLog(`> preset ${keyLabel(slot)} playing`);
@@ -1031,7 +928,7 @@
     }
   }
   function enterEditMode(slot){
-    if(!presets[slot]) presets[slot] = snapshotState();
+    if(!presets[slot]) presets[slot] = clone(params);
     editingSlot = slot;
     clearAllTriangles();
     setActiveTriangle(slot, true);
@@ -1044,7 +941,7 @@
     editingSlot = null;
   }
   function recordIfEditing(){
-    if(editingSlot !== null) presets[editingSlot] = snapshotState();
+    if(editingSlot !== null) presets[editingSlot] = clone(params);
   }
 
   // ---------- Keyboard: number keys recall presets; e,d,<n> arms edit mode;
@@ -1160,19 +1057,28 @@
     // set depth/polarity (up = positive, down = negative). A plain click (no
     // drag) removes the cable — the easiest way to delete a patch.
     const handleEl = document.createElementNS(svgNS, 'circle');
-    handleEl.setAttribute('r', 8); handleEl.setAttribute('fill', color); handleEl.setAttribute('stroke', '#fff');
-    handleEl.setAttribute('stroke-width', 1.5); handleEl.style.cursor = 'pointer';
+    handleEl.setAttribute('r', 7); handleEl.setAttribute('fill', color); handleEl.setAttribute('stroke', '#fff');
+    handleEl.setAttribute('stroke-width', 1.5); handleEl.style.cursor = 'ns-resize';
     cableLayer.appendChild(handleEl);
     const cable = { srcId, dstId, depthGain, sensGains, pathEl, handleEl, depth: 0.5 };
     pathEl.addEventListener('click', () => removePatch(cable));
-    // Click the dot: open the attenuverter menu. Double-click: delete straight away.
-    handleEl.addEventListener('pointerdown', e => e.stopPropagation());
-    handleEl.addEventListener('click', e => { e.stopPropagation(); openCableMenu(cable, e); });
-    handleEl.addEventListener('dblclick', e => { e.stopPropagation(); closeCableMenu(); removePatch(cable); });
+    let downY = 0, moved = false, startDepth = 0;
+    handleEl.addEventListener('pointerdown', e => {
+      e.stopPropagation(); handleEl.setPointerCapture(e.pointerId);
+      downY = e.clientY; moved = false; startDepth = cable.depth;
+    });
+    handleEl.addEventListener('pointermove', e => {
+      if(e.buttons === 0) return;
+      const dy = downY - e.clientY;
+      if(Math.abs(dy) > 3) moved = true;
+      if(moved){ cable.depth = Math.max(-1, Math.min(1, startDepth + dy/80)); applyDepth(cable); }
+    });
+    handleEl.addEventListener('pointerup', () => { if(!moved) removePatch(cable); });
+    handleEl.addEventListener('dblclick', e => { e.stopPropagation(); cable.depth = 0.5; applyDepth(cable); });
     patchCables.push(cable);
     applyDepth(cable);
     updateCables();
-    if(!bulkOp) termLog(`> patched ${srcId} \u2192 ${dstId}`);
+    termLog(`> patched ${srcId} \u2192 ${dstId}`);
   }
   function removePatch(cable){
     const srcNode = getSourceNode(cable.srcId);
@@ -1183,8 +1089,7 @@
     cable.handleEl.remove();
     patchCables = patchCables.filter(c => c !== cable);
     updateModRing(destOwner[cable.dstId]);
-    if(menuCable === cable) closeCableMenu();
-    if(!bulkOp) termLog(`> removed ${cable.srcId} \u2192 ${cable.dstId}`);
+    termLog(`> removed ${cable.srcId} \u2192 ${cable.dstId}`);
   }
   function updateCables(){
     patchCables.forEach(c => {
@@ -1196,83 +1101,8 @@
       c.handleEl.setAttribute('cx', mid.x); c.handleEl.setAttribute('cy', mid.y);
     });
   }
-
-  // ---------- Cable contextual menu: click the dot for the attenuverter,
-  // double-click the dot (or click the wire) to delete ----------
-  let menuCable = null;
-  const cableMenuEl = document.getElementById('cableMenu');
-  const cableMenuRange = document.getElementById('cableMenuRange');
-  const cableMenuVal = document.getElementById('cableMenuVal');
-  const cableMenuDel = document.getElementById('cableMenuDel');
-  function refreshCableMenuVal(){
-    const pct = Math.round(menuCable.depth*100);
-    cableMenuVal.innerText = (pct>=0?'+':'') + pct + '%';
-  }
-  function openCableMenu(cable, evt){
-    menuCable = cable;
-    const p = faceRect();
-    cableMenuEl.style.left = Math.max(4, evt.clientX - p.left - 70) + 'px';
-    cableMenuEl.style.top = (evt.clientY - p.top + 14) + 'px';
-    cableMenuEl.style.display = 'block';
-    cableMenuRange.value = Math.round(cable.depth*100);
-    refreshCableMenuVal();
-  }
-  function closeCableMenu(){ cableMenuEl.style.display = 'none'; menuCable = null; }
-  cableMenuRange.addEventListener('input', () => {
-    if(!menuCable) return;
-    menuCable.depth = clampv(parseInt(cableMenuRange.value,10)/100, -1, 1);
-    applyDepth(menuCable);
-    refreshCableMenuVal();
-  });
-  cableMenuDel.addEventListener('click', () => { if(menuCable) removePatch(menuCable); });
-  document.addEventListener('pointerdown', e => {
-    if(cableMenuEl.style.display === 'block' && !cableMenuEl.contains(e.target) && e.target.tagName !== 'circle') closeCableMenu();
-  });
-  window.addEventListener('resize', closeCableMenu);
-
   document.getElementById('clearpatch').addEventListener('click', () => { [...patchCables].forEach(removePatch); });
   window.addEventListener('resize', updateCables);
-
-  // ---------- Hover mini-scope on any output jack: shows what's actually
-  // running through that source before you commit to patching it ----------
-  let scopeAnalyser = null, scopeConnectedSrc = null, scopeRaf = null;
-  const miniScopeEl = document.getElementById('miniScope');
-  const miniScopeCanvas = document.getElementById('miniScopeCanvas');
-  function startMiniScope(id, jackEl){
-    if(!ctx) return;
-    const node = getSourceNode(id);
-    if(!node) return;
-    if(!scopeAnalyser){ scopeAnalyser = ctx.createAnalyser(); scopeAnalyser.fftSize = 512; }
-    if(scopeConnectedSrc){ try{ scopeConnectedSrc.disconnect(scopeAnalyser); }catch(e){} }
-    node.connect(scopeAnalyser);
-    scopeConnectedSrc = node;
-    const r = jackEl.getBoundingClientRect(), p = faceRect();
-    miniScopeEl.style.left = (r.left - p.left + r.width/2 - 42) + 'px';
-    miniScopeEl.style.top = (r.top - p.top - 96) + 'px';
-    miniScopeEl.style.display = 'block';
-    const mctx = miniScopeCanvas.getContext('2d');
-    const data = new Uint8Array(scopeAnalyser.fftSize);
-    function draw(){
-      scopeRaf = requestAnimationFrame(draw);
-      scopeAnalyser.getByteTimeDomainData(data);
-      mctx.fillStyle = '#0d0912'; mctx.fillRect(0,0,84,84);
-      mctx.strokeStyle = '#dfb249'; mctx.lineWidth = 1.4; mctx.beginPath();
-      const step = 84/data.length;
-      for(let i=0;i<data.length;i++){
-        const y = (data[i]/128)*42;
-        const x = i*step;
-        if(i===0) mctx.moveTo(x,y); else mctx.lineTo(x,y);
-      }
-      mctx.stroke();
-    }
-    draw();
-  }
-  function stopMiniScope(){
-    if(scopeRaf) cancelAnimationFrame(scopeRaf);
-    scopeRaf = null;
-    if(scopeConnectedSrc){ try{ scopeConnectedSrc.disconnect(scopeAnalyser); }catch(e){} scopeConnectedSrc = null; }
-    miniScopeEl.style.display = 'none';
-  }
 
   // ---------- Scope + VU + envelope follower ----------
   function drawScope(){
