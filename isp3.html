@@ -222,15 +222,13 @@
   let subTri, subSqr, subTriGain, subSqrGain, subSum, subG, oscMix;
   let foldDrive, foldNode;
   let oscBTri, oscBSqr, oscBTriGain, oscBSqrGain, oscBSum;
-  let fmInteractGain, amInteractGain, syncShape, syncInteractGain, oscAAmStage, oscBFoldGain;
   let groupLIn, groupRIn, delayTaps = [], tapSumL, tapSumR, merger, filter, dcBlock;
   let fbCompressor, fbClip, fbSplit, feedGainL, feedGainR, crossGainL, crossGainR;
   let dryGain, wetGain, outPan, driveN, crushN, masterLimiter, mainG;
   let splitAnalyser, analyserL, analyserR;
-  let lfoSrc, randSrc, envSrc, envLoopSrc, envLoopSrc2, runglerNode, runglerSilent;
-  let vca1Stage, lpg1Filter, envToVca1Gain, envToLpg1Freq, vca2Stage, lpg2Filter, envToVca2Gain, envToLpg2Freq;
+  let lfoSrc, randSrc, envSrc, envLoopSrc, runglerNode, runglerSilent;
   let recTap, recSilent, recBuffersL = [], recBuffersR = [], isRec = false, isMute = false;
-  let envSchedTimer = null, envSchedTimer2 = null;
+  let envSchedTimer = null;
   let patchCables = [], destDefs = [];
   let audioReady = false;
   let cvLive = {}, cvSum = {}, cvMonitorNode, cvMonitorSilent;
@@ -253,8 +251,6 @@
     { id:'oscWaveMorph',  label:'Wave Tri\u2194Sqr', min:0, max:1,  def:0.25, size:'md', section:'osc' },
     { id:'pitchB',        label:'Osc B Pitch',  min:5,    max:2000, def:220,  size:'md', section:'osc' },
     { id:'oscBWaveMorph', label:'Osc B Wave Tri\u2194Sqr', min:0, max:1, def:0.15, size:'sm', section:'osc' },
-    { id:'oscMode',       label:'Osc B\u2192A Mode', min:0, max:5,  def:0,    size:'md', section:'osc' },
-    { id:'oscModAmt',     label:'Interaction Amt', min:0, max:1,   def:0.3,  size:'sm', section:'osc' },
 
     { id:'mix',           label:'Dry/Wet',      min:0,    max:1,    def:0.85, size:'md', section:'delay' },
     { id:'time',          label:'Delay Time',   min:0.02, max:1.8,  def:0.4,  size:'lg', section:'delay' },
@@ -265,19 +261,14 @@
 
     { id:'rate',          label:'Agitation Rate', min:0.05, max:25, def:1.5,  size:'md', section:'mod' },
     { id:'woggle',        label:'Woggle Chaos', min:0,    max:1,    def:0.3,  size:'md', section:'mod' },
-    { id:'envAttack',     label:'Env1 Attack',  min:0.01, max:2,    def:0.08, size:'sm', section:'mod' },
-    { id:'envDecay',      label:'Env1 Decay',   min:0.01, max:3,    def:0.35, size:'sm', section:'mod' },
-    { id:'envCurve',      label:'Env1 Curve',   min:-1,   max:1,    def:0,    size:'sm', section:'mod' },
-    { id:'env2Attack',    label:'Env2 Attack',  min:0.01, max:2,    def:0.4,  size:'sm', section:'mod' },
-    { id:'env2Decay',     label:'Env2 Decay',   min:0.01, max:3,    def:1.1,  size:'sm', section:'mod' },
-    { id:'env2Curve',     label:'Env2 Curve',   min:-1,   max:1,    def:0,    size:'sm', section:'mod' },
+    { id:'envAttack',     label:'Env Attack',   min:0.01, max:2,    def:0.08, size:'sm', section:'mod' },
+    { id:'envDecay',      label:'Env Decay',    min:0.01, max:3,    def:0.35, size:'sm', section:'mod' },
+    { id:'envCurve',      label:'Env Curve',    min:-1,   max:1,    def:0,    size:'sm', section:'mod' },
     { id:'runglerRate',   label:'Rungler Rate', min:0.5,  max:40,   def:6,    size:'md', section:'mod' },
     { id:'runglerChaos',  label:'Rungler Chaos',min:0,    max:1,    def:0.4,  size:'sm', section:'mod' },
 
     { id:'absorb',        label:'Absorb Filter',min:80,   max:8000, def:1200, size:'lg', section:'fx' },
     { id:'activation',    label:'VCA Open',     min:0,    max:1,    def:0.5,  size:'lg', section:'fx' },
-    { id:'envVcaDepth',   label:'Env\u2192VCA Depth', min:0, max:1, def:0.15, size:'md', section:'fx' },
-    { id:'lpgAmount',     label:'LPG Amount',   min:0,    max:1,    def:0.2,  size:'md', section:'fx' },
     { id:'drive',         label:'Saturator',    min:1,    max:30,   def:2,    size:'md', section:'fx' },
     { id:'bitcrush',      label:'Bitcrush',     min:0,    max:0.95, def:0,    size:'sm', section:'fx' },
     { id:'pan',           label:'Pan',          min:-1,   max:1,    def:0,    size:'sm', section:'fx' },
@@ -309,12 +300,9 @@
     woggle:       { out:'random' },
     envAttack:    { in:['envAtk'] },
     envDecay:     { in:['envDcy'], out:'loopenv' },
-    env2Attack:   { in:['env2atk'] },
-    env2Decay:    { in:['env2dcy'], out:'loopenv2' },
     runglerRate:  { out:'rungler' },
     oscWaveMorph: { in:['wave'] },
     oscBWaveMorph:{ in:['waveB'] },
-    oscModAmt:    { in:['oscamt'] },
     sub:          { in:['subton'] },
     instability:  { in:['instab'] },
     mix:          { in:['mix'] },
@@ -326,33 +314,30 @@
   knobIO.pitch.out = 'oscA';
 
   const destLabel = { pitch:'Pitch CV', fm:'FM in', fmb:'Osc B FM', fold:'Fold Drive CV', absorb:'Absorb CV',
-    feedback:'Feedback CV', delay:'Delay Time CV', vca:'VCA CV', pan:'Pan CV', envAtk:'Env1 Attack CV',
-    envDcy:'Env1 Decay CV', env2atk:'Env2 Attack CV', env2dcy:'Env2 Decay CV', wave:'Wave CV', waveB:'Osc B Wave CV',
-    subton:'Sub Level CV', instab:'Instability CV', mix:'Dry/Wet CV', spread:'Spread CV', smear:'Smear CV',
-    sat:'Saturation CV', crush:'Bitcrush CV', oscamt:'Interaction Amt CV' };
-  const srcLabel = { lfo:'LFO out', random:'Random out', follow:'Follow out', loopenv:'Env1 out', loopenv2:'Env2 out',
+    feedback:'Feedback CV', delay:'Delay Time CV', vca:'VCA CV', pan:'Pan CV', envAtk:'Env Attack CV',
+    envDcy:'Env Decay CV', wave:'Wave CV', waveB:'Osc B Wave CV', subton:'Sub Level CV', instab:'Instability CV',
+    mix:'Dry/Wet CV', spread:'Spread CV', smear:'Smear CV', sat:'Saturation CV', crush:'Bitcrush CV' };
+  const srcLabel = { lfo:'LFO out', random:'Random out', follow:'Follow out', loopenv:'LoopEnv out',
     rungler:'Rungler out', oscA:'Osc A out', oscB:'Osc B out' };
-  const oscModeNames = ['Off','FM','AM','Ring Mod','Wavefolder','Sync (approx)'];
 
   // ---------- Knobs grouped in space and color by function (no visible labels — kept unmarked on purpose) ----------
   const groups = [
     { key:'mod', items:[
       {t:'knob', id:'rate'}, {t:'knob', id:'woggle'}, {t:'knob', id:'envAttack'}, {t:'knob', id:'envDecay'},
-      {t:'knob', id:'envCurve'}, {t:'knob', id:'env2Attack'}, {t:'knob', id:'env2Decay'}, {t:'knob', id:'env2Curve'},
-      {t:'knob', id:'runglerRate'}, {t:'knob', id:'runglerChaos'}, {t:'src', id:'follow'},
+      {t:'knob', id:'envCurve'}, {t:'knob', id:'runglerRate'}, {t:'knob', id:'runglerChaos'}, {t:'src', id:'follow'},
     ]},
     { key:'osc', items:[
       {t:'knob', id:'pitch'}, {t:'knob', id:'oscWaveMorph'}, {t:'knob', id:'tones'},
       {t:'knob', id:'sub'}, {t:'knob', id:'pitchB'}, {t:'knob', id:'oscBWaveMorph'},
-      {t:'knob', id:'oscMode'}, {t:'knob', id:'oscModAmt'}, {t:'knob', id:'instability'},
+      {t:'knob', id:'instability'},
     ]},
     { key:'delay', items:[
       {t:'knob', id:'mix'}, {t:'knob', id:'time'}, {t:'knob', id:'spread'},
       {t:'knob', id:'smear'}, {t:'knob', id:'decay'}, {t:'knob', id:'width'},
     ]},
     { key:'fx', items:[
-      {t:'knob', id:'absorb'}, {t:'knob', id:'envVcaDepth'}, {t:'knob', id:'lpgAmount'}, {t:'knob', id:'drive'},
-      {t:'knob', id:'bitcrush'}, {t:'knob', id:'pan'}, {t:'knob', id:'activation'},
+      {t:'knob', id:'absorb'}, {t:'knob', id:'drive'}, {t:'knob', id:'bitcrush'},
+      {t:'knob', id:'pan'}, {t:'knob', id:'activation'},
     ]},
   ];
   const plateOrder = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
@@ -362,14 +347,13 @@
   // Buchla/Serge-inspired patch-point color coding, by function
   const jackColors = {
     // audio-rate: warm orange
-    pitch:'#e8944a', wave:'#e8944a', waveB:'#e8944a', oscA:'#e8944a', oscB:'#e8944a', oscamt:'#e8944a',
+    pitch:'#e8944a', wave:'#e8944a', waveB:'#e8944a', oscA:'#e8944a', oscB:'#e8944a',
     // FM inputs get their own shade so a paired input (e.g. Pitch + FM) is easy to tell apart at a glance
     fm:'#f2c14e', fmb:'#f2c14e',
     // filter / fold: red
     absorb:'#e2584f', fold:'#e2584f',
     // envelope / gate / VCA: yellow
-    vca:'#e8d24a', envAtk:'#e8d24a', envDcy:'#e8d24a', env2atk:'#e8d24a', env2dcy:'#e8d24a',
-    feedback:'#e8d24a', loopenv:'#e8d24a', loopenv2:'#e8d24a', follow:'#e8d24a',
+    vca:'#e8d24a', envAtk:'#e8d24a', envDcy:'#e8d24a', feedback:'#e8d24a', loopenv:'#e8d24a', follow:'#e8d24a',
     // LFO / random / chaos modulation: blue
     lfo:'#5a9fe8', random:'#5a9fe8', instab:'#5a9fe8', rungler:'#5a9fe8',
     // utility / everything else: green
@@ -471,9 +455,8 @@
       didDrag = true;
       updateKnobVisual(c); sync(); recordIfEditing();
     });
-    function logVal(v){ return c.id === 'oscMode' ? oscModeNames[Math.round(clampv(v,0,5))] : v.toFixed(2); }
-    dial.addEventListener('pointerup', () => { dragging = false; if(didDrag) termLog(`> ${c.label}: ${logVal(params[c.id])}`); });
-    dial.addEventListener('dblclick', () => { params[c.id] = c.def; updateKnobVisual(c); sync(); recordIfEditing(); termLog(`> ${c.label} reset: ${logVal(c.def)}`); });
+    dial.addEventListener('pointerup', () => { dragging = false; if(didDrag) termLog(`> ${c.label}: ${params[c.id].toFixed(2)}`); });
+    dial.addEventListener('dblclick', () => { params[c.id] = c.def; updateKnobVisual(c); sync(); recordIfEditing(); termLog(`> ${c.label} reset: ${c.def}`); });
     return wrap;
   }
   function buildPlate(idx){
@@ -635,16 +618,10 @@
     subSum.connect(subG);
 
     oscMix = ctx.createGain(); oscMix.gain.value = 0.9;
-    // Osc A's own contribution is routed through a stage whose gain can be
-    // modulated by Osc B (AM / Ring Mod / Sync) before joining the mix.
-    oscAAmStage = ctx.createGain(); oscAAmStage.gain.value = 1;
-    oscASum.connect(oscAAmStage); oscAAmStage.connect(oscMix);
-    subG.connect(oscMix);
+    oscASum.connect(oscMix); subG.connect(oscMix);
 
-    // --- Osc B: identical to Osc A (same tri/square morph, own pitch) but not
-    // mixed into the main path directly — it interacts with Osc A according to
-    // the Osc B->A Mode knob (FM / AM / Ring Mod / Wavefolder / Sync), and is
-    // also available as its own patchable FM / cross-mod source.
+    // --- Osc B: also triangle/square morph, not mixed into the main path —
+    // it exists purely as a patchable FM / cross-mod source.
     oscBTri = ctx.createOscillator(); oscBTri.type = 'triangle'; oscBTri.frequency.value = params.pitchB;
     oscBSqr = ctx.createOscillator(); oscBSqr.type = 'square'; oscBSqr.frequency.value = params.pitchB;
     oscBTriGain = ctx.createGain(); oscBSqrGain = ctx.createGain();
@@ -654,48 +631,13 @@
     oscBSqr.connect(oscBSqrGain).connect(oscBSum);
     oscBTri.start(); oscBSqr.start();
 
-    // FM: Osc B's raw output added to Osc A's frequency (always wired, gated to 0 unless mode=FM)
-    fmInteractGain = ctx.createGain(); fmInteractGain.gain.value = 0;
-    oscBSum.connect(fmInteractGain);
-    fmInteractGain.connect(oscTri.frequency); fmInteractGain.connect(oscSqr.frequency);
-    // AM / Ring Mod: Osc B modulates Osc A's own gain stage (baseline set per-mode in applyOscMode)
-    amInteractGain = ctx.createGain(); amInteractGain.gain.value = 0;
-    oscBSum.connect(amInteractGain);
-    amInteractGain.connect(oscAAmStage.gain);
-    // Sync (approximation): Osc B run through a steep shaper to make a hard gate,
-    // which then also drives the same Osc A gain stage — a rhythmic, sync-like
-    // gating rather than a true sample-accurate phase reset (not possible with
-    // stock oscillator nodes without a fully custom DSP oscillator).
-    syncShape = ctx.createWaveShaper();
-    { const n=1024, c=new Float32Array(n); for(let i=0;i<n;i++){ const x=(i*2)/n-1; c[i]=(Math.tanh(x*40)+1)/2; } syncShape.curve = c; }
-    syncInteractGain = ctx.createGain(); syncInteractGain.gain.value = 0;
-    oscBSum.connect(syncShape).connect(syncInteractGain);
-    syncInteractGain.connect(oscAAmStage.gain);
-    // Wavefolder: Osc B joins the pre-fold mix, so it folds together with Osc A
-    oscBFoldGain = ctx.createGain(); oscBFoldGain.gain.value = 0;
-    oscBSum.connect(oscBFoldGain); oscBFoldGain.connect(oscMix);
-
     // --- True wavefolder: reflects at the boundary, never clips ---
     foldDrive = ctx.createGain(); foldDrive.gain.value = 1 + params.tones*11;
     foldNode = ctx.createScriptProcessor(1024, 1, 1); setFoldNode();
     oscMix.connect(foldDrive).connect(foldNode);
 
-    // --- Env1/Env2 -> VCA/LPG pair, wired in by default, right after the
-    // fold and before anything else (including the delay loop and filter) ---
-    vca1Stage = ctx.createGain(); vca1Stage.gain.value = 1;
-    lpg1Filter = ctx.createBiquadFilter(); lpg1Filter.type = 'lowpass'; lpg1Filter.Q.value = 0.7; lpg1Filter.frequency.value = 8000;
-    vca2Stage = ctx.createGain(); vca2Stage.gain.value = 1;
-    lpg2Filter = ctx.createBiquadFilter(); lpg2Filter.type = 'lowpass'; lpg2Filter.Q.value = 0.7; lpg2Filter.frequency.value = 8000;
-    foldNode.connect(vca1Stage).connect(lpg1Filter).connect(vca2Stage).connect(lpg2Filter);
-    envToVca1Gain = ctx.createGain(); envToVca1Gain.gain.value = 0;
-    envToLpg1Freq = ctx.createGain(); envToLpg1Freq.gain.value = 0;
-    envToVca2Gain = ctx.createGain(); envToVca2Gain.gain.value = 0;
-    envToLpg2Freq = ctx.createGain(); envToLpg2Freq.gain.value = 0;
-    envToVca1Gain.connect(vca1Stage.gain); envToLpg1Freq.connect(lpg1Filter.frequency);
-    envToVca2Gain.connect(vca2Stage.gain); envToLpg2Freq.connect(lpg2Filter.frequency);
-
     const excite = ctx.createGain(); excite.gain.value = 0.55;
-    lpg2Filter.connect(excite);
+    foldNode.connect(excite);
 
     // Dry tap, pre-delay — lets the Mix knob blend the raw oscillator/fold
     // tone in with the delayed/filtered loop instead of always being 100% wet.
@@ -777,9 +719,6 @@
     randSrc = ctx.createConstantSource(); randSrc.offset.value = 0; randSrc.start();
     envSrc = ctx.createConstantSource(); envSrc.offset.value = 0; envSrc.start();
     envLoopSrc = ctx.createConstantSource(); envLoopSrc.offset.value = 0; envLoopSrc.start();
-    envLoopSrc2 = ctx.createConstantSource(); envLoopSrc2.offset.value = 0; envLoopSrc2.start();
-    envLoopSrc.connect(envToVca1Gain); envLoopSrc.connect(envToLpg1Freq);
-    envLoopSrc2.connect(envToVca2Gain); envLoopSrc2.connect(envToLpg2Freq);
     runglerNode = ctx.createScriptProcessor(1024, 1, 1); setRungler();
     runglerSilent = ctx.createGain(); runglerSilent.gain.value = 0;
     runglerNode.connect(runglerSilent); runglerSilent.connect(ctx.destination);
@@ -797,11 +736,6 @@
       oscSqr.frequency.setTargetAtTime(pitchBase + drift, ctx.currentTime, 0.03);
       subTri.frequency.setTargetAtTime((pitchBase + drift)/2, ctx.currentTime, 0.03);
       subSqr.frequency.setTargetAtTime((pitchBase + drift)/2, ctx.currentTime, 0.03);
-      // Osc B drifts independently but by the same amount — true twins, not clones
-      const driftB = (Math.random()-0.5) * effInstability * 6;
-      const pitchBBase = baseOf('pitchB','fmb');
-      oscBTri.frequency.setTargetAtTime(pitchBBase + driftB, ctx.currentTime, 0.03);
-      oscBSqr.frequency.setTargetAtTime(pitchBBase + driftB, ctx.currentTime, 0.03);
       if(effSmear > 0){
         const timeBase = baseOf('time','delay');
         delayTaps.forEach(t => {
@@ -826,7 +760,7 @@
     // live AudioParams (env attack/decay, spread, smear, saturation, bitcrush).
     // Each gets a summing node CV cables connect into; a small ScriptProcessor
     // reads the latest sample of each every ~23ms into cvLive for JS to use.
-    const cvNames = ['envAtk','envDcy','instab','spread','smear','sat','crush','env2atk','env2dcy','oscamt'];
+    const cvNames = ['envAtk','envDcy','instab','spread','smear','sat','crush'];
     cvNames.forEach(name => { cvSum[name] = ctx.createGain(); cvLive[name] = 0; });
     const cvMerger = ctx.createChannelMerger(cvNames.length);
     cvNames.forEach((name,i) => cvSum[name].connect(cvMerger, 0, i));
@@ -863,14 +797,9 @@
       { id:'smear', targets:[{ getNode:()=>cvSum.smear, sens:0.15 }] },
       { id:'sat', targets:[{ getNode:()=>cvSum.sat, sens:10 }] },
       { id:'crush', targets:[{ getNode:()=>cvSum.crush, sens:0.35 }] },
-      { id:'env2atk', targets:[{ getNode:()=>cvSum.env2atk, sens:0.6 }] },
-      { id:'env2dcy', targets:[{ getNode:()=>cvSum.env2dcy, sens:1.0 }] },
-      { id:'oscamt', targets:[{ getNode:()=>cvSum.oscamt, sens:0.4 }] },
     ];
 
-    applyOscMode();
     scheduleEnvLoop();
-    scheduleEnvLoop2();
     wireJacks();
     drawScope();
     audioReady = true;
@@ -920,25 +849,12 @@
     outPan.pan.setTargetAtTime(baseOf('pan','pan'), now, 0.02);
     setDriveCurve(clampv(baseOf('drive','sat') + (cvLive.sat||0), 1, 30));
     if(!isMute) mainG.gain.setTargetAtTime(baseOf('activation','vca'), now, 0.02);
-
-    // Env1/Env2 -> VCA/LPG depth (shared control for both stages)
-    const vcaDepth = params.envVcaDepth, lpg = params.lpgAmount;
-    vca1Stage.gain.setTargetAtTime(1 - vcaDepth, now, 0.02);
-    envToVca1Gain.gain.setTargetAtTime(vcaDepth, now, 0.02);
-    lpg1Filter.frequency.setTargetAtTime(8000 - lpg*7800, now, 0.02);
-    envToLpg1Freq.gain.setTargetAtTime(lpg*7800, now, 0.02);
-    vca2Stage.gain.setTargetAtTime(1 - vcaDepth, now, 0.02);
-    envToVca2Gain.gain.setTargetAtTime(vcaDepth, now, 0.02);
-    lpg2Filter.frequency.setTargetAtTime(8000 - lpg*7800, now, 0.02);
-    envToLpg2Freq.gain.setTargetAtTime(lpg*7800, now, 0.02);
-
-    applyOscMode();
   }
 
-  // ---------- Looping AD envelopes (two independent ones) ----------
-  function envCurveArray(curveParam, rising){
+  // ---------- Looping AD envelope ----------
+  function envCurveArray(rising){
     const n = 64, arr = new Float32Array(n);
-    const p = Math.pow(3, curveParam);
+    const p = Math.pow(3, params.envCurve);
     for(let i=0;i<n;i++){
       const t = i/(n-1);
       const v = Math.pow(t, p);
@@ -952,36 +868,10 @@
     const d = clampv(baseOf('envDecay','envDcy') + (cvLive.envDcy||0), 0.01, 3);
     const now = ctx.currentTime + 0.02;
     envLoopSrc.offset.cancelScheduledValues(now);
-    envLoopSrc.offset.setValueCurveAtTime(envCurveArray(params.envCurve, true), now, a);
-    envLoopSrc.offset.setValueCurveAtTime(envCurveArray(params.envCurve, false), now + a, d);
+    envLoopSrc.offset.setValueCurveAtTime(envCurveArray(true), now, a);
+    envLoopSrc.offset.setValueCurveAtTime(envCurveArray(false), now + a, d);
     clearTimeout(envSchedTimer);
     envSchedTimer = setTimeout(scheduleEnvLoop, Math.max(20, (a+d)*1000 - 15));
-  }
-  function scheduleEnvLoop2(){
-    if(!ctx) return;
-    const a = clampv(baseOf('env2Attack','env2atk') + (cvLive.env2atk||0), 0.01, 2);
-    const d = clampv(baseOf('env2Decay','env2dcy') + (cvLive.env2dcy||0), 0.01, 3);
-    const now = ctx.currentTime + 0.02;
-    envLoopSrc2.offset.cancelScheduledValues(now);
-    envLoopSrc2.offset.setValueCurveAtTime(envCurveArray(params.env2Curve, true), now, a);
-    envLoopSrc2.offset.setValueCurveAtTime(envCurveArray(params.env2Curve, false), now + a, d);
-    clearTimeout(envSchedTimer2);
-    envSchedTimer2 = setTimeout(scheduleEnvLoop2, Math.max(20, (a+d)*1000 - 15));
-  }
-
-  // ---------- Osc B -> A interaction mode ----------
-  function applyOscMode(){
-    if(!ctx) return;
-    const now = ctx.currentTime;
-    const mode = Math.round(clampv(params.oscMode, 0, 5));
-    const amt = clampv(baseOf('oscModAmt','oscamt') + (cvLive.oscamt||0), 0, 1);
-    fmInteractGain.gain.setTargetAtTime(mode===1 ? amt*800 : 0, now, 0.02);
-    amInteractGain.gain.setTargetAtTime((mode===2||mode===3) ? amt : 0, now, 0.02);
-    syncInteractGain.gain.setTargetAtTime(mode===5 ? amt : 0, now, 0.02);
-    oscBFoldGain.gain.setTargetAtTime(mode===4 ? amt*1.5 : 0, now, 0.02);
-    // Baseline for the shared Osc A gain stage: 1 (passthrough) unless AM/RingMod/Sync claim it
-    const baseline = (mode===3 || mode===5) ? 0 : 1;
-    oscAAmStage.gain.setTargetAtTime(baseline, now, 0.02);
   }
 
   // ---------- Power / Mute ----------
@@ -1007,7 +897,7 @@
     sync();
     recordIfEditing();
     if(ctx && patchCables.length < 5 && Math.random() < 0.4){
-      const srcIds = ['lfo','random','follow','loopenv','loopenv2','rungler','oscA','oscB'];
+      const srcIds = ['lfo','random','follow','loopenv','rungler','oscA','oscB'];
       const dstIds = destDefs.map(d => d.id);
       addPatch(srcIds[Math.floor(Math.random()*srcIds.length)], dstIds[Math.floor(Math.random()*dstIds.length)]);
     }
@@ -1059,7 +949,6 @@
     if(id === 'random') return randSrc;
     if(id === 'follow') return envSrc;
     if(id === 'loopenv') return envLoopSrc;
-    if(id === 'loopenv2') return envLoopSrc2;
     if(id === 'rungler') return runglerNode;
     if(id === 'oscA') return oscASum;
     if(id === 'oscB') return oscBSum;
