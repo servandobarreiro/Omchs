@@ -53,14 +53,6 @@
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 6px 18px rgba(0,0,0,0.35);
     -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
   }
-  .faceplate.compact{ zoom:0.72; }
-  /* Touch devices get bigger hit targets on the small interactive bits —
-     desktop mouse users keep the tighter, denser layout */
-  @media (pointer:coarse){
-    .jack{ width:26px; height:26px; border-width:5px; }
-    .plate{ width:44px; height:44px; }
-    .cablemenu-del, .cmdinput{ font-size:0.75rem; padding:8px 9px; }
-  }
   .faceplate::before, .faceplate::after{
     content:''; position:absolute; width:5px; height:5px; border-radius:50%;
     background: radial-gradient(circle at 35% 35%, #6a5c78, #241a2e);
@@ -71,7 +63,7 @@
   #cableLayer path{ pointer-events:stroke; }
   #cableLayer circle{ pointer-events:all; }
 
-  .items{ position:relative; z-index:2; display:flex; flex-wrap:wrap; align-items:flex-end; gap: 8px 10px; pointer-events:none; }
+  .items{ position:relative; z-index:2; display:flex; flex-wrap:wrap; align-items:flex-end; gap: 8px 10px; }
 
   .knob-wrap{ position:relative; display:flex; flex-direction:column; align-items:center; width: 76px; }
   .dialbox{ position:relative; margin: 26px 24px 24px; }
@@ -102,7 +94,7 @@
   .dial{
     border-radius:50%; border:2px solid var(--accent, var(--amber));
     background: radial-gradient(circle at 33% 30%, #3a2e47, #1c1522 65%);
-    cursor: ns-resize; position:relative; touch-action:none; pointer-events:auto;
+    cursor: ns-resize; position:relative; touch-action:none;
     box-shadow: inset 0 0 8px rgba(255,255,255,0.08), 0 0 10px rgba(223,178,73,0.15);
     transform: rotate(-135deg);
   }
@@ -119,7 +111,7 @@
   .plate{
     position:relative; width:36px; height:36px; border-radius:50%;
     background:linear-gradient(180deg,#e8c96a,var(--amber));
-    cursor:pointer; user-select:none; touch-action:none; pointer-events:auto;
+    cursor:pointer; user-select:none; touch-action:none;
     display:flex; align-items:center; justify-content:center;
     font-size:0.62rem; font-weight:bold; color:#1a1420;
     box-shadow:0 2px 4px rgba(0,0,0,0.45);
@@ -132,9 +124,8 @@
     border:4px solid var(--jcolor, var(--cyan));
     background: radial-gradient(circle at 38% 35%, #3c3c3c 0%, #0a0a0a 65%);
     box-shadow: inset 0 0 3px rgba(0,0,0,0.9), 0 1px 2px rgba(0,0,0,0.6);
-    cursor:crosshair; flex-shrink:0; touch-action:none; z-index:3; pointer-events:auto;
+    cursor:crosshair; flex-shrink:0; touch-action:none; z-index:3;
   }
-  .jack.dragfrom{ box-shadow:0 0 0 4px rgba(255,255,255,0.35), 0 0 14px var(--jcolor, #fff); }
   .jack.dst{ border-color:var(--jcolor, var(--violet)); }
   .jack:hover{ box-shadow:0 0 10px var(--jcolor, currentColor), inset 0 0 3px rgba(0,0,0,0.9); }
   .jacklabel{ font-size:0.55rem; color:var(--text-dim); margin-top:5px; text-align:center; line-height:1.2; }
@@ -189,7 +180,6 @@
       </svg>
     </button>
     <button class="btn rec-indicator" id="recIndicator" style="display:none;">REC 0:00</button>
-    <button class="btn" id="compactToggle" title="Toggle compact layout for small screens">COMPACT</button>
   </div>
 
   <div class="faceplate">
@@ -216,7 +206,7 @@
         <div class="vu"><i id="vuL"></i></div>
         <div class="vu"><i id="vuR"></i></div>
       </div>
-      <input type="text" id="cmdInput" class="cmdinput" placeholder="1-0 / ed3 / xy / rd / xprt" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      <input type="text" id="cmdInput" class="cmdinput" placeholder="1-0 / ed3 / xy / rndm / xprt" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
     </div>
   </div>
   <div class="legend"><span><i style="background:var(--amber);"></i>Left</span><span><i style="background:var(--cyan);"></i>Right</span></div>
@@ -1063,18 +1053,9 @@
   });
   updatePowerIcon();
 
-  document.getElementById('compactToggle').addEventListener('click', function(){
-    const on = document.querySelector('.faceplate').classList.toggle('compact');
-    this.classList.toggle('on', on);
-    updateCables();
-  });
-
-  function buzz(ms){ if(navigator.vibrate) navigator.vibrate(ms); }
-
   function runRandomize(){
     config.forEach(c => {
       if(c.id === 'drive' || c.id === 'bitcrush'){ params[c.id] = c.min; }
-      else if(c.id === 'pan'){ params[c.id] = 0; }
       else { params[c.id] = c.min + Math.random()*(c.max-c.min); }
       updateKnobVisual(c);
     });
@@ -1085,7 +1066,7 @@
       const dstIds = destDefs.map(d => d.id);
       addPatch(srcIds[Math.floor(Math.random()*srcIds.length)], dstIds[Math.floor(Math.random()*dstIds.length)]);
     }
-    termLog('> rd.');
+    termLog('> rndm.');
   }
 
   // ---------- WAV recorder ----------
@@ -1224,7 +1205,6 @@
       preHoldSnapshot = snapshotState();
       applyPreset(presets[slot]);
       setActiveTriangle(slot, true);
-      buzz(15);
       termLog(`> preset ${keyLabel(slot)} playing`);
     } else {
       if(heldPresetSlot !== slot) return;
@@ -1294,7 +1274,7 @@
     const str = raw.trim().toLowerCase().replace(/\s+/g,'');
     if(!str) return;
     if(str === 'xy'){ lissajous = !lissajous; termLog(`> lissajous ${lissajous?'on':'off'}`); return; }
-    if(str === 'rd'){ runRandomize(); return; }
+    if(str === 'rndm'){ runRandomize(); return; }
     if(str === 'xprt'){ if(isRec) stopRecording(); else startRecording(); return; }
     const edMatch = str.match(/^ed([0-9])$/);
     if(edMatch){
@@ -1342,7 +1322,6 @@
         e.stopPropagation();
         j.setPointerCapture(e.pointerId);
         dragOrigin = j;
-        j.classList.add('dragfrom');
         dragTemp = document.createElementNS(svgNS, 'path');
         dragTemp.setAttribute('stroke', '#fff6'); dragTemp.setAttribute('fill', 'none'); dragTemp.setAttribute('stroke-width', 2);
         dragTemp.setAttribute('stroke-dasharray', '4 3');
@@ -1352,7 +1331,6 @@
         if(!dragTemp) return;
         const target = document.elementFromPoint(e.clientX, e.clientY);
         dragTemp.remove(); dragTemp = null;
-        dragOrigin.classList.remove('dragfrom');
         if(target && target.classList.contains('jack') && target.dataset.kind !== dragOrigin.dataset.kind){
           const srcId = dragOrigin.dataset.kind === 'src' ? dragOrigin.dataset.id : target.dataset.id;
           const dstId = dragOrigin.dataset.kind === 'dst' ? dragOrigin.dataset.id : target.dataset.id;
@@ -1396,21 +1374,21 @@
     pathEl.setAttribute('stroke', color); pathEl.setAttribute('fill', 'none'); pathEl.setAttribute('stroke-width', 4);
     pathEl.style.cursor = 'pointer';
     cableLayer.appendChild(pathEl);
-    // Attenuverter handle: a dot at the cable's midpoint. Click it to open the
-    // depth/polarity popup; double-click it (or click the wire itself) to delete.
+    // Attenuverter handle: a draggable dot at the cable's midpoint. Drag it to
+    // set depth/polarity (up = positive, down = negative). A plain click (no
+    // drag) removes the cable — the easiest way to delete a patch.
     const handleEl = document.createElementNS(svgNS, 'circle');
-    const coarse = window.matchMedia && window.matchMedia('(pointer:coarse)').matches;
-    handleEl.setAttribute('r', coarse ? 11 : 8); handleEl.setAttribute('fill', color); handleEl.setAttribute('stroke', '#fff');
+    handleEl.setAttribute('r', 8); handleEl.setAttribute('fill', color); handleEl.setAttribute('stroke', '#fff');
     handleEl.setAttribute('stroke-width', 1.5); handleEl.style.cursor = 'pointer';
     cableLayer.appendChild(handleEl);
     const cable = { srcId, dstId, depthGain, sensGains, pathEl, handleEl, depth: 0.5 };
     pathEl.addEventListener('click', () => removePatch(cable));
+    // Click the dot: open the attenuverter menu. Double-click: delete straight away.
     handleEl.addEventListener('pointerdown', e => e.stopPropagation());
     handleEl.addEventListener('click', e => { e.stopPropagation(); openCableMenu(cable, e); });
     handleEl.addEventListener('dblclick', e => { e.stopPropagation(); closeCableMenu(); removePatch(cable); });
     patchCables.push(cable);
     applyDepth(cable);
-    buzz(10);
     updateCables();
     if(!bulkOp) termLog(`> patched ${srcId} \u2192 ${dstId}`);
   }
@@ -1514,14 +1492,7 @@
     if(!ctx) return;
     const node = getSourceNode(id);
     if(!node) return;
-    if(!scopeAnalyser){
-      scopeAnalyser = ctx.createAnalyser(); scopeAnalyser.fftSize = 512;
-      // Some browsers won't keep pulling an analyser that has no downstream
-      // connection of its own — route it through a silent gain to destination
-      // (same trick used for the rungler/rec-tap nodes) so it always updates.
-      const scopeSilent = ctx.createGain(); scopeSilent.gain.value = 0;
-      scopeAnalyser.connect(scopeSilent); scopeSilent.connect(ctx.destination);
-    }
+    if(!scopeAnalyser){ scopeAnalyser = ctx.createAnalyser(); scopeAnalyser.fftSize = 512; }
     if(scopeConnectedSrc){ try{ scopeConnectedSrc.disconnect(scopeAnalyser); }catch(e){} }
     node.connect(scopeAnalyser);
     scopeConnectedSrc = node;
