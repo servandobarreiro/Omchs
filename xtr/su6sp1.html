@@ -127,8 +127,6 @@
   .plate.armed{ background:linear-gradient(180deg,#fff,#ffe9a8); box-shadow:0 0 13px rgba(255,255,255,0.85); }
 
   .jackitem{ display:flex; flex-direction:column; align-items:center; width:56px; }
-  .randgen{ display:flex; flex-direction:column; align-items:center; gap:6px; width:56px; }
-  .randgen-label{ font-size:0.56rem; letter-spacing:1px; color:var(--text-dim); writing-mode:vertical-rl; text-orientation:mixed; }
   .jack{
     width:21px; height:21px; border-radius:50%;
     border:4px solid var(--jcolor, var(--cyan));
@@ -155,13 +153,6 @@
   .cablemenu-del{ width:100%; background:#3a1d22; color:var(--red); border:1px solid var(--red); border-radius:3px;
     padding:5px; font-family:inherit; font-size:0.62rem; cursor:pointer; }
   .cablemenu-del:hover{ background:var(--red); color:#1a1420; }
-  .steppopup{ position:absolute; z-index:15; background:#1c1424; border:1px solid var(--amber-dim); border-radius:6px;
-    padding:8px 10px; box-shadow:0 6px 18px rgba(0,0,0,0.5); display:none; font-size:0.64rem; pointer-events:none; }
-  .steppopup div{ padding:2px 4px; color:var(--text-dim); white-space:nowrap; }
-  .steppopup div.active{ color:var(--amber); font-weight:bold; }
-  .led{ position:absolute; width:7px; height:7px; border-radius:50%; background:#3a2e1a;
-    box-shadow:inset 0 0 2px rgba(0,0,0,0.8); transition:background .05s, box-shadow .05s; }
-  .led.lit{ background:#ffe27a; box-shadow:0 0 8px #ffe27a; }
   .minijack-scope{ position:absolute; width:84px; height:84px; border-radius:50%; overflow:hidden;
     border:2px solid var(--amber); pointer-events:none; z-index:30; display:none;
     box-shadow:0 4px 16px rgba(0,0,0,0.65); background:#0d0912; }
@@ -210,7 +201,6 @@
       <button class="cablemenu-del" id="cableMenuDel">Delete cable</button>
     </div>
     <div class="minijack-scope" id="miniScope"><canvas id="miniScopeCanvas" width="84" height="84"></canvas></div>
-    <div class="steppopup" id="stepPopup"></div>
     <div class="items" id="items"></div>
     <div class="footrow">
       <div class="patchhint">Cyan jacks are outputs, violet jacks are inputs. Drag between them to patch. Click the dot on a cable for its attenuverter, double-click the dot (or click the cable itself) to remove it.</div>
@@ -239,18 +229,16 @@
   // ---------- Shared state (declared up-front so UI-building code below never
   // touches these while they're still in the temporal dead zone) ----------
   let ctx;
-  let oscTri, oscSqr, oscSine, triGain, sqrGain, sineGain, oscASum;
-  let subTri, subSqr, subSine, subTriGain, subSqrGain, subSineGain, subSum, subG, oscMix;
+  let oscTri, oscSqr, triGain, sqrGain, oscASum;
+  let subTri, subSqr, subTriGain, subSqrGain, subSum, subG, oscMix;
   let foldDrive, foldNode;
-  let oscBTri, oscBSqr, oscBSine, oscBTriGain, oscBSqrGain, oscBSineGain, oscBSum;
+  let oscBTri, oscBSqr, oscBTriGain, oscBSqrGain, oscBSum;
   let fmInteractGain, amInteractGain, syncShape, syncInteractGain, oscAAmStage, oscBFoldGain;
   let groupLIn, groupRIn, delayTaps = [], tapSumL, tapSumR, merger, filter, dcBlock;
   let fbCompressor, fbClip, fbSplit, feedGainL, feedGainR, crossGainL, crossGainR;
   let dryGain, wetGain, outPan, driveN, crushN, masterLimiter, mainG, muteGate;
   let splitAnalyser, analyserL, analyserR;
-  let envLoopSrc, envLoopSrc2, env1GateSrc, env2GateSrc;
-  let lfo1Node, lfo1Silent, lfo2Node, lfo2Silent, lfo1State, lfo2State;
-  let randGen1Src, randGen2Src;
+  let lfoSrc, randSrc, envSrc, envLoopSrc, envLoopSrc2, runglerNode, runglerSilent;
   let vca1Stage, lpg1Filter, envToVca1Gain, envToLpg1Freq, vca2Stage, lpg2Filter, envToVca2Gain, envToLpg2Freq;
   let recTap, recSilent, recBuffersL = [], recBuffersR = [], isRec = false, isMute = false;
   let envSchedTimer = null, envSchedTimer2 = null;
@@ -273,9 +261,9 @@
     { id:'instability',    label:'Instability', min:0,    max:1,    def:0.1,  size:'sm', section:'osc' },
     { id:'sub',           label:'Sub-Tonic',    min:0,    max:1,    def:0.4,  size:'md', section:'osc' },
     { id:'tones',         label:'Fold',         min:0,    max:1,    def:0.2,  size:'lg', section:'osc' },
-    { id:'oscWaveMorph',  label:'Wave Sin\u2192Tri\u2192Sqr', min:0, max:1,  def:0.25, size:'md', section:'osc' },
+    { id:'oscWaveMorph',  label:'Wave Tri\u2194Sqr', min:0, max:1,  def:0.25, size:'md', section:'osc' },
     { id:'pitchB',        label:'Osc B Pitch',  min:5,    max:2000, def:220,  size:'lg', section:'osc' },
-    { id:'oscBWaveMorph', label:'Osc B Wave Sin\u2192Tri\u2192Sqr', min:0, max:1, def:0.15, size:'sm', section:'osc' },
+    { id:'oscBWaveMorph', label:'Osc B Wave Tri\u2194Sqr', min:0, max:1, def:0.15, size:'sm', section:'osc' },
     { id:'oscMode',       label:'Osc B\u2192A Mode', min:0, max:5,  def:0,    size:'md', section:'osc' },
     { id:'oscModAmt',     label:'Interaction Amt', min:0, max:1,   def:0.3,  size:'sm', section:'osc' },
 
@@ -286,16 +274,16 @@
     { id:'decay',         label:'Feedback',     min:0,    max:0.99, def:0.6,  size:'lg', section:'delay' },
     { id:'width',         label:'Stereo Width', min:0,    max:1,    def:0.6,  size:'md', section:'delay' },
 
+    { id:'rate',          label:'Agitation Rate', min:0.05, max:25, def:1.5,  size:'md', section:'mod' },
+    { id:'woggle',        label:'Woggle Chaos', min:0,    max:1,    def:0.3,  size:'md', section:'mod' },
     { id:'envAttack',     label:'Env1 Attack',  min:0.01, max:2,    def:0.08, size:'sm', section:'mod' },
     { id:'envDecay',      label:'Env1 Decay',   min:0.01, max:3,    def:0.35, size:'md', section:'mod' },
     { id:'envCurve',      label:'Env1 Curve',   min:-1,   max:1,    def:0,    size:'sm', section:'mod' },
     { id:'env2Attack',    label:'Env2 Attack',  min:0.01, max:2,    def:0.4,  size:'sm', section:'mod' },
     { id:'env2Decay',     label:'Env2 Decay',   min:0.01, max:3,    def:1.1,  size:'sm', section:'mod' },
     { id:'env2Curve',     label:'Env2 Curve',   min:-1,   max:1,    def:0,    size:'sm', section:'mod' },
-    { id:'lfo1Speed',     label:'LFO1 Speed',   min:0.02, max:25,   def:1.5,  size:'md', section:'mod' },
-    { id:'lfo1Wave',      label:'LFO1 Wave',    min:0,    max:7,    def:0,    size:'sm', section:'mod' },
-    { id:'lfo2Speed',     label:'LFO2 Speed',   min:0.02, max:25,   def:0.3,  size:'md', section:'mod' },
-    { id:'lfo2Wave',      label:'LFO2 Wave',    min:0,    max:7,    def:1,    size:'sm', section:'mod' },
+    { id:'runglerRate',   label:'Rungler Rate', min:0.5,  max:40,   def:6,    size:'md', section:'mod' },
+    { id:'runglerChaos',  label:'Rungler Chaos',min:0,    max:1,    def:0.4,  size:'sm', section:'mod' },
 
     { id:'absorb',        label:'Absorb Filter',min:80,   max:8000, def:1200, size:'lg', section:'fx' },
     { id:'activation',    label:'VCA Open',     min:0,    max:1,    def:0.5,  size:'lg', section:'fx' },
@@ -312,12 +300,6 @@
   // Triangles are preset-recall pads now, numbered to match the keyboard row 1..9,0
   function keyLabel(slot){ return slot === 9 ? '0' : String(slot+1); }
   function clampv(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
-  // Continuous 3-way morph across a single knob: 0=sine, 0.5=triangle, 1=square
-  function waveGains(m){
-    m = clampv(m, 0, 1);
-    if(m < 0.5){ const b = m*2; return { sine:1-b, tri:b, sqr:0 }; }
-    const b = (m-0.5)*2; return { sine:0, tri:1-b, sqr:b };
-  }
   function clone(obj){ return JSON.parse(JSON.stringify(obj)); }
   // A patched cable "breaks normalization": once a jack has a cable in it,
   // the knob stops setting that parameter directly and the cable takes over
@@ -334,17 +316,15 @@
     activation:   { in:['vca'] },
     pan:          { in:['pan'] },
     pitchB:       { in:['fmb'], out:'oscB' },
+    rate:         { out:'lfo' },
+    woggle:       { out:'random' },
     envAttack:    { in:['envAtk'] },
     envDecay:     { in:['envDcy','trig1'], out:'loopenv' },
-    envCurve:     { out:'env1gate' },
     env2Attack:   { in:['env2atk'] },
     env2Decay:    { in:['env2dcy','trig2'], out:'loopenv2' },
-    env2Curve:    { out:'env2gate' },
-    lfo1Speed:    { in:['lfo1cv','lfo1ping'], out:'lfo1' },
-    lfo2Speed:    { in:['lfo2cv','lfo2ping'], out:'lfo2' },
+    runglerRate:  { out:'rungler' },
     oscWaveMorph: { in:['wave'] },
     oscBWaveMorph:{ in:['waveB'] },
-    oscMode:      { in:['oscmode'] },
     oscModAmt:    { in:['oscamt'] },
     sub:          { in:['subton'] },
     instability:  { in:['instab'] },
@@ -360,22 +340,18 @@
     feedback:'Feedback CV', delay:'Delay Time CV', vca:'VCA CV', pan:'Pan CV', envAtk:'Env1 Attack CV',
     envDcy:'Env1 Decay CV', env2atk:'Env2 Attack CV', env2dcy:'Env2 Decay CV', wave:'Wave CV', waveB:'Osc B Wave CV',
     subton:'Sub Level CV', instab:'Instability CV', mix:'Dry/Wet CV', spread:'Spread CV', smear:'Smear CV',
-    sat:'Saturation CV', crush:'Bitcrush CV', oscamt:'Interaction Amt CV', oscmode:'Mode CV',
-    trig1:'Env1 Trigger', trig2:'Env2 Trigger', lfo1cv:'LFO1 Speed CV', lfo1ping:'LFO1 Ping (sync)',
-    lfo2cv:'LFO2 Speed CV', lfo2ping:'LFO2 Ping (sync)', randgen1ping:'Random1 Ping', randgen2ping:'Random2 Ping' };
-  const srcLabel = { loopenv:'Env1 out', loopenv2:'Env2 out', env1gate:'Env1 Gate out', env2gate:'Env2 Gate out',
-    oscA:'Osc A out', oscB:'Osc B out', lfo1:'LFO1 out', lfo2:'LFO2 out', randgen1:'Random 1 out', randgen2:'Random 2 out' };
+    sat:'Saturation CV', crush:'Bitcrush CV', oscamt:'Interaction Amt CV', trig1:'Env1 Trigger', trig2:'Env2 Trigger' };
+  const srcLabel = { lfo:'LFO out', random:'Random out', follow:'Follow out', loopenv:'Env1 out', loopenv2:'Env2 out',
+    rungler:'Rungler out', oscA:'Osc A out', oscB:'Osc B out' };
   const oscModeNames = ['Off','FM','AM','Ring Mod','Wavefolder','Sync (approx)'];
-  const lfoWaveNames = ['Sine','Triangle','Ramp Up','Ramp Down','Square','Pulse','Square Random','Softened Random'];
-  const stepNamesFor = { oscMode:oscModeNames, lfo1Wave:lfoWaveNames, lfo2Wave:lfoWaveNames };
 
   // ---------- Knobs grouped in space and color by function (no visible labels — kept unmarked on purpose) ----------
   const groups = [
     { key:'mod', items:[
+      {t:'knob', id:'rate'}, {t:'knob', id:'woggle'},
       {t:'knob', id:'envAttack'}, {t:'knob', id:'env2Attack'}, {t:'knob', id:'envDecay'}, {t:'knob', id:'env2Decay'},
       {t:'knob', id:'envCurve'}, {t:'knob', id:'env2Curve'},
-      {t:'knob', id:'lfo1Speed'}, {t:'knob', id:'lfo1Wave'}, {t:'knob', id:'lfo2Speed'}, {t:'knob', id:'lfo2Wave'},
-      {t:'randgen', id:1}, {t:'randgen', id:2},
+      {t:'knob', id:'runglerRate'}, {t:'knob', id:'runglerChaos'}, {t:'src', id:'follow'},
     ]},
     { key:'osc', items:[
       {t:'knob', id:'pitch'}, {t:'knob', id:'oscWaveMorph'}, {t:'knob', id:'tones'},
@@ -398,19 +374,18 @@
   // Buchla/Serge-inspired patch-point color coding, by function
   const jackColors = {
     // audio-rate: warm orange
-    pitch:'#e8944a', wave:'#e8944a', waveB:'#e8944a', oscA:'#e8944a', oscB:'#e8944a', oscamt:'#e8944a', oscmode:'#e8944a',
+    pitch:'#e8944a', wave:'#e8944a', waveB:'#e8944a', oscA:'#e8944a', oscB:'#e8944a', oscamt:'#e8944a',
     // FM inputs get their own shade so a paired input (e.g. Pitch + FM) is easy to tell apart at a glance
     fm:'#f2c14e', fmb:'#f2c14e',
     // filter / fold: red
     absorb:'#e2584f', fold:'#e2584f',
     // envelope / gate / VCA: yellow
     vca:'#e8d24a', envAtk:'#e8d24a', envDcy:'#e8d24a', env2atk:'#e8d24a', env2dcy:'#e8d24a',
-    feedback:'#e8d24a', loopenv:'#e8d24a', loopenv2:'#e8d24a', env1gate:'#e8d24a', env2gate:'#e8d24a',
+    feedback:'#e8d24a', loopenv:'#e8d24a', loopenv2:'#e8d24a', follow:'#e8d24a',
     // LFO / random / chaos modulation: blue
-    lfo1:'#5a9fe8', lfo2:'#5a9fe8', lfo1cv:'#5a9fe8', lfo2cv:'#5a9fe8', instab:'#5a9fe8',
-    randgen1:'#5a9fe8', randgen2:'#5a9fe8',
-    // envelope/LFO trigger & ping inputs get their own distinct color (gate/trigger convention)
-    trig1:'#ff8fa3', trig2:'#ff8fa3', lfo1ping:'#ff8fa3', lfo2ping:'#ff8fa3', randgen1ping:'#ff8fa3', randgen2ping:'#ff8fa3',
+    lfo:'#5a9fe8', random:'#5a9fe8', instab:'#5a9fe8', rungler:'#5a9fe8',
+    // envelope trigger inputs get their own distinct color (gate/trigger convention)
+    trig1:'#ff8fa3', trig2:'#ff8fa3',
     // utility / everything else: green
     pan:'#7fd88a', mix:'#7fd88a', delay:'#7fd88a', spread:'#7fd88a', smear:'#7fd88a', sat:'#7fd88a', crush:'#7fd88a', subton:'#7fd88a',
   };
@@ -457,24 +432,6 @@
     return j;
   }
   const jackClear = { sm:21, md:19, lg:17 }; // px offset that just clears each size's modring
-  function flashLed(name){
-    const el = document.getElementById('led-'+name);
-    if(!el) return;
-    el.classList.add('lit');
-    clearTimeout(el._t);
-    el._t = setTimeout(() => el.classList.remove('lit'), 90);
-  }
-  const stepPopupEl = document.getElementById('stepPopup');
-  function showStepPopup(dial, names, val){
-    const r = dial.getBoundingClientRect(), p = document.querySelector('.faceplate').getBoundingClientRect();
-    stepPopupEl.style.left = (r.left - p.left + r.width/2 - 55) + 'px';
-    stepPopupEl.style.top = (r.top - p.top - (names.length*20 + 14)) + 'px';
-    const idx = Math.round(clampv(val, 0, names.length-1));
-    stepPopupEl.innerHTML = names.map((n,i) => `<div class="${i===idx?'active':''}">${n}</div>`).join('');
-    stepPopupEl.style.display = 'block';
-  }
-  function hideStepPopup(){ stepPopupEl.style.display = 'none'; }
-
   function buildKnob(c){
     const io = knobIO[c.id] || {};
     const wrap = document.createElement('div');
@@ -509,14 +466,6 @@
       j.classList.add('jack-io');
       j.style.right = (-O) + 'px'; j.style.bottom = (-O) + 'px';
       dialbox.appendChild(j);
-      // Env1/Env2 gate outputs also get a little LED next to the jack, lit
-      // briefly whenever that envelope starts (= completes) a cycle.
-      if(io.out === 'env1gate' || io.out === 'env2gate'){
-        const led = document.createElement('div'); led.className = 'led';
-        led.id = 'led-' + (io.out === 'env1gate' ? 'env1' : 'env2');
-        led.style.right = (-O - 12) + 'px'; led.style.bottom = (-O + 4) + 'px';
-        dialbox.appendChild(led);
-      }
     }
     wrap.appendChild(dialbox);
 
@@ -525,13 +474,9 @@
     wrap.appendChild(label);
     scatter(wrap, c.id);
 
-    const stepNames = stepNamesFor[c.id];
     let dragging = false, sy = 0, sv = 0, didDrag = false;
     const baseRange = c.size === 'lg' ? 190 : c.size === 'md' ? 150 : 115;
-    dial.addEventListener('pointerdown', e => {
-      dial.setPointerCapture(e.pointerId); dragging = true; didDrag = false; sy = e.clientY; sv = params[c.id];
-      if(stepNames) showStepPopup(dial, stepNames, params[c.id]);
-    });
+    dial.addEventListener('pointerdown', e => { dial.setPointerCapture(e.pointerId); dragging = true; didDrag = false; sy = e.clientY; sv = params[c.id]; });
     dial.addEventListener('pointermove', e => {
       if(!dragging) return;
       const range = c.max - c.min, div = baseRange * (e.shiftKey ? 5 : 1);
@@ -539,11 +484,9 @@
       params[c.id] = Math.max(c.min, Math.min(c.max, sv + (dy * (range/div))));
       didDrag = true;
       updateKnobVisual(c); sync(); recordIfEditing();
-      if(stepNames) showStepPopup(dial, stepNames, params[c.id]);
     });
-    function logVal(v){ return stepNames ? stepNames[Math.round(clampv(v,0,stepNames.length-1))] : v.toFixed(2); }
-    dial.addEventListener('pointerup', () => { dragging = false; hideStepPopup(); if(didDrag) termLog(`> ${c.label}: ${logVal(params[c.id])}`); });
-    dial.addEventListener('pointerleave', () => { if(!dragging) hideStepPopup(); });
+    function logVal(v){ return c.id === 'oscMode' ? oscModeNames[Math.round(clampv(v,0,5))] : v.toFixed(2); }
+    dial.addEventListener('pointerup', () => { dragging = false; if(didDrag) termLog(`> ${c.label}: ${logVal(params[c.id])}`); });
     dial.addEventListener('dblclick', () => { params[c.id] = c.def; updateKnobVisual(c); sync(); recordIfEditing(); termLog(`> ${c.label} reset: ${logVal(c.def)}`); });
     return wrap;
   }
@@ -563,18 +506,6 @@
     const jack = makeJack(kind, id, label);
     const lab = document.createElement('div'); lab.className = 'jacklabel'; lab.innerText = label;
     wrap.appendChild(jack); wrap.appendChild(lab);
-    return wrap;
-  }
-  // A "random voltage generator" — no knob at all, just a ping-in, a voltage-out,
-  // and the word RANDOM between them. Pinging it draws a fresh random value and
-  // holds it until the next ping.
-  function buildRandGen(idx){
-    const wrap = document.createElement('div'); wrap.className = 'randgen';
-    const pingJack = makeJack('dst', 'randgen'+idx+'ping', 'Random'+idx+' Ping');
-    const voltJack = makeJack('src', 'randgen'+idx, 'Random'+idx+' out');
-    const label = document.createElement('div'); label.className = 'randgen-label'; label.innerText = 'RANDOM';
-    wrap.appendChild(pingJack); wrap.appendChild(label); wrap.appendChild(voltJack);
-    scatter(wrap, 'randgen'+idx);
     return wrap;
   }
 
@@ -598,7 +529,6 @@
       if(item.t === 'knob') itemsHost.appendChild(buildKnob(configById[item.id]));
       else if(item.t === 'src') itemsHost.appendChild(buildJackItem('src', item.id, srcLabel[item.id] || item.id));
       else if(item.t === 'dst') itemsHost.appendChild(buildJackItem('dst', item.id, destLabel[item.id] || item.id));
-      else if(item.t === 'randgen') itemsHost.appendChild(buildRandGen(item.id));
       maybeDropPlate();
     });
   });
@@ -670,38 +600,25 @@
       recBuffersR.push(new Float32Array(e.inputBuffer.getChannelData(1)));
     };
   }
-  // Custom LFO: phase accumulator per-sample, gives waveform shapes native
-  // OscillatorNode can't do (ramp up/down independently, pulse, stepped/soft
-  // random). state.phase can be reset externally (the "ping" input = hard sync).
-  function makeLfoState(){ return { phase:0, softVal:0, softTarget:0, sqRand:1 }; }
-  function lfoSample(state, wave){
-    let v;
-    switch(Math.round(clampv(wave,0,7))){
-      case 0: v = Math.sin(state.phase*2*Math.PI); break;                          // sine
-      case 1: v = state.phase<0.5 ? (4*state.phase-1) : (3-4*state.phase); break;  // triangle
-      case 2: v = 2*state.phase-1; break;                                          // ramp up
-      case 3: v = 1-2*state.phase; break;                                          // ramp down
-      case 4: v = state.phase<0.5 ? 1 : -1; break;                                 // square
-      case 5: v = state.phase<0.2 ? 1 : -1; break;                                 // pulse
-      case 6: v = state.sqRand; break;                                             // square random
-      default: state.softVal += (state.softTarget-state.softVal)*0.0015; v = state.softVal; break; // softened random
-    }
-    return v;
-  }
-  function setLfo(node, state, getSpeed, getWave){
+  function setRungler(){
+    let phaseA = 0, phaseB = 0, shiftReg = 0, held = 0, prevHigh = false;
     const sr = ctx.sampleRate;
-    node.onaudioprocess = e => {
+    runglerNode.onaudioprocess = e => {
       const out = e.outputBuffer.getChannelData(0);
-      const freq = Math.max(0.001, getSpeed());
-      const wave = getWave();
       for(let i=0;i<out.length;i++){
-        state.phase += freq/sr;
-        if(state.phase >= 1){
-          state.phase -= 1;
-          if(Math.random() < 0.5) state.sqRand *= -1;
-          state.softTarget = Math.random()*2-1;
+        const freqA = params.runglerRate;
+        const freqB = params.runglerRate * (0.5 + params.runglerChaos*5.5);
+        phaseA += freqA/sr; if(phaseA>=1) phaseA -= 1;
+        phaseB += freqB/sr; if(phaseB>=1) phaseB -= 1;
+        const clockHigh = phaseA < 0.5;
+        const bHigh = phaseB < 0.5 ? 1 : 0;
+        if(clockHigh && !prevHigh){
+          const fbBit = ((shiftReg >> 7) & 1) ^ bHigh;
+          shiftReg = ((shiftReg << 1) | fbBit) & 0xFF;
+          held = (shiftReg/255)*2 - 1;
         }
-        out[i] = lfoSample(state, wave);
+        prevHigh = clockHigh;
+        out[i] = held;
       }
     };
   }
@@ -711,31 +628,23 @@
     if(!AudioCtor){ alert('This browser does not support Web Audio.'); return; }
     ctx = new AudioCtor(); ctx.resume().catch(()=>{});
 
-    // --- Osc A: sine / triangle / square morph ---
+    // --- Osc A: triangle/square morph ---
     oscTri = ctx.createOscillator(); oscTri.type = 'triangle'; oscTri.frequency.value = params.pitch;
     oscSqr = ctx.createOscillator(); oscSqr.type = 'square'; oscSqr.frequency.value = params.pitch;
-    oscSine = ctx.createOscillator(); oscSine.type = 'sine'; oscSine.frequency.value = params.pitch;
-    { const g = waveGains(params.oscWaveMorph);
-      triGain = ctx.createGain(); triGain.gain.value = g.tri;
-      sqrGain = ctx.createGain(); sqrGain.gain.value = g.sqr;
-      sineGain = ctx.createGain(); sineGain.gain.value = g.sine; }
+    triGain = ctx.createGain(); sqrGain = ctx.createGain();
+    triGain.gain.value = 1 - params.oscWaveMorph; sqrGain.gain.value = params.oscWaveMorph;
     oscASum = ctx.createGain();
     oscTri.connect(triGain).connect(oscASum);
     oscSqr.connect(sqrGain).connect(oscASum);
-    oscSine.connect(sineGain).connect(oscASum);
 
-    // --- Sub oscillator: same sine/triangle/square morph (shares the Osc A wave knob) ---
+    // --- Sub oscillator: also a triangle/square morph (was a fixed square before) ---
     subTri = ctx.createOscillator(); subTri.type = 'triangle'; subTri.frequency.value = params.pitch/2;
     subSqr = ctx.createOscillator(); subSqr.type = 'square'; subSqr.frequency.value = params.pitch/2;
-    subSine = ctx.createOscillator(); subSine.type = 'sine'; subSine.frequency.value = params.pitch/2;
-    { const g = waveGains(params.oscWaveMorph);
-      subTriGain = ctx.createGain(); subTriGain.gain.value = g.tri;
-      subSqrGain = ctx.createGain(); subSqrGain.gain.value = g.sqr;
-      subSineGain = ctx.createGain(); subSineGain.gain.value = g.sine; }
+    subTriGain = ctx.createGain(); subSqrGain = ctx.createGain();
+    subTriGain.gain.value = 1 - params.oscWaveMorph; subSqrGain.gain.value = params.oscWaveMorph;
     subSum = ctx.createGain();
     subTri.connect(subTriGain).connect(subSum);
     subSqr.connect(subSqrGain).connect(subSum);
-    subSine.connect(subSineGain).connect(subSum);
     subG = ctx.createGain(); subG.gain.value = params.sub;
     subSum.connect(subG);
 
@@ -746,22 +655,18 @@
     oscASum.connect(oscAAmStage); oscAAmStage.connect(oscMix);
     subG.connect(oscMix);
 
-    // --- Osc B: identical to Osc A (same sine/tri/square morph, own pitch) but not
+    // --- Osc B: identical to Osc A (same tri/square morph, own pitch) but not
     // mixed into the main path directly — it interacts with Osc A according to
     // the Osc B->A Mode knob (FM / AM / Ring Mod / Wavefolder / Sync), and is
     // also available as its own patchable FM / cross-mod source.
     oscBTri = ctx.createOscillator(); oscBTri.type = 'triangle'; oscBTri.frequency.value = params.pitchB;
     oscBSqr = ctx.createOscillator(); oscBSqr.type = 'square'; oscBSqr.frequency.value = params.pitchB;
-    oscBSine = ctx.createOscillator(); oscBSine.type = 'sine'; oscBSine.frequency.value = params.pitchB;
-    { const g = waveGains(params.oscBWaveMorph);
-      oscBTriGain = ctx.createGain(); oscBTriGain.gain.value = g.tri;
-      oscBSqrGain = ctx.createGain(); oscBSqrGain.gain.value = g.sqr;
-      oscBSineGain = ctx.createGain(); oscBSineGain.gain.value = g.sine; }
+    oscBTriGain = ctx.createGain(); oscBSqrGain = ctx.createGain();
+    oscBTriGain.gain.value = 1 - params.oscBWaveMorph; oscBSqrGain.gain.value = params.oscBWaveMorph;
     oscBSum = ctx.createGain();
     oscBTri.connect(oscBTriGain).connect(oscBSum);
     oscBSqr.connect(oscBSqrGain).connect(oscBSum);
-    oscBSine.connect(oscBSineGain).connect(oscBSum);
-    oscBTri.start(); oscBSqr.start(); oscBSine.start();
+    oscBTri.start(); oscBSqr.start();
 
     // FM: Osc B's raw output added to Osc A's frequency (always wired, gated to 0 unless mode=FM)
     fmInteractGain = ctx.createGain(); fmInteractGain.gain.value = 0;
@@ -887,32 +792,18 @@
     recSilent = ctx.createGain(); recSilent.gain.value = 0;
     mainG.connect(recTap); recTap.connect(recSilent); recSilent.connect(ctx.destination);
 
+    lfoSrc = ctx.createOscillator(); lfoSrc.type = 'triangle'; lfoSrc.frequency.value = params.rate; lfoSrc.start();
+    randSrc = ctx.createConstantSource(); randSrc.offset.value = 0; randSrc.start();
+    envSrc = ctx.createConstantSource(); envSrc.offset.value = 0; envSrc.start();
     envLoopSrc = ctx.createConstantSource(); envLoopSrc.offset.value = 0; envLoopSrc.start();
     envLoopSrc2 = ctx.createConstantSource(); envLoopSrc2.offset.value = 0; envLoopSrc2.start();
     envLoopSrc.connect(envToVca1Gain); envLoopSrc.connect(envToLpg1Freq);
     envLoopSrc2.connect(envToVca2Gain); envLoopSrc2.connect(envToLpg2Freq);
+    runglerNode = ctx.createScriptProcessor(1024, 1, 1); setRungler();
+    runglerSilent = ctx.createGain(); runglerSilent.gain.value = 0;
+    runglerNode.connect(runglerSilent); runglerSilent.connect(ctx.destination);
 
-    // Envelope gate-outs: brief pulse each time a cycle completes/restarts
-    env1GateSrc = ctx.createConstantSource(); env1GateSrc.offset.value = 0; env1GateSrc.start();
-    env2GateSrc = ctx.createConstantSource(); env2GateSrc.offset.value = 0; env2GateSrc.start();
-
-    // Two random voltage generators: no knob, ping in -> new random value held
-    // until the next ping.
-    randGen1Src = ctx.createConstantSource(); randGen1Src.offset.value = 0; randGen1Src.start();
-    randGen2Src = ctx.createConstantSource(); randGen2Src.offset.value = 0; randGen2Src.start();
-
-    // Two standard LFOs: speed + waveform + ping (hard sync) input.
-    lfo1State = makeLfoState(); lfo2State = makeLfoState();
-    lfo1Node = ctx.createScriptProcessor(512, 1, 1);
-    setLfo(lfo1Node, lfo1State, () => clampv(baseOf('lfo1Speed','lfo1cv') + (cvLive.lfo1cv||0), 0.02, 25), () => params.lfo1Wave);
-    lfo1Silent = ctx.createGain(); lfo1Silent.gain.value = 0;
-    lfo1Node.connect(lfo1Silent); lfo1Silent.connect(ctx.destination);
-    lfo2Node = ctx.createScriptProcessor(512, 1, 1);
-    setLfo(lfo2Node, lfo2State, () => clampv(baseOf('lfo2Speed','lfo2cv') + (cvLive.lfo2cv||0), 0.02, 25), () => params.lfo2Wave);
-    lfo2Silent = ctx.createGain(); lfo2Silent.gain.value = 0;
-    lfo2Node.connect(lfo2Silent); lfo2Silent.connect(ctx.destination);
-
-    oscTri.start(); oscSqr.start(); oscSine.start(); subTri.start(); subSqr.start(); subSine.start();
+    oscTri.start(); oscSqr.start(); subTri.start(); subSqr.start();
 
     setInterval(() => {
       if(!ctx || isMute) return;
@@ -923,16 +814,13 @@
       const pitchBase = baseOf('pitch','pitch');
       oscTri.frequency.setTargetAtTime(pitchBase + drift, ctx.currentTime, 0.03);
       oscSqr.frequency.setTargetAtTime(pitchBase + drift, ctx.currentTime, 0.03);
-      oscSine.frequency.setTargetAtTime(pitchBase + drift, ctx.currentTime, 0.03);
       subTri.frequency.setTargetAtTime((pitchBase + drift)/2, ctx.currentTime, 0.03);
       subSqr.frequency.setTargetAtTime((pitchBase + drift)/2, ctx.currentTime, 0.03);
-      subSine.frequency.setTargetAtTime((pitchBase + drift)/2, ctx.currentTime, 0.03);
       // Osc B drifts independently but by the same amount — true twins, not clones
       const driftB = (Math.random()-0.5) * effInstability * 6;
       const pitchBBase = baseOf('pitchB','fmb');
       oscBTri.frequency.setTargetAtTime(pitchBBase + driftB, ctx.currentTime, 0.03);
       oscBSqr.frequency.setTargetAtTime(pitchBBase + driftB, ctx.currentTime, 0.03);
-      oscBSine.frequency.setTargetAtTime(pitchBBase + driftB, ctx.currentTime, 0.03);
       if(effSmear > 0){
         const timeBase = baseOf('time','delay');
         delayTaps.forEach(t => {
@@ -943,40 +831,41 @@
       }
     }, 40);
 
+    setInterval(() => {
+      if(!ctx || isMute) return;
+      if(Math.random() < 0.15 + params.woggle*0.6){
+        randSrc.offset.setTargetAtTime(Math.random()*2-1, ctx.currentTime, 0.04);
+      }
+      if(params.woggle > 0 && Math.random() < params.woggle){
+        filter.frequency.setTargetAtTime(Math.max(50, params.absorb + (Math.random()-0.5)*1400*params.woggle), ctx.currentTime, 0.15);
+      }
+    }, 220);
+
     // --- CV monitor: samples patched modulation for parameters that aren't
-    // live AudioParams (env attack/decay, spread, smear, saturation, bitcrush,
-    // LFO speed, mode CV), plus rising-edge ("ping") detection for the envelope
-    // triggers, LFO hard-syncs, and the two random-voltage generators.
+    // live AudioParams (env attack/decay, spread, smear, saturation, bitcrush),
+    // plus rising-edge detection for the two envelope trigger inputs.
     // Each gets a summing node CV cables connect into; a small ScriptProcessor
     // reads the latest sample of each every ~23ms into cvLive for JS to use.
-    const cvNames = ['envAtk','envDcy','instab','spread','smear','sat','crush','env2atk','env2dcy','oscamt',
-      'oscmode','lfo1cv','lfo2cv','trig1','trig2','lfo1ping','lfo2ping','randgen1ping','randgen2ping'];
-    const onRise = {
-      trig1: () => scheduleEnvLoop(),
-      trig2: () => scheduleEnvLoop2(),
-      lfo1ping: () => { lfo1State.phase = 0; },
-      lfo2ping: () => { lfo2State.phase = 0; },
-      randgen1ping: () => { randGen1Src.offset.setTargetAtTime(Math.random()*2-1, ctx.currentTime, 0.002); },
-      randgen2ping: () => { randGen2Src.offset.setTargetAtTime(Math.random()*2-1, ctx.currentTime, 0.002); },
-    };
+    const cvNames = ['envAtk','envDcy','instab','spread','smear','sat','crush','env2atk','env2dcy','oscamt','trig1','trig2'];
     cvNames.forEach(name => { cvSum[name] = ctx.createGain(); cvLive[name] = 0; });
     const cvMerger = ctx.createChannelMerger(cvNames.length);
     cvNames.forEach((name,i) => cvSum[name].connect(cvMerger, 0, i));
     cvMonitorNode = ctx.createScriptProcessor(1024, cvNames.length, 1);
-    const prevEdge = {}; cvNames.forEach(name => { if(onRise[name]) prevEdge[name] = 0; });
+    let prevTrig1 = 0, prevTrig2 = 0;
     const TRIG_THRESH = 0.3;
     cvMonitorNode.onaudioprocess = e => {
       cvNames.forEach((name,i) => {
         const data = e.inputBuffer.getChannelData(i);
         cvLive[name] = data[data.length-1];
-        if(onRise[name]){
-          let rose = false, prev = prevEdge[name];
+        if(name === 'trig1' || name === 'trig2'){
+          let rose = false;
+          let prev = name === 'trig1' ? prevTrig1 : prevTrig2;
           for(let s=0;s<data.length;s++){
             if(prev < TRIG_THRESH && data[s] >= TRIG_THRESH) rose = true;
             prev = data[s];
           }
-          prevEdge[name] = prev;
-          if(rose) onRise[name]();
+          if(name === 'trig1') prevTrig1 = prev; else prevTrig2 = prev;
+          if(rose){ if(name === 'trig1') scheduleEnvLoop(); else scheduleEnvLoop2(); }
         }
       });
       setDriveCurve(clampv(baseOf('drive','sat') + cvLive.sat, 1, 30));
@@ -986,9 +875,9 @@
     cvMonitorNode.connect(cvMonitorSilent); cvMonitorSilent.connect(ctx.destination);
 
     destDefs = [
-      { id:'pitch', targets:[{ getParam:()=>oscTri.frequency, sens:250 }, { getParam:()=>oscSqr.frequency, sens:250 }, { getParam:()=>oscSine.frequency, sens:250 }, { getParam:()=>subTri.frequency, sens:125 }, { getParam:()=>subSqr.frequency, sens:125 }, { getParam:()=>subSine.frequency, sens:125 }] },
-      { id:'fm', targets:[{ getParam:()=>oscTri.frequency, sens:700 }, { getParam:()=>oscSqr.frequency, sens:700 }, { getParam:()=>oscSine.frequency, sens:700 }] },
-      { id:'fmb', targets:[{ getParam:()=>oscBTri.frequency, sens:500 }, { getParam:()=>oscBSqr.frequency, sens:500 }, { getParam:()=>oscBSine.frequency, sens:500 }] },
+      { id:'pitch', targets:[{ getParam:()=>oscTri.frequency, sens:250 }, { getParam:()=>oscSqr.frequency, sens:250 }, { getParam:()=>subTri.frequency, sens:125 }, { getParam:()=>subSqr.frequency, sens:125 }] },
+      { id:'fm', targets:[{ getParam:()=>oscTri.frequency, sens:700 }, { getParam:()=>oscSqr.frequency, sens:700 }] },
+      { id:'fmb', targets:[{ getParam:()=>oscBTri.frequency, sens:500 }, { getParam:()=>oscBSqr.frequency, sens:500 }] },
       { id:'fold', targets:[{ getParam:()=>foldDrive.gain, sens:4 }] },
       { id:'absorb', targets:[{ getParam:()=>filter.frequency, sens:3200 }] },
       { id:'feedback', targets:[{ getParam:()=>feedGainL.gain, sens:0.45 }, { getParam:()=>feedGainR.gain, sens:0.45 }] },
@@ -1011,13 +900,6 @@
       { id:'oscamt', targets:[{ getNode:()=>cvSum.oscamt, sens:0.4 }] },
       { id:'trig1', targets:[{ getNode:()=>cvSum.trig1, sens:1 }] },
       { id:'trig2', targets:[{ getNode:()=>cvSum.trig2, sens:1 }] },
-      { id:'oscmode', targets:[{ getNode:()=>cvSum.oscmode, sens:2 }] },
-      { id:'lfo1cv', targets:[{ getNode:()=>cvSum.lfo1cv, sens:8 }] },
-      { id:'lfo2cv', targets:[{ getNode:()=>cvSum.lfo2cv, sens:8 }] },
-      { id:'lfo1ping', targets:[{ getNode:()=>cvSum.lfo1ping, sens:1 }] },
-      { id:'lfo2ping', targets:[{ getNode:()=>cvSum.lfo2ping, sens:1 }] },
-      { id:'randgen1ping', targets:[{ getNode:()=>cvSum.randgen1ping, sens:1 }] },
-      { id:'randgen2ping', targets:[{ getNode:()=>cvSum.randgen2ping, sens:1 }] },
     ];
 
     applyOscMode();
@@ -1060,30 +942,22 @@
     const pitchBase = baseOf('pitch','pitch');
     oscTri.frequency.setTargetAtTime(pitchBase, now, 0.01);
     oscSqr.frequency.setTargetAtTime(pitchBase, now, 0.01);
-    oscSine.frequency.setTargetAtTime(pitchBase, now, 0.01);
     const waveBase = baseOf('oscWaveMorph','wave');
-    const gA = waveGains(waveBase);
-    triGain.gain.setTargetAtTime(gA.tri, now, 0.02);
-    sqrGain.gain.setTargetAtTime(gA.sqr, now, 0.02);
-    sineGain.gain.setTargetAtTime(gA.sine, now, 0.02);
+    triGain.gain.setTargetAtTime(1-waveBase, now, 0.02);
+    sqrGain.gain.setTargetAtTime(waveBase, now, 0.02);
 
     subTri.frequency.setTargetAtTime(pitchBase/2, now, 0.01);
     subSqr.frequency.setTargetAtTime(pitchBase/2, now, 0.01);
-    subSine.frequency.setTargetAtTime(pitchBase/2, now, 0.01);
-    subTriGain.gain.setTargetAtTime(gA.tri, now, 0.02);
-    subSqrGain.gain.setTargetAtTime(gA.sqr, now, 0.02);
-    subSineGain.gain.setTargetAtTime(gA.sine, now, 0.02);
+    subTriGain.gain.setTargetAtTime(1-waveBase, now, 0.02);
+    subSqrGain.gain.setTargetAtTime(waveBase, now, 0.02);
     subG.gain.setTargetAtTime(baseOf('sub','subton'), now, 0.02);
 
     const pitchBBase = baseOf('pitchB','fmb');
     oscBTri.frequency.setTargetAtTime(pitchBBase, now, 0.01);
     oscBSqr.frequency.setTargetAtTime(pitchBBase, now, 0.01);
-    oscBSine.frequency.setTargetAtTime(pitchBBase, now, 0.01);
     const waveBBase = baseOf('oscBWaveMorph','waveB');
-    const gB = waveGains(waveBBase);
-    oscBTriGain.gain.setTargetAtTime(gB.tri, now, 0.02);
-    oscBSqrGain.gain.setTargetAtTime(gB.sqr, now, 0.02);
-    oscBSineGain.gain.setTargetAtTime(gB.sine, now, 0.02);
+    oscBTriGain.gain.setTargetAtTime(1-waveBBase, now, 0.02);
+    oscBSqrGain.gain.setTargetAtTime(waveBBase, now, 0.02);
 
     foldDrive.gain.setTargetAtTime(1 + baseOf('tones','fold')*11, now, 0.02);
     const mixBase = baseOf('mix','mix');
@@ -1102,6 +976,7 @@
     crossGainL.gain.setTargetAtTime(cross, now, 0.05);
     crossGainR.gain.setTargetAtTime(cross, now, 0.05);
     filter.frequency.setTargetAtTime(baseOf('absorb','absorb'), now, 0.01);
+    lfoSrc.frequency.setTargetAtTime(params.rate, now, 0.02);
     outPan.pan.setTargetAtTime(baseOf('pan','pan'), now, 0.02);
     setDriveCurve(clampv(baseOf('drive','sat') + (cvLive.sat||0), 1, 30));
     mainG.gain.setTargetAtTime(baseOf('activation','vca'), now, 0.02);
@@ -1139,11 +1014,6 @@
     envLoopSrc.offset.cancelScheduledValues(now);
     envLoopSrc.offset.setValueCurveAtTime(envCurveArray(params.envCurve, true), now, a);
     envLoopSrc.offset.setValueCurveAtTime(envCurveArray(params.envCurve, false), now + a, d);
-    // Gate pulse + LED flash: fires right as the new cycle begins (= the
-    // previous cycle just ended)
-    env1GateSrc.offset.setTargetAtTime(1, now, 0.002);
-    env1GateSrc.offset.setTargetAtTime(0, now + 0.02, 0.01);
-    flashLed('env1');
     clearTimeout(envSchedTimer);
     envSchedTimer = setTimeout(scheduleEnvLoop, Math.max(20, (a+d)*1000 - 15));
   }
@@ -1155,9 +1025,6 @@
     envLoopSrc2.offset.cancelScheduledValues(now);
     envLoopSrc2.offset.setValueCurveAtTime(envCurveArray(params.env2Curve, true), now, a);
     envLoopSrc2.offset.setValueCurveAtTime(envCurveArray(params.env2Curve, false), now + a, d);
-    env2GateSrc.offset.setTargetAtTime(1, now, 0.002);
-    env2GateSrc.offset.setTargetAtTime(0, now + 0.02, 0.01);
-    flashLed('env2');
     clearTimeout(envSchedTimer2);
     envSchedTimer2 = setTimeout(scheduleEnvLoop2, Math.max(20, (a+d)*1000 - 15));
   }
@@ -1166,7 +1033,7 @@
   function applyOscMode(){
     if(!ctx) return;
     const now = ctx.currentTime;
-    const mode = Math.round(clampv(baseOf('oscMode','oscmode') + (cvLive.oscmode||0), 0, 5));
+    const mode = Math.round(clampv(params.oscMode, 0, 5));
     const amt = clampv(baseOf('oscModAmt','oscamt') + (cvLive.oscamt||0), 0, 1);
     fmInteractGain.gain.setTargetAtTime(mode===1 ? amt*800 : 0, now, 0.02);
     amInteractGain.gain.setTargetAtTime((mode===2||mode===3) ? amt : 0, now, 0.02);
@@ -1214,7 +1081,7 @@
     sync();
     recordIfEditing();
     if(ctx && patchCables.length < 5 && Math.random() < 0.4){
-      const srcIds = ['loopenv','loopenv2','env1gate','env2gate','lfo1','lfo2','randgen1','randgen2','oscA','oscB'];
+      const srcIds = ['lfo','random','follow','loopenv','loopenv2','rungler','oscA','oscB'];
       const dstIds = destDefs.map(d => d.id);
       addPatch(srcIds[Math.floor(Math.random()*srcIds.length)], dstIds[Math.floor(Math.random()*dstIds.length)]);
     }
@@ -1276,14 +1143,12 @@
 
   // ---------- Patch bay ----------
   function getSourceNode(id){
+    if(id === 'lfo') return lfoSrc;
+    if(id === 'random') return randSrc;
+    if(id === 'follow') return envSrc;
     if(id === 'loopenv') return envLoopSrc;
     if(id === 'loopenv2') return envLoopSrc2;
-    if(id === 'env1gate') return env1GateSrc;
-    if(id === 'env2gate') return env2GateSrc;
-    if(id === 'lfo1') return lfo1Node;
-    if(id === 'lfo2') return lfo2Node;
-    if(id === 'randgen1') return randGen1Src;
-    if(id === 'randgen2') return randGen2Src;
+    if(id === 'rungler') return runglerNode;
     if(id === 'oscA') return oscASum;
     if(id === 'oscB') return oscBSum;
   }
@@ -1741,6 +1606,7 @@
       if(frame % 2 === 0){
         vuL.style.height = Math.min(100, (peakL/128)*130) + '%';
         vuR.style.height = Math.min(100, (peakR/128)*130) + '%';
+        if(ctx && !isMute) envSrc.offset.setTargetAtTime(Math.max(peakL,peakR)/128, ctx.currentTime, 0.06);
       }
     }
     draw();
