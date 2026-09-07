@@ -40,6 +40,13 @@
   .rec-indicator{ border:2px solid var(--red); color:var(--red); animation: recblink 1s step-start infinite; }
   @keyframes recblink{ 50%{ border-color: transparent; color: var(--text-dim); } }
   .iconbtn{ display:flex; align-items:center; justify-content:center; width:42px; height:38px; padding:0; color:var(--amber); }
+  .aboutpopup{ position:fixed; top:60px; right:20px; z-index:50; width:280px; max-width:80vw;
+    background:#1c1424; border:1px solid var(--amber-dim); border-radius:8px; padding:14px 16px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.6); display:none; }
+  .aboutpopup.open{ display:block; }
+  .aboutpopup-close{ position:absolute; top:6px; right:10px; cursor:pointer; color:var(--text-dim); font-size:1rem; }
+  .aboutpopup-close:hover{ color:var(--amber); }
+  .aboutpopup-body{ font-size:0.68rem; line-height:1.6; color:var(--text); margin-top:6px; }
   .iconbtn.on{ background:var(--amber); color:#1a1420; }
   .iconbtn.muted{ color:var(--text-dim); }
   .iconbtn svg{ display:block; }
@@ -53,7 +60,7 @@
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 6px 18px rgba(0,0,0,0.35);
     -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
   }
-  .faceplate.compact{ zoom:0.72; }
+  /* compact mode removed */
   /* Touch devices get bigger hit targets on the small interactive bits —
      desktop mouse users keep the tighter, denser layout */
   @media (pointer:coarse){
@@ -125,6 +132,8 @@
     box-shadow:0 2px 4px rgba(0,0,0,0.45);
   }
   .plate.armed{ background:linear-gradient(180deg,#fff,#ffe9a8); box-shadow:0 0 13px rgba(255,255,255,0.85); }
+  .platesrow{ flex-basis:100%; display:flex; justify-content:center; gap:16px; margin-top:24px; padding-top:12px;
+    border-top:1px dashed var(--panel-edge); flex-wrap:wrap; }
 
   .jackitem{ display:flex; flex-direction:column; align-items:center; width:56px; }
   .randgen{ display:flex; flex-direction:column; align-items:center; gap:6px; width:56px; }
@@ -144,9 +153,6 @@
   .groupbreak{ flex-basis:100%; height:22px; }
   .groupbreak:first-child{ height:0; }
 
-  .footrow{ position:relative; z-index:2; margin-top:18px; padding-top:10px; border-top:1px dashed var(--panel-edge);
-    display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
-  .patchhint{ font-size:0.58rem; color:var(--text-dim); line-height:1.5; max-width:520px; }
   .cablemenu{ position:absolute; z-index:10; background:#1c1424; border:1px solid var(--amber-dim); border-radius:6px;
     padding:10px 12px; box-shadow:0 6px 18px rgba(0,0,0,0.5); display:none; width:150px; }
   .cablemenu-label{ font-size:0.6rem; letter-spacing:1px; color:var(--text-dim); text-transform:uppercase; margin-bottom:6px; }
@@ -198,7 +204,19 @@
       </svg>
     </button>
     <button class="btn rec-indicator" id="recIndicator" style="display:none;">REC 0:00</button>
-    <button class="btn" id="compactToggle" title="Toggle compact layout for small screens">COMPACT</button>
+    <button class="btn" id="randomBtn">RANDOM</button>
+    <button class="btn" id="randomPatchBtn">RANDOM PATCH</button>
+    <button class="btn" id="clearpatch">CLEAR PATCHES</button>
+    <button class="btn iconbtn" id="aboutBtn" title="About / help" aria-label="About and help">?</button>
+  </div>
+
+  <div class="aboutpopup" id="aboutPopup">
+    <div class="aboutpopup-close" id="aboutClose">&times;</div>
+    <div class="aboutpopup-body">
+      <p>Cyan jacks are outputs, violet jacks are inputs. Drag between them to patch. Click the dot on a cable for its attenuverter, double-click the dot (or click the cable itself) to remove it.</p>
+      <p>Commands (type into the field by the scope, or use the keyboard on desktop): <b>1-0</b> play a preset, <b>ed3</b> arm/exit edit mode on preset 3, <b>xy</b> toggle the Lissajous scope, <b>rd</b> randomize, <b>xprt</b> start/stop recording, <b>n3name</b> name preset 3.</p>
+      <p><!-- more notes to come --></p>
+    </div>
   </div>
 
   <div class="faceplate">
@@ -212,10 +230,6 @@
     <div class="minijack-scope" id="miniScope"><canvas id="miniScopeCanvas" width="84" height="84"></canvas></div>
     <div class="steppopup" id="stepPopup"></div>
     <div class="items" id="items"></div>
-    <div class="footrow">
-      <div class="patchhint">Cyan jacks are outputs, violet jacks are inputs. Drag between them to patch. Click the dot on a cable for its attenuverter, double-click the dot (or click the cable itself) to remove it.</div>
-      <button class="btn" id="clearpatch" style="font-size:0.6rem;">CLEAR PATCHES</button>
-    </div>
   </div>
 
   <div class="scopewrap">
@@ -226,7 +240,7 @@
         <div class="vu"><i id="vuL"></i></div>
         <div class="vu"><i id="vuR"></i></div>
       </div>
-      <input type="text" id="cmdInput" class="cmdinput" placeholder="1-0 / ed3 / xy / rd / xprt" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      <input type="text" id="cmdInput" class="cmdinput" placeholder="1-0 / ed3 / xy / rd / xprt / n3name" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
     </div>
   </div>
   <div class="legend"><span><i style="background:var(--amber);"></i>Left</span><span><i style="background:var(--cyan);"></i>Right</span></div>
@@ -258,6 +272,7 @@
   let audioReady = false;
   let cvLive = {}, cvSum = {}, cvMonitorNode, cvMonitorSilent;
   let presets = new Array(10).fill(null);
+  let presetNames = new Array(10).fill(null);
   let editingSlot = null;
   let heldPresetSlot = null, preHoldSnapshot = null;
   let lissajous = false;
@@ -311,6 +326,19 @@
 
   // Triangles are preset-recall pads now, numbered to match the keyboard row 1..9,0
   function keyLabel(slot){ return slot === 9 ? '0' : String(slot+1); }
+  function randomizedValues(){
+    const vals = {};
+    config.forEach(c => {
+      if(c.id === 'drive' || c.id === 'bitcrush') vals[c.id] = c.min;
+      else if(c.id === 'pan') vals[c.id] = 0;
+      else vals[c.id] = c.min + Math.random()*(c.max-c.min);
+    });
+    return vals;
+  }
+  function generateDefaultPresets(){
+    for(let i=0;i<10;i++) presets[i] = { values: randomizedValues(), cables: [] };
+    termLog('> 10 random presets generated on the triangles (1-9,0). Name one with n<number><name>.');
+  }
   function clampv(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
   // Continuous 3-way morph across a single knob: 0=sine, 0.5=triangle, 1=square
   function waveGains(m){
@@ -372,8 +400,8 @@
   // ---------- Knobs grouped in space and color by function (no visible labels — kept unmarked on purpose) ----------
   const groups = [
     { key:'mod', items:[
-      {t:'knob', id:'envAttack'}, {t:'knob', id:'env2Attack'}, {t:'knob', id:'envDecay'}, {t:'knob', id:'env2Decay'},
-      {t:'knob', id:'envCurve'}, {t:'knob', id:'env2Curve'},
+      {t:'knob', id:'envAttack'}, {t:'knob', id:'envDecay'}, {t:'knob', id:'envCurve'},
+      {t:'knob', id:'env2Attack'}, {t:'knob', id:'env2Decay'}, {t:'knob', id:'env2Curve'},
       {t:'knob', id:'lfo1Speed'}, {t:'knob', id:'lfo1Wave'}, {t:'knob', id:'lfo2Speed'}, {t:'knob', id:'lfo2Wave'},
       {t:'randgen', id:1}, {t:'randgen', id:2},
     ]},
@@ -551,7 +579,6 @@
     const outer = document.createElement('div');
     outer.className = 'plate'; outer.id = `plate-${idx}`; outer.title = 'Preset ' + keyLabel(idx);
     outer.innerText = keyLabel(idx);
-    scatter(outer, 'plate'+idx);
     outer.addEventListener('pointerdown', e => { outer.setPointerCapture(e.pointerId); playPresetMomentary(idx, true); });
     outer.addEventListener('pointerup', () => playPresetMomentary(idx, false));
     outer.addEventListener('pointercancel', () => playPresetMomentary(idx, false));
@@ -578,19 +605,6 @@
     return wrap;
   }
 
-  // Plates are scattered through the knobs rather than clustered — interleave
-  // roughly one plate every few knob items instead of a dedicated row.
-  let plateCursor = 0;
-  let itemsSinceLastPlate = 0;
-  function maybeDropPlate(){
-    if(plateCursor >= plateOrder.length) return;
-    itemsSinceLastPlate++;
-    const gap = 2 + (plateCursor % 3);
-    if(itemsSinceLastPlate >= gap){
-      itemsHost.appendChild(buildPlate(plateOrder[plateCursor]));
-      plateCursor++; itemsSinceLastPlate = 0;
-    }
-  }
   groups.forEach(g => {
     const brk = document.createElement('div'); brk.className = 'groupbreak';
     itemsHost.appendChild(brk);
@@ -599,10 +613,11 @@
       else if(item.t === 'src') itemsHost.appendChild(buildJackItem('src', item.id, srcLabel[item.id] || item.id));
       else if(item.t === 'dst') itemsHost.appendChild(buildJackItem('dst', item.id, destLabel[item.id] || item.id));
       else if(item.t === 'randgen') itemsHost.appendChild(buildRandGen(item.id));
-      maybeDropPlate();
     });
   });
-  while(plateCursor < plateOrder.length) itemsHost.appendChild(buildPlate(plateOrder[plateCursor++]));
+  const platesRow = document.createElement('div'); platesRow.className = 'platesrow';
+  plateOrder.forEach(idx => platesRow.appendChild(buildPlate(idx)));
+  itemsHost.appendChild(platesRow);
   config.forEach(updateKnobVisual);
 
   // ---------- Audio graph ----------
@@ -1196,14 +1211,16 @@
   });
   updatePowerIcon();
 
-  document.getElementById('compactToggle').addEventListener('click', function(){
-    const on = document.querySelector('.faceplate').classList.toggle('compact');
-    this.classList.toggle('on', on);
-    updateCables();
-  });
-
   function buzz(ms){ if(navigator.vibrate) navigator.vibrate(ms); }
 
+  const randomPatchSrcIds = ['loopenv','loopenv2','env1gate','env2gate','lfo1','lfo2','randgen1','randgen2','oscA','oscB'];
+  function runRandomPatch(){
+    if(!ctx || patchCables.length >= 8) { termLog('> patch bay is full-ish, clear some cables first.'); return; }
+    const dstIds = destDefs.map(d => d.id);
+    const srcId = randomPatchSrcIds[Math.floor(Math.random()*randomPatchSrcIds.length)];
+    const dstId = dstIds[Math.floor(Math.random()*dstIds.length)];
+    addPatch(srcId, dstId);
+  }
   function runRandomize(){
     config.forEach(c => {
       if(c.id === 'drive' || c.id === 'bitcrush'){ params[c.id] = c.min; }
@@ -1213,13 +1230,15 @@
     });
     sync();
     recordIfEditing();
-    if(ctx && patchCables.length < 5 && Math.random() < 0.4){
-      const srcIds = ['loopenv','loopenv2','env1gate','env2gate','lfo1','lfo2','randgen1','randgen2','oscA','oscB'];
-      const dstIds = destDefs.map(d => d.id);
-      addPatch(srcIds[Math.floor(Math.random()*srcIds.length)], dstIds[Math.floor(Math.random()*dstIds.length)]);
-    }
+    if(ctx && patchCables.length < 5 && Math.random() < 0.4) runRandomPatch();
     termLog('> rd.');
   }
+  document.getElementById('randomBtn').addEventListener('click', runRandomize);
+  document.getElementById('randomPatchBtn').addEventListener('click', runRandomPatch);
+
+  const aboutPopup = document.getElementById('aboutPopup');
+  document.getElementById('aboutBtn').addEventListener('click', () => aboutPopup.classList.toggle('open'));
+  document.getElementById('aboutClose').addEventListener('click', () => aboutPopup.classList.remove('open'));
 
   // ---------- WAV recorder ----------
   function encodeWav(buffersL, buffersR, sampleRate){
@@ -1350,23 +1369,24 @@
     bulkOp = false;
     termLog(`> ${(state.cables||[]).length} cable(s) restored`);
   }
+  function presetLabel(slot){ return presetNames[slot] ? `${keyLabel(slot)} (${presetNames[slot]})` : keyLabel(slot); }
   function playPresetMomentary(slot, isDown){
     if(!ctx || editingSlot !== null) return;
     if(isDown){
       if(heldPresetSlot !== null) return;
-      if(!presets[slot]){ termLog(`preset ${keyLabel(slot)} — empty`); return; }
+      if(!presets[slot]){ termLog(`preset ${presetLabel(slot)} — empty`); return; }
       heldPresetSlot = slot;
       preHoldSnapshot = snapshotState();
       applyPreset(presets[slot]);
       setActiveTriangle(slot, true);
       buzz(15);
-      termLog(`> preset ${keyLabel(slot)} playing`);
+      termLog(`> preset ${presetLabel(slot)} playing`);
     } else {
       if(heldPresetSlot !== slot) return;
       heldPresetSlot = null;
       applyPreset(preHoldSnapshot);
       setActiveTriangle(slot, false);
-      termLog(`> preset ${keyLabel(slot)} released`);
+      termLog(`> preset ${presetLabel(slot)} released`);
     }
   }
   function enterEditMode(slot){
@@ -1374,11 +1394,11 @@
     editingSlot = slot;
     clearAllTriangles();
     setActiveTriangle(slot, true);
-    termLog(`> EDIT MODE — recording to preset ${keyLabel(slot)}`);
+    termLog(`> EDIT MODE — recording to preset ${presetLabel(slot)}`);
   }
   function exitEditMode(){
     if(editingSlot === null) return;
-    termLog(`> preset ${keyLabel(editingSlot)} saved, edit mode off`);
+    termLog(`> preset ${presetLabel(editingSlot)} saved, edit mode off`);
     setActiveTriangle(editingSlot, false);
     editingSlot = null;
   }
@@ -1426,6 +1446,16 @@
   // keyboard to hold a key down on) — the on-screen field submits a whole
   // command at once, so digits get a short auto-release instead of a hold. ----------
   function runTypedCommand(raw){
+    const rawTrim = raw.trim();
+    const nameMatch = rawTrim.match(/^[nN]([0-9])(\S+)$/);
+    if(nameMatch){
+      const slot = nameMatch[1] === '0' ? 9 : (parseInt(nameMatch[1],10) - 1);
+      presetNames[slot] = nameMatch[2];
+      const plateEl = document.getElementById('plate-'+slot);
+      if(plateEl) plateEl.title = `Preset ${keyLabel(slot)} — ${nameMatch[2]}`;
+      termLog(`> preset ${keyLabel(slot)} named "${nameMatch[2]}"`);
+      return;
+    }
     const str = raw.trim().toLowerCase().replace(/\s+/g,'');
     if(!str) return;
     if(str === 'xy'){ lissajous = !lissajous; termLog(`> lissajous ${lissajous?'on':'off'}`); return; }
@@ -1745,6 +1775,8 @@
     }
     draw();
   }
+
+  generateDefaultPresets();
 })();
 </script>
 </body>
