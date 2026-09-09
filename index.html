@@ -138,6 +138,13 @@
   .jackitem{ display:flex; flex-direction:column; align-items:center; width:56px; }
   .randgen{ display:flex; flex-direction:column; align-items:center; gap:6px; width:56px; }
   .randgen-label{ font-size:0.56rem; letter-spacing:1px; color:var(--text-dim); writing-mode:vertical-rl; text-orientation:mixed; }
+  .modebtn{
+    width:18px; height:18px; border-radius:50%;
+    background:linear-gradient(180deg,#e8c96a,var(--amber));
+    display:flex; align-items:center; justify-content:center;
+    font-size:0.42rem; font-weight:bold; color:#1a1420; cursor:pointer;
+    box-shadow:0 1px 3px rgba(0,0,0,0.45); pointer-events:auto; touch-action:none;
+  }
   .jack{
     width:21px; height:21px; border-radius:50%;
     border:4px solid var(--jcolor, var(--cyan));
@@ -174,8 +181,13 @@
   .minijack-scope canvas{ width:100%; height:100%; display:block; }
 
   .scopewrap{ display:flex; gap:14px; align-items:center; margin-top:16px; flex-wrap:wrap; }
-  .scopebox{ position:relative; }
+  .scopebox{ position:relative; height:150px; width:360px; max-width:100%;
+    background:#150f1a; border:1px solid var(--panel-edge); border-radius:4px; }
   canvas{ background:#150f1a; display:block; border:1px solid var(--panel-edge); border-radius:4px; }
+  #scope{
+    position:absolute; inset:0; width:100%; height:100%; z-index:0;
+    opacity:0.32; pointer-events:none; border:none; border-radius:6px;
+  }
   .terminal{ position:absolute; top:6px; left:9px; right:9px; font-size:0.72rem; line-height:1.5;
     color:#8ef08e; font-family:'Courier New', monospace; pointer-events:none; text-shadow:0 0 4px rgba(0,0,0,0.9);
     max-height:130px; overflow:hidden; -webkit-user-select:none; user-select:none; }
@@ -214,12 +226,13 @@
     <div class="aboutpopup-close" id="aboutClose">&times;</div>
     <div class="aboutpopup-body">
       <p>Cyan jacks are outputs, violet jacks are inputs. Drag between them to patch. Click the dot on a cable for its attenuverter, double-click the dot (or click the cable itself) to remove it.</p>
-      <p>Commands (type into the field by the scope, or use the keyboard on desktop): <b>1-0</b> play a preset, <b>ed3</b> arm/exit edit mode on preset 3, <b>xy</b> toggle the Lissajous scope, <b>rd</b> randomize, <b>xprt</b> start/stop recording, <b>n3name</b> name preset 3.</p>
+      <p>Commands (type into the field by the scope, or use the keyboard on desktop): <b>1-0</b> play a preset, <b>ed3</b> arm/exit edit mode on preset 3, <b>xy</b> toggle the Lissajous scope, <b>rd</b> randomize, <b>xprt</b> start/stop recording, <b>n3name</b> name preset 3, <b>fllp/flhp/flbp/flnt/floff</b> set Filter2's mode.</p>
       <p><!-- more notes to come --></p>
     </div>
   </div>
 
   <div class="faceplate">
+    <canvas id="scope" width="900" height="500"></canvas>
     <svg id="cableLayer"></svg>
     <div class="cablemenu" id="cableMenu">
       <div class="cablemenu-label">Attenuverter</div>
@@ -234,13 +247,12 @@
 
   <div class="scopewrap">
     <div class="scopebox">
-      <canvas id="scope" width="340" height="230"></canvas>
       <div class="terminal" id="terminal"></div>
       <div class="vus">
         <div class="vu"><i id="vuL"></i></div>
         <div class="vu"><i id="vuR"></i></div>
       </div>
-      <input type="text" id="cmdInput" class="cmdinput" placeholder="1-0 / ed3 / xy / rd / xprt / n3name" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      <input type="text" id="cmdInput" class="cmdinput" placeholder="1-0 / fllp / xy / rd / xprt / n3name" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
     </div>
   </div>
   <div class="legend"><span><i style="background:var(--amber);"></i>Left</span><span><i style="background:var(--cyan);"></i>Right</span></div>
@@ -259,6 +271,7 @@
   let oscBTri, oscBSqr, oscBSine, oscBTriGain, oscBSqrGain, oscBSineGain, oscBSum;
   let fmInteractGain, amInteractGain, syncShape, syncInteractGain, oscAAmStage, oscBFoldGain;
   let groupLIn, groupRIn, delayTaps = [], tapSumL, tapSumR, merger, filter, dcBlock;
+  let filter2, fl2Mode = 'lowpass', absorbMode = 'lowpass';
   let fbCompressor, fbClip, fbSplit, feedGainL, feedGainR, crossGainL, crossGainR;
   let dryGain, wetGain, outPan, driveN, crushN, masterLimiter, mainG, muteGate;
   let splitAnalyser, analyserL, analyserR;
@@ -313,6 +326,9 @@
     { id:'lfo2Wave',      label:'LFO2 Wave',    min:0,    max:7,    def:1,    size:'sm', section:'mod' },
 
     { id:'absorb',        label:'Absorb Filter',min:80,   max:8000, def:1200, size:'lg', section:'fx' },
+    { id:'absorbReso',     label:'Absorb Reso',  min:0.1,  max:20,   def:1.1,  size:'sm', section:'fx' },
+    { id:'flCutoff',       label:'Filter2 Cutoff', min:80, max:8000, def:4000, size:'lg', section:'osc' },
+    { id:'flReso',         label:'Filter2 Reso', min:0.1,  max:20,   def:0.8,  size:'md', section:'osc' },
     { id:'activation',    label:'VCA Open',     min:0,    max:1,    def:0.5,  size:'lg', section:'fx' },
     { id:'envVcaDepth',   label:'Env\u2192VCA Depth', min:0, max:1, def:0.15, size:'md', section:'fx' },
     { id:'lpgAmount',     label:'LPG Amount',   min:0,    max:1,    def:0.2,  size:'md', section:'fx' },
@@ -381,6 +397,9 @@
     smear:        { in:['smear'] },
     drive:        { in:['sat'] },
     bitcrush:     { in:['crush'] },
+    absorbReso:   { in:['absres'] },
+    flCutoff:     { in:['fl2co'] },
+    flReso:       { in:['fl2res'] },
   };
   knobIO.pitch.out = 'oscA';
 
@@ -390,12 +409,15 @@
     subton:'Sub Level CV', instab:'Instability CV', mix:'Dry/Wet CV', spread:'Spread CV', smear:'Smear CV',
     sat:'Saturation CV', crush:'Bitcrush CV', oscamt:'Interaction Amt CV', oscmode:'Mode CV',
     trig1:'Env1 Trigger', trig2:'Env2 Trigger', lfo1cv:'LFO1 Speed CV', lfo1ping:'LFO1 Ping (sync)',
-    lfo2cv:'LFO2 Speed CV', lfo2ping:'LFO2 Ping (sync)', randgen1ping:'Random1 Ping', randgen2ping:'Random2 Ping' };
+    lfo2cv:'LFO2 Speed CV', lfo2ping:'LFO2 Ping (sync)', randgen1ping:'Random1 Ping', randgen2ping:'Random2 Ping',
+    absres:'Absorb Reso CV', fl2co:'Filter2 Cutoff CV', fl2res:'Filter2 Reso CV' };
   const srcLabel = { loopenv:'Env1 out', loopenv2:'Env2 out', env1gate:'Env1 Gate out', env2gate:'Env2 Gate out',
     oscA:'Osc A out', oscB:'Osc B out', lfo1:'LFO1 out', lfo2:'LFO2 out', randgen1:'Random 1 out', randgen2:'Random 2 out' };
   const oscModeNames = ['Off','FM','AM','Ring Mod','Wavefolder','Sync (approx)'];
   const lfoWaveNames = ['Sine','Triangle','Ramp Up','Ramp Down','Square','Pulse','Square Random','Softened Random'];
   const stepNamesFor = { oscMode:oscModeNames, lfo1Wave:lfoWaveNames, lfo2Wave:lfoWaveNames };
+  const filterModes = ['lowpass','highpass','bandpass','notch','allpass'];
+  const filterModeAbbr = { lowpass:'LP', highpass:'HP', bandpass:'BP', notch:'NT', allpass:'--' };
 
   // ---------- Knobs grouped in space and color by function (no visible labels — kept unmarked on purpose) ----------
   const groups = [
@@ -409,13 +431,15 @@
       {t:'knob', id:'pitch'}, {t:'knob', id:'oscWaveMorph'}, {t:'knob', id:'tones'},
       {t:'knob', id:'sub'}, {t:'knob', id:'pitchB'}, {t:'knob', id:'oscBWaveMorph'},
       {t:'knob', id:'oscMode'}, {t:'knob', id:'oscModAmt'}, {t:'knob', id:'instability'},
+      {t:'knob', id:'flCutoff'}, {t:'knob', id:'flReso'}, {t:'filtermode', which:'fl2'},
     ]},
     { key:'delay', items:[
       {t:'knob', id:'mix'}, {t:'knob', id:'time'}, {t:'knob', id:'spread'},
       {t:'knob', id:'smear'}, {t:'knob', id:'decay'}, {t:'knob', id:'width'},
     ]},
     { key:'fx', items:[
-      {t:'knob', id:'absorb'}, {t:'knob', id:'envVcaDepth'}, {t:'knob', id:'lpgAmount'}, {t:'knob', id:'drive'},
+      {t:'knob', id:'absorb'}, {t:'knob', id:'absorbReso'}, {t:'filtermode', which:'absorb'},
+      {t:'knob', id:'envVcaDepth'}, {t:'knob', id:'lpgAmount'}, {t:'knob', id:'drive'},
       {t:'knob', id:'bitcrush'}, {t:'knob', id:'pan'}, {t:'knob', id:'activation'},
     ]},
   ];
@@ -430,7 +454,7 @@
     // FM inputs get their own shade so a paired input (e.g. Pitch + FM) is easy to tell apart at a glance
     fm:'#f2c14e', fmb:'#f2c14e',
     // filter / fold: red
-    absorb:'#e2584f', fold:'#e2584f',
+    absorb:'#e2584f', fold:'#e2584f', absres:'#e2584f', fl2co:'#e2584f', fl2res:'#e2584f',
     // envelope / gate / VCA: yellow
     vca:'#e8d24a', envAtk:'#e8d24a', envDcy:'#e8d24a', env2atk:'#e8d24a', env2dcy:'#e8d24a',
     feedback:'#e8d24a', loopenv:'#e8d24a', loopenv2:'#e8d24a', env1gate:'#e8d24a', env2gate:'#e8d24a',
@@ -604,6 +628,17 @@
     scatter(wrap, 'randgen'+idx);
     return wrap;
   }
+  // A small half-size touchpad-style button that cycles a filter's mode
+  // (lowpass/highpass/bandpass/notch/off) on click.
+  function buildFilterModeButton(which){
+    const btn = document.createElement('div');
+    btn.className = 'modebtn'; btn.id = 'modebtn-'+which;
+    btn.title = (which==='fl2' ? 'Filter2' : 'Absorb') + ' mode (click to cycle)';
+    btn.innerText = filterModeAbbr[which==='fl2' ? fl2Mode : absorbMode];
+    btn.addEventListener('pointerdown', e => { e.stopPropagation(); cycleFilterMode(which); });
+    scatter(btn, 'modebtn'+which);
+    return btn;
+  }
 
   groups.forEach(g => {
     const brk = document.createElement('div'); brk.className = 'groupbreak';
@@ -613,6 +648,7 @@
       else if(item.t === 'src') itemsHost.appendChild(buildJackItem('src', item.id, srcLabel[item.id] || item.id));
       else if(item.t === 'dst') itemsHost.appendChild(buildJackItem('dst', item.id, destLabel[item.id] || item.id));
       else if(item.t === 'randgen') itemsHost.appendChild(buildRandGen(item.id));
+      else if(item.t === 'filtermode') itemsHost.appendChild(buildFilterModeButton(item.which));
     });
   });
   const platesRow = document.createElement('div'); platesRow.className = 'platesrow';
@@ -799,10 +835,16 @@
     oscBFoldGain = ctx.createGain(); oscBFoldGain.gain.value = 0;
     oscBSum.connect(oscBFoldGain); oscBFoldGain.connect(oscMix);
 
+    // --- Resonant multimode filter, right after the oscillator section
+    // (before the wavefolder) — lowpass/highpass/bandpass/notch/off, default lowpass ---
+    filter2 = ctx.createBiquadFilter(); filter2.type = 'lowpass';
+    filter2.frequency.value = params.flCutoff; filter2.Q.value = params.flReso;
+    oscMix.connect(filter2);
+
     // --- True wavefolder: reflects at the boundary, never clips ---
     foldDrive = ctx.createGain(); foldDrive.gain.value = 1 + params.tones*11;
     foldNode = ctx.createScriptProcessor(1024, 1, 1); setFoldNode();
-    oscMix.connect(foldDrive).connect(foldNode);
+    filter2.connect(foldDrive).connect(foldNode);
 
     // --- Env1/Env2 -> VCA/LPG pair, wired in by default, right after the
     // fold and before anything else (including the delay loop and filter) ---
@@ -1033,9 +1075,14 @@
       { id:'lfo2ping', targets:[{ getNode:()=>cvSum.lfo2ping, sens:1 }] },
       { id:'randgen1ping', targets:[{ getNode:()=>cvSum.randgen1ping, sens:1 }] },
       { id:'randgen2ping', targets:[{ getNode:()=>cvSum.randgen2ping, sens:1 }] },
+      { id:'absres', targets:[{ getParam:()=>filter.Q, sens:8 }] },
+      { id:'fl2co', targets:[{ getParam:()=>filter2.frequency, sens:3200 }] },
+      { id:'fl2res', targets:[{ getParam:()=>filter2.Q, sens:8 }] },
     ];
 
     applyOscMode();
+    applyFilterMode('fl2');
+    applyFilterMode('absorb');
     scheduleEnvLoop();
     scheduleEnvLoop2();
     wireJacks();
@@ -1117,6 +1164,9 @@
     crossGainL.gain.setTargetAtTime(cross, now, 0.05);
     crossGainR.gain.setTargetAtTime(cross, now, 0.05);
     filter.frequency.setTargetAtTime(baseOf('absorb','absorb'), now, 0.01);
+    filter.Q.setTargetAtTime(baseOf('absorbReso','absres'), now, 0.01);
+    filter2.frequency.setTargetAtTime(baseOf('flCutoff','fl2co'), now, 0.01);
+    filter2.Q.setTargetAtTime(baseOf('flReso','fl2res'), now, 0.01);
     outPan.pan.setTargetAtTime(baseOf('pan','pan'), now, 0.02);
     setDriveCurve(clampv(baseOf('drive','sat') + (cvLive.sat||0), 1, 30));
     mainG.gain.setTargetAtTime(baseOf('activation','vca'), now, 0.02);
@@ -1191,6 +1241,28 @@
     const baseline = (mode===3 || mode===5) ? 0 : 1;
     oscAAmStage.gain.setTargetAtTime(baseline, now, 0.02);
     updateNormalizedPaths();
+  }
+
+  // ---------- Filter modes (Filter2 + Absorb): lowpass/highpass/bandpass/notch/off(allpass) ----------
+  function applyFilterMode(which){
+    if(!ctx) return;
+    const node = which === 'fl2' ? filter2 : filter;
+    const mode = which === 'fl2' ? fl2Mode : absorbMode;
+    node.type = mode;
+    const btn = document.getElementById('modebtn-'+which);
+    if(btn) btn.innerText = filterModeAbbr[mode];
+  }
+  function cycleFilterMode(which){
+    const cur = which === 'fl2' ? fl2Mode : absorbMode;
+    const next = filterModes[(filterModes.indexOf(cur)+1) % filterModes.length];
+    if(which === 'fl2') fl2Mode = next; else absorbMode = next;
+    applyFilterMode(which);
+    termLog(`> ${which==='fl2'?'Filter2':'Absorb'} mode: ${next}`);
+  }
+  function setFilterModeCommand(which, mode){
+    if(which === 'fl2') fl2Mode = mode; else absorbMode = mode;
+    applyFilterMode(which);
+    termLog(`> ${which==='fl2'?'Filter2':'Absorb'} mode: ${mode}`);
   }
 
   // ---------- Power / Mute ----------
@@ -1461,6 +1533,11 @@
     if(str === 'xy'){ lissajous = !lissajous; termLog(`> lissajous ${lissajous?'on':'off'}`); return; }
     if(str === 'rd'){ runRandomize(); return; }
     if(str === 'xprt'){ if(isRec) stopRecording(); else startRecording(); return; }
+    if(str === 'fllp'){ setFilterModeCommand('fl2', 'lowpass'); return; }
+    if(str === 'floff'){ setFilterModeCommand('fl2', 'allpass'); return; }
+    if(str === 'flhp'){ setFilterModeCommand('fl2', 'highpass'); return; }
+    if(str === 'flbp'){ setFilterModeCommand('fl2', 'bandpass'); return; }
+    if(str === 'flnt'){ setFilterModeCommand('fl2', 'notch'); return; }
     const edMatch = str.match(/^ed([0-9])$/);
     if(edMatch){
       const slot = edMatch[1] === '0' ? 9 : (parseInt(edMatch[1],10) - 1);
@@ -1732,7 +1809,17 @@
   }
 
   // ---------- Scope + VU + envelope follower ----------
+  function resizeScopeCanvas(){
+    const canvas = document.getElementById('scope');
+    const face = document.querySelector('.faceplate');
+    if(!canvas || !face) return;
+    canvas.width = Math.max(200, face.clientWidth);
+    canvas.height = Math.max(150, face.clientHeight);
+  }
+  window.addEventListener('resize', resizeScopeCanvas);
+
   function drawScope(){
+    resizeScopeCanvas();
     const canvas = document.getElementById('scope'), sCtx = canvas.getContext('2d');
     const len = analyserL.frequencyBinCount;
     const dataL = new Uint8Array(len), dataR = new Uint8Array(len);
@@ -1777,6 +1864,7 @@
   }
 
   generateDefaultPresets();
+  resizeScopeCanvas();
 })();
 </script>
 </body>
