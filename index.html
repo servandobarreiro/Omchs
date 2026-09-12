@@ -6,22 +6,25 @@
 <title>Omchs</title>
 <style>
   :root{
-    --bg: #100c14;
-    --panel-edge: #2c2135;
-    --amber: #dfb249;
-    --amber-dim: #8c7239;
-    --violet: #b98ff2;
-    --cyan: #6fd8d0;
-    --rose: #e8a8c8;
-    --red: #ff5d5d;
-    --text: #d9c8e8;
-    --text-dim: #7c6f8c;
+    /* Adwaita Dark (GNOME Text Editor dark scheme) palette, used where it fits */
+    --bg: #241f31;
+    --panel-edge: #3d3846;
+    --amber: #ffa348;
+    --amber-dim: #c64600;
+    --violet: #9141ac;
+    --cyan: #62a0ea;
+    --rose: #f66151;
+    --red: #e01b24;
+    --envcolor: #99c1f1;
+    --lfocolor: #3584e4;
+    --text: #f6f5f4;
+    --text-dim: #9a9996;
   }
   *{box-sizing:border-box;}
   body{
     margin:0; background:
-      radial-gradient(1200px 700px at 15% -10%, #1c1424 0%, transparent 60%),
-      radial-gradient(1000px 600px at 100% 0%, #14202a 0%, transparent 55%),
+      radial-gradient(1200px 700px at 15% -10%, #3d3846 0%, transparent 60%),
+      radial-gradient(1000px 600px at 100% 0%, #1a5fb4 0%, transparent 30%),
       var(--bg);
     color:var(--text); font-family: 'Courier New', ui-monospace, monospace;
     padding: 16px 14px 60px; min-height:100vh;
@@ -55,7 +58,7 @@
 
   .faceplate{
     position:relative;
-    background: linear-gradient(180deg, #1d1624, #170f1d);
+    background: linear-gradient(180deg, #2d2740, #1e1a29);
     border:1px solid var(--panel-edge); border-radius:6px; padding:26px 20px 16px;
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 6px 18px rgba(0,0,0,0.35);
     -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
@@ -79,6 +82,9 @@
   #cableLayer circle{ pointer-events:all; }
 
   .items{ position:relative; z-index:2; display:flex; flex-wrap:wrap; align-items:flex-end; gap: 8px 10px; pointer-events:none; }
+  .facehead{ position:relative; z-index:5; display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
+  .facefoot{ position:relative; z-index:5; display:flex; gap:14px; align-items:center; flex-wrap:wrap; margin-top:20px;
+    padding-top:12px; border-top:1px dashed var(--panel-edge); }
 
   .knob-wrap{ position:relative; display:flex; flex-direction:column; align-items:center; width: 76px; }
   .dialbox{ position:relative; margin: 26px 24px 24px; }
@@ -145,6 +151,9 @@
     font-size:0.42rem; font-weight:bold; color:#1a1420; cursor:pointer;
     box-shadow:0 1px 3px rgba(0,0,0,0.45); pointer-events:auto; touch-action:none;
   }
+  .filterdock{ display:flex; flex-direction:column; align-items:center; gap:5px; z-index:4; }
+  .modeleds{ display:flex; flex-direction:column; gap:3px; }
+  .modeled{ position:static; width:5px; height:5px; }
   .jack{
     width:21px; height:21px; border-radius:50%;
     border:4px solid var(--jcolor, var(--cyan));
@@ -155,6 +164,7 @@
   .jack.dragfrom{ box-shadow:0 0 0 4px rgba(255,255,255,0.35), 0 0 14px var(--jcolor, #fff); }
   .jack.dst{ border-color:var(--jcolor, var(--violet)); }
   .jack:hover{ box-shadow:0 0 10px var(--jcolor, currentColor), inset 0 0 3px rgba(0,0,0,0.9); }
+  .jack.gate{ width:14px; height:14px; border-width:3px; }
   .jacklabel{ font-size:0.55rem; color:var(--text-dim); margin-top:5px; text-align:center; line-height:1.2; }
 
   .groupbreak{ flex-basis:100%; height:22px; }
@@ -207,25 +217,10 @@
 </head>
 <body>
 <div class="wrap">
-  <div class="transport">
-    <button class="btn iconbtn" id="powerMute" title="Power on / Mute" aria-label="Power on or mute">
-      <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M3 9v6h4l5 5V4L7 9H3z" fill="currentColor" stroke="none"/>
-        <g class="waves"><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18 6a9 9 0 0 1 0 12"/></g>
-        <g class="mutedx"><path d="M16 9l6 6M22 9l-6 6"/></g>
-      </svg>
-    </button>
-    <button class="btn rec-indicator" id="recIndicator" style="display:none;">REC 0:00</button>
-    <button class="btn" id="randomBtn">RANDOM</button>
-    <button class="btn" id="randomPatchBtn">RANDOM PATCH</button>
-    <button class="btn" id="clearpatch">CLEAR PATCHES</button>
-    <button class="btn iconbtn" id="aboutBtn" title="About / help" aria-label="About and help">?</button>
-  </div>
-
   <div class="aboutpopup" id="aboutPopup">
     <div class="aboutpopup-close" id="aboutClose">&times;</div>
     <div class="aboutpopup-body">
-      <p>Cyan jacks are outputs, violet jacks are inputs. Drag between them to patch. Click the dot on a cable for its attenuverter, double-click the dot (or click the cable itself) to remove it.</p>
+      <p>Cyan jacks are outputs, violet jacks are inputs. Drag between them to patch. Click the dot on a cable for its attenuator, double-click the dot (or click the cable itself) to remove it.</p>
       <p>Commands (type into the field by the scope, or use the keyboard on desktop): <b>1-0</b> play a preset, <b>ed3</b> arm/exit edit mode on preset 3, <b>xy</b> toggle the Lissajous scope, <b>rd</b> randomize, <b>xprt</b> start/stop recording, <b>n3name</b> name preset 3, <b>fllp/flhp/flbp/flnt/floff</b> set Filter2's mode.</p>
       <p><!-- more notes to come --></p>
     </div>
@@ -235,27 +230,43 @@
     <canvas id="scope" width="900" height="500"></canvas>
     <svg id="cableLayer"></svg>
     <div class="cablemenu" id="cableMenu">
-      <div class="cablemenu-label">Attenuverter</div>
-      <input type="range" id="cableMenuRange" min="-100" max="100" value="50">
-      <div class="cablemenu-val" id="cableMenuVal">+50%</div>
+      <div class="cablemenu-label">Attenuator</div>
+      <input type="range" id="cableMenuRange" min="0" max="100" value="50">
+      <div class="cablemenu-val" id="cableMenuVal">50%</div>
       <button class="cablemenu-del" id="cableMenuDel">Delete cable</button>
     </div>
     <div class="minijack-scope" id="miniScope"><canvas id="miniScopeCanvas" width="84" height="84"></canvas></div>
     <div class="steppopup" id="stepPopup"></div>
-    <div class="items" id="items"></div>
-  </div>
 
-  <div class="scopewrap">
-    <div class="scopebox">
-      <div class="terminal" id="terminal"></div>
-      <div class="vus">
-        <div class="vu"><i id="vuL"></i></div>
-        <div class="vu"><i id="vuR"></i></div>
+    <div class="facehead">
+      <button class="btn iconbtn" id="powerMute" title="Power on / Mute" aria-label="Power on or mute">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9v6h4l5 5V4L7 9H3z" fill="currentColor" stroke="none"/>
+          <g class="waves"><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18 6a9 9 0 0 1 0 12"/></g>
+          <g class="mutedx"><path d="M16 9l6 6M22 9l-6 6"/></g>
+        </svg>
+      </button>
+      <button class="btn rec-indicator" id="recIndicator" style="display:none;">REC 0:00</button>
+      <button class="btn" id="randomBtn">RANDOM</button>
+      <button class="btn" id="randomPatchBtn">RANDOM PATCH</button>
+      <button class="btn" id="clearpatch">CLEAR PATCHES</button>
+      <button class="btn iconbtn" id="aboutBtn" title="About / help" aria-label="About and help">?</button>
+    </div>
+
+    <div class="items" id="items"></div>
+
+    <div class="facefoot">
+      <div class="scopebox">
+        <div class="terminal" id="terminal"></div>
+        <div class="vus">
+          <div class="vu"><i id="vuL"></i></div>
+          <div class="vu"><i id="vuR"></i></div>
+        </div>
+        <input type="text" id="cmdInput" class="cmdinput" placeholder="1-0 / fllp / xy / rd / xprt / n3name" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
       </div>
-      <input type="text" id="cmdInput" class="cmdinput" placeholder="1-0 / fllp / xy / rd / xprt / n3name" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      <div class="legend"><span><i style="background:var(--amber);"></i>Left</span><span><i style="background:var(--cyan);"></i>Right</span></div>
     </div>
   </div>
-  <div class="legend"><span><i style="background:var(--amber);"></i>Left</span><span><i style="background:var(--cyan);"></i>Right</span></div>
 </div>
 
 <script>
@@ -278,7 +289,7 @@
   let envLoopSrc, envLoopSrc2, env1GateSrc, env2GateSrc;
   let lfo1Node, lfo1Silent, lfo2Node, lfo2Silent, lfo1State, lfo2State;
   let randGen1Src, randGen2Src;
-  let vca1Stage, lpg1Filter, envToVca1Gain, envToLpg1Freq, vca2Stage, lpg2Filter, envToVca2Gain, envToLpg2Freq;
+  let vca1Stage, lpg1Filter, vca2Stage, lpg2Filter;
   let recTap, recSilent, recBuffersL = [], recBuffersR = [], isRec = false, isMute = false;
   let envSchedTimer = null, envSchedTimer2 = null;
   let patchCables = [], destDefs = [];
@@ -308,7 +319,7 @@
     { id:'oscModAmt',     label:'Interaction Amt', min:0, max:1,   def:0.3,  size:'sm', section:'osc' },
 
     { id:'mix',           label:'Dry/Wet',      min:0,    max:1,    def:0.85, size:'md', section:'delay' },
-    { id:'time',          label:'Delay Time',   min:0.02, max:1.8,  def:0.4,  size:'lg', section:'delay' },
+    { id:'time',          label:'Delay Time',   min:0.001, max:1.8,  def:0.4,  size:'lg', section:'delay' },
     { id:'spread',        label:'Spread',       min:0,    max:1,    def:0.5,  size:'md', section:'delay' },
     { id:'smear',         label:'Head Smear',   min:0,    max:0.3,  def:0.02, size:'sm', section:'delay' },
     { id:'decay',         label:'Feedback',     min:0,    max:0.99, def:0.6,  size:'lg', section:'delay' },
@@ -366,8 +377,10 @@
   // A patched cable "breaks normalization": once a jack has a cable in it,
   // the knob stops setting that parameter directly and the cable takes over
   // (the CV swings around a fixed neutral point instead of around the knob).
+  // A patched cable no longer overrides the knob — the knob stays the center/
+  // baseline value and CV oscillates around it, scaled by the cable's attenuator.
   function destPatched(destId){ return patchCables.some(c => c.dstId === destId); }
-  function baseOf(knobId, destId){ return destPatched(destId) ? configById[knobId].def : params[knobId]; }
+  function baseOf(knobId, destId){ return params[knobId]; }
 
   const knobIO = {
     pitch:        { in:['pitch','fm'] },
@@ -400,6 +413,7 @@
     absorbReso:   { in:['absres'] },
     flCutoff:     { in:['fl2co'] },
     flReso:       { in:['fl2res'] },
+    envVcaDepth:  { in:['envvcamod'] },
   };
   knobIO.pitch.out = 'oscA';
 
@@ -410,7 +424,7 @@
     sat:'Saturation CV', crush:'Bitcrush CV', oscamt:'Interaction Amt CV', oscmode:'Mode CV',
     trig1:'Env1 Trigger', trig2:'Env2 Trigger', lfo1cv:'LFO1 Speed CV', lfo1ping:'LFO1 Ping (sync)',
     lfo2cv:'LFO2 Speed CV', lfo2ping:'LFO2 Ping (sync)', randgen1ping:'Random1 Ping', randgen2ping:'Random2 Ping',
-    absres:'Absorb Reso CV', fl2co:'Filter2 Cutoff CV', fl2res:'Filter2 Reso CV' };
+    absres:'Absorb Reso CV', fl2co:'Filter2 Cutoff CV', fl2res:'Filter2 Reso CV', envvcamod:'Env\u2192VCA CV' };
   const srcLabel = { loopenv:'Env1 out', loopenv2:'Env2 out', env1gate:'Env1 Gate out', env2gate:'Env2 Gate out',
     oscA:'Osc A out', oscB:'Osc B out', lfo1:'LFO1 out', lfo2:'LFO2 out', randgen1:'Random 1 out', randgen2:'Random 2 out' };
   const oscModeNames = ['Off','FM','AM','Ring Mod','Wavefolder','Sync (approx)'];
@@ -431,14 +445,14 @@
       {t:'knob', id:'pitch'}, {t:'knob', id:'oscWaveMorph'}, {t:'knob', id:'tones'},
       {t:'knob', id:'sub'}, {t:'knob', id:'pitchB'}, {t:'knob', id:'oscBWaveMorph'},
       {t:'knob', id:'oscMode'}, {t:'knob', id:'oscModAmt'}, {t:'knob', id:'instability'},
-      {t:'knob', id:'flCutoff'}, {t:'knob', id:'flReso'}, {t:'filtermode', which:'fl2'},
+      {t:'knob', id:'flCutoff'}, {t:'knob', id:'flReso'},
     ]},
     { key:'delay', items:[
       {t:'knob', id:'mix'}, {t:'knob', id:'time'}, {t:'knob', id:'spread'},
       {t:'knob', id:'smear'}, {t:'knob', id:'decay'}, {t:'knob', id:'width'},
     ]},
     { key:'fx', items:[
-      {t:'knob', id:'absorb'}, {t:'knob', id:'absorbReso'}, {t:'filtermode', which:'absorb'},
+      {t:'knob', id:'absorb'}, {t:'knob', id:'absorbReso'},
       {t:'knob', id:'envVcaDepth'}, {t:'knob', id:'lpgAmount'}, {t:'knob', id:'drive'},
       {t:'knob', id:'bitcrush'}, {t:'knob', id:'pan'}, {t:'knob', id:'activation'},
     ]},
@@ -450,22 +464,28 @@
   // Buchla/Serge-inspired patch-point color coding, by function
   const jackColors = {
     // audio-rate: warm orange
-    pitch:'#e8944a', wave:'#e8944a', waveB:'#e8944a', oscA:'#e8944a', oscB:'#e8944a', oscamt:'#e8944a', oscmode:'#e8944a',
+    // audio-rate pitch/timbre CV: orange
+    pitch:'#ffa348', wave:'#ffa348', waveB:'#ffa348', oscamt:'#ffa348', oscmode:'#ffa348',
     // FM inputs get their own shade so a paired input (e.g. Pitch + FM) is easy to tell apart at a glance
-    fm:'#f2c14e', fmb:'#f2c14e',
-    // filter / fold: red
-    absorb:'#e2584f', fold:'#e2584f', absres:'#e2584f', fl2co:'#e2584f', fl2res:'#e2584f',
-    // envelope / gate / VCA: yellow
-    vca:'#e8d24a', envAtk:'#e8d24a', envDcy:'#e8d24a', env2atk:'#e8d24a', env2dcy:'#e8d24a',
-    feedback:'#e8d24a', loopenv:'#e8d24a', loopenv2:'#e8d24a', env1gate:'#e8d24a', env2gate:'#e8d24a',
-    // LFO / random / chaos modulation: blue
-    lfo1:'#5a9fe8', lfo2:'#5a9fe8', lfo1cv:'#5a9fe8', lfo2cv:'#5a9fe8', instab:'#5a9fe8',
-    randgen1:'#5a9fe8', randgen2:'#5a9fe8',
-    // envelope/LFO trigger & ping inputs get their own distinct color (gate/trigger convention)
-    trig1:'#ff8fa3', trig2:'#ff8fa3', lfo1ping:'#ff8fa3', lfo2ping:'#ff8fa3', randgen1ping:'#ff8fa3', randgen2ping:'#ff8fa3',
+    fm:'#f6d32d', fmb:'#f6d32d',
+    // filter-related CV: purple
+    absorb:'#c061cb', fold:'#c061cb', absres:'#c061cb', fl2co:'#c061cb', fl2res:'#c061cb',
+    // envelope / gate-knob / VCA CV inputs: yellow
+    vca:'#f5c211', envAtk:'#f5c211', envDcy:'#f5c211', env2atk:'#f5c211', env2dcy:'#f5c211',
+    feedback:'#f5c211', envvcamod:'#f5c211',
+    // LFO/instability CV inputs: mid blue
+    lfo1cv:'#3584e4', lfo2cv:'#3584e4', instab:'#3584e4',
+    // modulation OUTPUTS (LFOs, envelopes, random gens): light blue
+    lfo1:'#99c1f1', lfo2:'#99c1f1', loopenv:'#99c1f1', loopenv2:'#99c1f1', randgen1:'#99c1f1', randgen2:'#99c1f1',
+    // audio OUTPUTS (the oscillators themselves): dark blue
+    oscA:'#1a5fb4', oscB:'#1a5fb4',
+    // gate / trigger patches: reserved red, smaller connectors (see .jack.gate)
+    trig1:'#e01b24', trig2:'#e01b24', lfo1ping:'#e01b24', lfo2ping:'#e01b24',
+    randgen1ping:'#e01b24', randgen2ping:'#e01b24', env1gate:'#e01b24', env2gate:'#e01b24',
     // utility / everything else: green
-    pan:'#7fd88a', mix:'#7fd88a', delay:'#7fd88a', spread:'#7fd88a', smear:'#7fd88a', sat:'#7fd88a', crush:'#7fd88a', subton:'#7fd88a',
+    pan:'#33d17a', mix:'#33d17a', delay:'#33d17a', spread:'#33d17a', smear:'#33d17a', sat:'#33d17a', crush:'#33d17a', subton:'#33d17a',
   };
+  const gateJackIds = new Set(['trig1','trig2','lfo1ping','lfo2ping','randgen1ping','randgen2ping','env1gate','env2gate']);
   function jackColorFor(id){
     if(jackColors[id]) return jackColors[id];
     if(id.startsWith('plate')) return '#ff8fa3';
@@ -496,7 +516,7 @@
   }
   function makeJack(kind, id, label){
     const j = document.createElement('div');
-    j.className = 'jack' + (kind==='dst' ? ' dst' : '');
+    j.className = 'jack' + (kind==='dst' ? ' dst' : '') + (gateJackIds.has(id) ? ' gate' : '');
     j.dataset.kind = kind; j.dataset.id = id;
     j.id = `jack-${kind==='dst'?'dst':'src'}-${id}`;
     j.title = label || id;
@@ -531,7 +551,12 @@
     const io = knobIO[c.id] || {};
     const wrap = document.createElement('div');
     wrap.className = `knob-wrap size-${c.size}`;
-    wrap.style.setProperty('--accent', accentBySection[c.section]);
+    // Envelopes and LFOs get their own similar-but-distinct blue shades so
+    // they're easy to tell apart from each other at a glance
+    let accent = accentBySection[c.section];
+    if(c.section === 'mod' && c.id.startsWith('env')) accent = 'var(--envcolor)';
+    else if(c.section === 'mod' && c.id.startsWith('lfo')) accent = 'var(--lfocolor)';
+    wrap.style.setProperty('--accent', accent);
 
     const dialbox = document.createElement('div'); dialbox.className = 'dialbox';
     const ring = document.createElement('div'); ring.className = 'ring';
@@ -571,6 +596,15 @@
       }
     }
     wrap.appendChild(dialbox);
+
+    // Filter mode dock (button + LED strip): sits right next to the cutoff
+    // knob, positioned like a modulation input would be.
+    if(c.id === 'flCutoff' || c.id === 'absorb'){
+      const dock = buildFilterModeDock(c.id === 'flCutoff' ? 'fl2' : 'absorb');
+      dock.style.position = 'absolute'; dock.style.left = (-O - 34) + 'px';
+      dock.style.top = '50%'; dock.style.transform = 'translateY(-50%)';
+      dialbox.appendChild(dock);
+    }
 
     const label = document.createElement('div'); label.className = 'klabel';
     label.innerText = c.label;
@@ -629,15 +663,25 @@
     return wrap;
   }
   // A small half-size touchpad-style button that cycles a filter's mode
-  // (lowpass/highpass/bandpass/notch/off) on click.
-  function buildFilterModeButton(which){
+  // (lowpass/highpass/bandpass/notch/off) on click, paired with a vertical
+  // strip of LEDs showing which mode is currently engaged. Docked onto the
+  // filter's own cutoff knob, positioned like a modulation input would be.
+  function buildFilterModeDock(which){
+    const dock = document.createElement('div'); dock.className = 'filterdock';
     const btn = document.createElement('div');
     btn.className = 'modebtn'; btn.id = 'modebtn-'+which;
     btn.title = (which==='fl2' ? 'Filter2' : 'Absorb') + ' mode (click to cycle)';
     btn.innerText = filterModeAbbr[which==='fl2' ? fl2Mode : absorbMode];
     btn.addEventListener('pointerdown', e => { e.stopPropagation(); cycleFilterMode(which); });
-    scatter(btn, 'modebtn'+which);
-    return btn;
+    dock.appendChild(btn);
+    const leds = document.createElement('div'); leds.className = 'modeleds'; leds.id = 'modeleds-'+which;
+    const curMode = which==='fl2' ? fl2Mode : absorbMode;
+    filterModes.forEach(m => {
+      const led = document.createElement('div'); led.className = 'led modeled' + (m===curMode?' lit':''); led.dataset.mode = m;
+      leds.appendChild(led);
+    });
+    dock.appendChild(leds);
+    return dock;
   }
 
   groups.forEach(g => {
@@ -648,7 +692,7 @@
       else if(item.t === 'src') itemsHost.appendChild(buildJackItem('src', item.id, srcLabel[item.id] || item.id));
       else if(item.t === 'dst') itemsHost.appendChild(buildJackItem('dst', item.id, destLabel[item.id] || item.id));
       else if(item.t === 'randgen') itemsHost.appendChild(buildRandGen(item.id));
-      else if(item.t === 'filtermode') itemsHost.appendChild(buildFilterModeButton(item.which));
+
     });
   });
   const platesRow = document.createElement('div'); platesRow.className = 'platesrow';
@@ -846,19 +890,15 @@
     foldNode = ctx.createScriptProcessor(1024, 1, 1); setFoldNode();
     filter2.connect(foldDrive).connect(foldNode);
 
-    // --- Env1/Env2 -> VCA/LPG pair, wired in by default, right after the
-    // fold and before anything else (including the delay loop and filter) ---
+    // --- VCA/LPG pair, placed by default right after the fold and before
+    // anything else (delay loop, filter) — but with NO envelope hardwired to
+    // it anymore. Patch whichever source you want into the CV input on the
+    // Env->VCA Depth knob; nothing is assigned there by default.
     vca1Stage = ctx.createGain(); vca1Stage.gain.value = 1;
     lpg1Filter = ctx.createBiquadFilter(); lpg1Filter.type = 'lowpass'; lpg1Filter.Q.value = 0.7; lpg1Filter.frequency.value = 8000;
     vca2Stage = ctx.createGain(); vca2Stage.gain.value = 1;
     lpg2Filter = ctx.createBiquadFilter(); lpg2Filter.type = 'lowpass'; lpg2Filter.Q.value = 0.7; lpg2Filter.frequency.value = 8000;
     foldNode.connect(vca1Stage).connect(lpg1Filter).connect(vca2Stage).connect(lpg2Filter);
-    envToVca1Gain = ctx.createGain(); envToVca1Gain.gain.value = 0;
-    envToLpg1Freq = ctx.createGain(); envToLpg1Freq.gain.value = 0;
-    envToVca2Gain = ctx.createGain(); envToVca2Gain.gain.value = 0;
-    envToLpg2Freq = ctx.createGain(); envToLpg2Freq.gain.value = 0;
-    envToVca1Gain.connect(vca1Stage.gain); envToLpg1Freq.connect(lpg1Filter.frequency);
-    envToVca2Gain.connect(vca2Stage.gain); envToLpg2Freq.connect(lpg2Filter.frequency);
 
     const excite = ctx.createGain(); excite.gain.value = 0.55;
     lpg2Filter.connect(excite);
@@ -946,8 +986,6 @@
 
     envLoopSrc = ctx.createConstantSource(); envLoopSrc.offset.value = 0; envLoopSrc.start();
     envLoopSrc2 = ctx.createConstantSource(); envLoopSrc2.offset.value = 0; envLoopSrc2.start();
-    envLoopSrc.connect(envToVca1Gain); envLoopSrc.connect(envToLpg1Freq);
-    envLoopSrc2.connect(envToVca2Gain); envLoopSrc2.connect(envToLpg2Freq);
 
     // Envelope gate-outs: brief pulse each time a cycle completes/restarts
     env1GateSrc = ctx.createConstantSource(); env1GateSrc.offset.value = 0; env1GateSrc.start();
@@ -1078,6 +1116,10 @@
       { id:'absres', targets:[{ getParam:()=>filter.Q, sens:8 }] },
       { id:'fl2co', targets:[{ getParam:()=>filter2.frequency, sens:3200 }] },
       { id:'fl2res', targets:[{ getParam:()=>filter2.Q, sens:8 }] },
+      { id:'envvcamod', targets:[
+        { getParam:()=>vca1Stage.gain, sens:0.5 }, { getParam:()=>vca2Stage.gain, sens:0.5 },
+        { getParam:()=>lpg1Filter.frequency, sens:3000 }, { getParam:()=>lpg2Filter.frequency, sens:3000 },
+      ] },
     ];
 
     applyOscMode();
@@ -1160,7 +1202,9 @@
     const decayBase = baseOf('decay','feedback');
     feedGainL.gain.setTargetAtTime(decayBase, now, 0.02);
     feedGainR.gain.setTargetAtTime(decayBase, now, 0.02);
-    const cross = (1-params.width)*0.6;
+    // Cross-feed is itself a feedback path — it must scale WITH the Feedback
+    // knob (not just Width), or Feedback=0 still doesn't give a clean single pass.
+    const cross = decayBase * (1-params.width) * 0.6;
     crossGainL.gain.setTargetAtTime(cross, now, 0.05);
     crossGainR.gain.setTargetAtTime(cross, now, 0.05);
     filter.frequency.setTargetAtTime(baseOf('absorb','absorb'), now, 0.01);
@@ -1171,16 +1215,12 @@
     setDriveCurve(clampv(baseOf('drive','sat') + (cvLive.sat||0), 1, 30));
     mainG.gain.setTargetAtTime(baseOf('activation','vca'), now, 0.02);
 
-    // Env1/Env2 -> VCA/LPG depth (shared control for both stages)
-    const vcaDepth = params.envVcaDepth, lpg = params.lpgAmount;
+    // VCA/LPG baseline (whatever's patched into the CV input swings around this)
+    const vcaDepth = baseOf('envVcaDepth','envvcamod'), lpg = params.lpgAmount;
     vca1Stage.gain.setTargetAtTime(1 - vcaDepth, now, 0.02);
-    envToVca1Gain.gain.setTargetAtTime(vcaDepth, now, 0.02);
     lpg1Filter.frequency.setTargetAtTime(8000 - lpg*7800, now, 0.02);
-    envToLpg1Freq.gain.setTargetAtTime(lpg*7800, now, 0.02);
     vca2Stage.gain.setTargetAtTime(1 - vcaDepth, now, 0.02);
-    envToVca2Gain.gain.setTargetAtTime(vcaDepth, now, 0.02);
     lpg2Filter.frequency.setTargetAtTime(8000 - lpg*7800, now, 0.02);
-    envToLpg2Freq.gain.setTargetAtTime(lpg*7800, now, 0.02);
 
     applyOscMode();
   }
@@ -1251,6 +1291,8 @@
     node.type = mode;
     const btn = document.getElementById('modebtn-'+which);
     if(btn) btn.innerText = filterModeAbbr[mode];
+    const leds = document.getElementById('modeleds-'+which);
+    if(leds) leds.querySelectorAll('.modeled').forEach(l => l.classList.toggle('lit', l.dataset.mode === mode));
   }
   function cycleFilterMode(which){
     const cur = which === 'fl2' ? fl2Mode : absorbMode;
@@ -1612,11 +1654,10 @@
 
   function applyDepth(cable){
     cable.depthGain.gain.setTargetAtTime(cable.depth, ctx.currentTime, 0.01);
-    cable.pathEl.setAttribute('stroke-width', 2 + Math.abs(cable.depth)*5);
-    cable.pathEl.setAttribute('opacity', 0.4 + Math.abs(cable.depth)*0.6);
-    cable.handleEl.setAttribute('r', 5 + Math.abs(cable.depth)*4);
-    cable.handleEl.setAttribute('fill-opacity', 0.5 + Math.abs(cable.depth)*0.5);
-    cable.handleEl.setAttribute('stroke', cable.depth < 0 ? '#ff5d5d' : '#ffffff');
+    cable.pathEl.setAttribute('stroke-width', 2 + cable.depth*5);
+    cable.pathEl.setAttribute('opacity', 0.4 + cable.depth*0.6);
+    cable.handleEl.setAttribute('r', 5 + cable.depth*4);
+    cable.handleEl.setAttribute('fill-opacity', 0.5 + cable.depth*0.5);
     updateModRing(destOwner[cable.dstId]);
   }
   function addPatch(srcId, dstId){
@@ -1638,7 +1679,7 @@
     pathEl.setAttribute('stroke', color); pathEl.setAttribute('fill', 'none'); pathEl.setAttribute('stroke-width', 4);
     pathEl.style.cursor = 'pointer';
     cableLayer.appendChild(pathEl);
-    // Attenuverter handle: a dot at the cable's midpoint. Click it to open the
+    // Attenuator handle: a dot at the cable's midpoint. Click it to open the
     // depth/polarity popup; double-click it (or click the wire itself) to delete.
     const handleEl = document.createElementNS(svgNS, 'circle');
     const coarse = window.matchMedia && window.matchMedia('(pointer:coarse)').matches;
@@ -1711,7 +1752,7 @@
     });
   }
 
-  // ---------- Cable contextual menu: click the dot for the attenuverter,
+  // ---------- Cable contextual menu: click the dot for the attenuator,
   // double-click the dot (or click the wire) to delete ----------
   let menuCable = null;
   const cableMenuEl = document.getElementById('cableMenu');
@@ -1719,8 +1760,7 @@
   const cableMenuVal = document.getElementById('cableMenuVal');
   const cableMenuDel = document.getElementById('cableMenuDel');
   function refreshCableMenuVal(){
-    const pct = Math.round(menuCable.depth*100);
-    cableMenuVal.innerText = (pct>=0?'+':'') + pct + '%';
+    cableMenuVal.innerText = Math.round(menuCable.depth*100) + '%';
   }
   function openCableMenu(cable, evt){
     menuCable = cable;
@@ -1734,7 +1774,7 @@
   function closeCableMenu(){ cableMenuEl.style.display = 'none'; menuCable = null; }
   cableMenuRange.addEventListener('input', () => {
     if(!menuCable) return;
-    menuCable.depth = clampv(parseInt(cableMenuRange.value,10)/100, -1, 1);
+    menuCable.depth = clampv(parseInt(cableMenuRange.value,10)/100, 0, 1);
     applyDepth(menuCable);
     refreshCableMenuVal();
   });
@@ -1832,10 +1872,11 @@
       sCtx.fillStyle = '#150f1a'; sCtx.fillRect(0,0,canvas.width,canvas.height);
       if(lissajous){
         const cx = canvas.width/2, cy = canvas.height/2, scale = Math.min(canvas.width, canvas.height)/2 - 6;
+        const shift = Math.floor(len/4); // ~90 degrees, lissajous mode only
         sCtx.lineWidth = 1.3; sCtx.strokeStyle = '#b98ff2'; sCtx.beginPath();
         for(let i=0;i<len;i++){
           const x = cx + ((dataL[i]/128)-1) * scale;
-          const y = cy + ((dataR[i]/128)-1) * scale;
+          const y = cy + ((dataR[(i+shift)%len]/128)-1) * scale;
           if(i===0) sCtx.moveTo(x,y); else sCtx.lineTo(x,y);
         }
         sCtx.stroke();
