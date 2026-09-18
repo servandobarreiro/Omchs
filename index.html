@@ -6,9 +6,12 @@
 <title>Omchs</title>
 <style>
   :root{
-    /* Adwaita Dark (GNOME Text Editor dark scheme) palette, used where it fits */
-    --bg: #241f31;
-    --panel-edge: #3d3846;
+    /* //change background color here */
+    --bg: #111111;
+    --bg-panel: #161616;
+    --bg-raised: #1a1a1a;
+    --bg-sunken: #0d0d0d;
+    --panel-edge: #2a2a2a;
     --amber: #ffa348;
     --amber-dim: #c64600;
     --violet: #9141ac;
@@ -22,35 +25,36 @@
   }
   *{box-sizing:border-box;}
   body{
-    margin:0; background:
-      radial-gradient(1200px 700px at 15% -10%, #3d3846 0%, transparent 60%),
-      radial-gradient(1000px 600px at 100% 0%, #1a5fb4 0%, transparent 30%),
-      var(--bg);
+    margin:0; background: var(--bg);
     color:var(--text); font-family: 'Courier New', ui-monospace, monospace;
     padding: 16px 14px 60px; min-height:100vh;
+    padding-left: max(14px, env(safe-area-inset-left));
+    padding-right: max(14px, env(safe-area-inset-right));
+    padding-bottom: max(60px, env(safe-area-inset-bottom));
+    -webkit-tap-highlight-color: transparent;
   }
   .wrap{ max-width: 1180px; margin: 0 auto; }
 
   .transport{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin: 0 0 16px; }
   .btn{
-    background:#241a2d; color:var(--amber); border:1px solid var(--amber-dim);
+    background:var(--bg-raised); color:var(--amber); border:1px solid var(--amber-dim);
     padding:9px 16px; cursor:pointer; font-family:inherit; font-size:0.78rem; letter-spacing:0.5px;
     border-radius:3px; transition: all .15s;
   }
   .btn:hover{ border-color:var(--amber); }
-  .btn.on{ background:var(--amber); color:#1a1420; border-color:var(--amber); }
-  .btn.danger.on{ background:var(--red); color:#1a1420; border-color:var(--red); }
+  .btn.on{ background:var(--amber); color:#111111; border-color:var(--amber); }
+  .btn.danger.on{ background:var(--red); color:#111111; border-color:var(--red); }
   .rec-indicator{ border:2px solid var(--red); color:var(--red); animation: recblink 1s step-start infinite; }
   @keyframes recblink{ 50%{ border-color: transparent; color: var(--text-dim); } }
   .iconbtn{ display:flex; align-items:center; justify-content:center; width:42px; height:38px; padding:0; color:var(--amber); }
   .aboutpopup{ position:fixed; top:60px; right:20px; z-index:50; width:280px; max-width:80vw;
-    background:#1c1424; border:1px solid var(--amber-dim); border-radius:8px; padding:14px 16px;
+    background:var(--bg-panel); border:1px solid var(--amber-dim); border-radius:8px; padding:14px 16px;
     box-shadow:0 10px 30px rgba(0,0,0,0.6); display:none; }
   .aboutpopup.open{ display:block; }
   .aboutpopup-close{ position:absolute; top:6px; right:10px; cursor:pointer; color:var(--text-dim); font-size:1rem; }
   .aboutpopup-close:hover{ color:var(--amber); }
   .aboutpopup-body{ font-size:0.68rem; line-height:1.6; color:var(--text); margin-top:6px; }
-  .iconbtn.on{ background:var(--amber); color:#1a1420; }
+  .iconbtn.on{ background:var(--amber); color:#111111; }
   .iconbtn.muted{ color:var(--text-dim); }
   .iconbtn svg{ display:block; }
   .iconbtn.muted .waves{ opacity:0; }
@@ -58,23 +62,80 @@
 
   .faceplate{
     position:relative;
-    background: linear-gradient(180deg, #2d2740, #1e1a29);
+    background: var(--bg-panel);
     border:1px solid var(--panel-edge); border-radius:6px; padding:26px 20px 16px;
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 6px 18px rgba(0,0,0,0.35);
     -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
   }
-  /* compact mode removed */
   /* Touch devices get bigger hit targets on the small interactive bits —
      desktop mouse users keep the tighter, denser layout */
   @media (pointer:coarse){
-    .jack{ width:26px; height:26px; border-width:5px; }
-    .plate{ width:44px; height:44px; }
+    .jack{ width:28px; height:28px; border-width:5px; }
+    .jack.gate{ width:20px; height:20px; border-width:4px; }
+    .plate{ width:48px; height:48px; font-size:0.72rem; }
+    .modebtn{ width:24px; height:24px; font-size:0.5rem; }
     .cablemenu-del, .cmdinput{ font-size:0.75rem; padding:8px 9px; }
+    .dial{ cursor: grab; }
+    .btn{ padding:11px 14px; min-height:40px; }
+  }
+  .secttabs{
+    display:none; position:relative; z-index:5; gap:6px; flex-wrap:wrap;
+    margin:0 0 12px; padding:0;
+  }
+  .secttabs button{
+    flex:1 1 auto; min-width:3.2rem; background:var(--bg-raised); color:var(--text-dim);
+    border:1px solid var(--panel-edge); border-radius:3px; padding:8px 10px;
+    font-family:inherit; font-size:0.68rem; letter-spacing:0.6px; cursor:pointer;
+  }
+  .secttabs button.on{ color:var(--amber); border-color:var(--amber-dim); background:#222222; }
+  .jack.tapselected{ box-shadow:0 0 0 4px rgba(255,255,255,0.45), 0 0 18px var(--jcolor, #fff); }
+  .jack.tapdest{ outline:2px dashed rgba(255,255,255,0.35); outline-offset:3px; }
+  .micbtn.on{ background:var(--cyan); color:#111111; border-color:var(--cyan); }
+
+  /* Narrow phones / small tablets: sectioned faceplate, full-width scope, roomier chrome */
+  @media (max-width: 720px){
+    body{ padding:10px 8px 48px; padding-left: max(8px, env(safe-area-inset-left)); padding-right: max(8px, env(safe-area-inset-right)); }
+    .faceplate{ padding:18px 10px 12px; border-radius:4px; }
+    .facehead{ gap:6px; margin-bottom:10px; }
+    .facehead .btn{ font-size:0.7rem; padding:8px 10px; }
+    .secttabs{ display:flex; }
+    .items{ gap: 10px 8px; justify-content:center; }
+    .knob-wrap{ width:70px; }
+    .size-lg .dial{ width:58px; height:58px; }
+    .size-md .dial{ width:46px; height:46px; }
+    .size-sm .dial{ width:34px; height:34px; }
+    .size-lg .ring{ width:70px; height:70px; }
+    .size-md .ring{ width:56px; height:56px; }
+    .size-sm .ring{ width:44px; height:44px; }
+    .size-lg .modring{ width:78px; height:78px; }
+    .size-md .modring{ width:64px; height:64px; }
+    .size-sm .modring{ width:52px; height:52px; }
+    .dialbox{ margin: 22px 18px 18px; }
+    .klabel{ font-size:1.2rem; max-width:none; }
+    body.labels-text .klabel{ font-size:0.5rem; max-width:64px; }
+    .groupbreak{ height:10px; }
+    .platesrow{ gap:10px; margin-top:14px; padding-top:10px; justify-content:flex-start; }
+    .facefoot{ flex-direction:column; align-items:stretch; gap:8px; margin-top:14px; }
+    .scopewrap, .scopebox{ width:100%; max-width:100%; }
+    .scopebox.head-term{ height:68px; margin-bottom:8px; }
+    .scopebox:not(.head-term){ height:132px; }
+    .cmdinput{
+      width:100%; font-size:0.78rem; padding:10px 12px;
+    }
+    .vus{ bottom:8px; right:9px; }
+    .terminal{ font-size:0.64rem; max-height:88px; }
+    .legend{ justify-content:center; }
+    .aboutpopup{
+      top:auto; right:8px; left:8px; bottom: max(12px, env(safe-area-inset-bottom));
+      width:auto; max-width:none; max-height:70vh; overflow:auto;
+    }
+    .items > [data-section].sect-hide{ display:none !important; }
+    .cablemenu{ width:min(180px, 70vw); }
   }
   .faceplate::before, .faceplate::after{
     content:''; position:absolute; width:5px; height:5px; border-radius:50%;
-    background: radial-gradient(circle at 35% 35%, #6a5c78, #241a2e);
-    top:8px; box-shadow: 0 0 0 1px #0a0710;
+    background: radial-gradient(circle at 35% 35%, #3a3a3a, #0a0a0a);
+    top:8px; box-shadow: 0 0 0 1px #050505;
   }
   .faceplate::before{ left:8px; } .faceplate::after{ right:8px; }
   #cableLayer{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:1; }
@@ -114,32 +175,84 @@
   }
   .dial{
     border-radius:50%; border:2px solid var(--accent, var(--amber));
-    background: radial-gradient(circle at 33% 30%, #3a2e47, #1c1522 65%);
+    background: radial-gradient(circle at 33% 30%, #2a2a2a, #0f0f0f 65%);
     cursor: ns-resize; position:relative; touch-action:none; pointer-events:auto;
-    box-shadow: inset 0 0 8px rgba(255,255,255,0.08), 0 0 10px rgba(223,178,73,0.15);
+    box-shadow: inset 0 0 8px rgba(255,255,255,0.06), 0 0 10px rgba(0,0,0,0.4);
     transform: rotate(-135deg);
   }
   .dial::before{
-    content:''; position:absolute; left:50%; top:12%; width:3px; height:32%;
-    border-radius:2px; background:var(--accent, var(--amber)); transform:translateX(-50%);
-    box-shadow:0 0 6px rgba(223,178,73,0.8);
+    content:''; position:absolute; left:50%; top:16%; width:7px; height:7px;
+    border-radius:50%; background:var(--accent, var(--amber)); transform:translateX(-50%);
+    box-shadow:0 0 6px rgba(223,178,73,0.85);
   }
   /* Jacks at the knob level: primary input NW, primary output SE — Buchla/Serge banana-jack style */
   .jack-io{ position:absolute; z-index:4; }
   .jack-row{ left:50%; transform:translateX(-50%); display:flex; gap:4px; }
-  .klabel{ font-size:0.6rem; color:var(--text-dim); margin-top:2px; text-align:center; line-height:1.2; }
+  .klabel{
+    position:absolute; left:50%; z-index:3; pointer-events:none;
+    font-size:1.28rem; color:var(--text); text-align:center; line-height:1; opacity:0.9;
+    margin:0; transform:translateX(-50%); white-space:nowrap;
+  }
+  body.labels-text .klabel{ font-size:0.55rem; max-width:72px; white-space:normal; line-height:1.15; }
 
   .plate{
     position:relative; width:36px; height:36px; border-radius:50%;
     background:linear-gradient(180deg,#e8c96a,var(--amber));
     cursor:pointer; user-select:none; touch-action:none; pointer-events:auto;
     display:flex; align-items:center; justify-content:center;
-    font-size:0.62rem; font-weight:bold; color:#1a1420;
+    font-size:0.62rem; font-weight:bold; color:#111111;
     box-shadow:0 2px 4px rgba(0,0,0,0.45);
   }
   .plate.armed{ background:linear-gradient(180deg,#fff,#ffe9a8); box-shadow:0 0 13px rgba(255,255,255,0.85); }
-  .platesrow{ flex-basis:100%; display:flex; justify-content:center; gap:16px; margin-top:24px; padding-top:12px;
+  .platesrow{ flex-basis:100%; display:flex; justify-content:flex-start; gap:16px; margin-top:24px; padding-top:12px;
     border-top:1px dashed var(--panel-edge); flex-wrap:wrap; }
+
+  /* Tight module clusters — stay together on wrap / mobile */
+  .cluster{
+    display:flex; flex-wrap:nowrap; align-items:flex-end; gap:2px 4px;
+    padding:10px 8px 6px; margin:2px 4px;
+    border:1px solid var(--panel-edge); border-radius:10px;
+    background:rgba(255,255,255,0.025);
+    position:relative; z-index:2; pointer-events:none;
+  }
+  .cluster > *{ pointer-events:auto; }
+  .cluster-title{
+    position:absolute; top:3px; left:8px;
+    font-size:0.48rem; letter-spacing:1.2px; color:var(--text-dim);
+    pointer-events:none;
+  }
+  .cluster .knob-wrap{ width:70px; }
+  .cluster .dialbox{ margin: 22px 14px 16px; }
+  @media (max-width: 720px){
+    .cluster{ flex-wrap:wrap; justify-content:center; max-width:100%; gap:4px 2px; }
+    .cluster .knob-wrap{ width:64px; }
+  }
+
+  /* Patch direction: inputs slightly dim so outs read first; brighten when patching */
+  .jack.dst{ opacity:0.85; filter:brightness(0.8); transition: opacity .15s, filter .15s, box-shadow .15s; }
+  .jack.src{ opacity:1; filter:none; transition: opacity .15s, filter .15s, box-shadow .15s; }
+  .faceplate.patching-from-src .jack.src:not(.dragfrom){ opacity:0.55; filter:brightness(0.85); }
+  .faceplate.patching-from-src .jack.dst{
+    opacity:1; filter:none;
+    box-shadow:0 0 0 2px rgba(255,255,255,0.18), inset 0 0 3px rgba(0,0,0,0.9);
+  }
+  .faceplate.patching-from-dst .jack.dst:not(.dragfrom){ opacity:0.55; filter:brightness(0.8); }
+  .faceplate.patching-from-dst .jack.src{ opacity:1; filter:none; }
+
+  .scopebox.head-term{
+    position:relative; z-index:5; width:100%; max-width:100%; height:72px;
+    margin:0 0 12px; pointer-events:none;
+  }
+  .scopebox.head-term .terminal{
+    top:4px; left:8px; right:48px; max-height:64px; font-size:0.68rem; line-height:1.35;
+  }
+  .scopebox.head-term .terminal .cmdlive{ color:var(--amber); }
+  .scopebox.head-term .vus{ bottom:6px; right:8px; height:40px; }
+  .cmdinput, .legend, #aboutBtn, .facefoot{ display:none !important; }
+  .cluster-title, .randgen-label{ font-size:1.28rem; line-height:1; letter-spacing:0; }
+  .cluster-title{ font-size:1.1rem; letter-spacing:0; }
+  body.labels-text .cluster-title, body.labels-text .randgen-label{ font-size:0.56rem; letter-spacing:0.5px; }
+  .randgen-label{ writing-mode:horizontal-tb; text-orientation:mixed; }
 
   .jackitem{ display:flex; flex-direction:column; align-items:center; width:56px; }
   .randgen{ display:flex; flex-direction:column; align-items:center; gap:6px; width:56px; }
@@ -148,12 +261,10 @@
     width:18px; height:18px; border-radius:50%;
     background:linear-gradient(180deg,#e8c96a,var(--amber));
     display:flex; align-items:center; justify-content:center;
-    font-size:0.42rem; font-weight:bold; color:#1a1420; cursor:pointer;
+    font-size:0.42rem; font-weight:bold; color:#111111; cursor:pointer;
     box-shadow:0 1px 3px rgba(0,0,0,0.45); pointer-events:auto; touch-action:none;
   }
-  .filterdock{ display:flex; flex-direction:column; align-items:center; gap:5px; z-index:4; }
-  .modeleds{ display:flex; flex-direction:column; gap:3px; }
-  .modeled{ position:static; width:5px; height:5px; }
+  .filterdock{ position:absolute; z-index:4; pointer-events:auto; }
   .jack{
     width:21px; height:21px; border-radius:50%;
     border:4px solid var(--jcolor, var(--cyan));
@@ -165,50 +276,56 @@
   .jack.dst{ border-color:var(--jcolor, var(--violet)); }
   .jack:hover{ box-shadow:0 0 10px var(--jcolor, currentColor), inset 0 0 3px rgba(0,0,0,0.9); }
   .jack.gate{ width:14px; height:14px; border-width:3px; }
-  .jacklabel{ font-size:0.55rem; color:var(--text-dim); margin-top:5px; text-align:center; line-height:1.2; }
+  .jacklabel{ font-size:0.82rem; color:var(--text-dim); margin-top:5px; text-align:center; line-height:1.2; }
+  body.labels-text .jacklabel{ font-size:0.55rem; }
 
   .groupbreak{ flex-basis:100%; height:22px; }
   .groupbreak:first-child{ height:0; }
 
-  .cablemenu{ position:absolute; z-index:10; background:#1c1424; border:1px solid var(--amber-dim); border-radius:6px;
+  .cablemenu{ position:absolute; z-index:10; background:var(--bg-panel); border:1px solid var(--amber-dim); border-radius:6px;
     padding:10px 12px; box-shadow:0 6px 18px rgba(0,0,0,0.5); display:none; width:150px; }
   .cablemenu-label{ font-size:0.6rem; letter-spacing:1px; color:var(--text-dim); text-transform:uppercase; margin-bottom:6px; }
   .cablemenu input[type=range]{ width:100%; }
   .cablemenu-val{ font-size:0.7rem; color:var(--amber); text-align:center; margin:2px 0 8px; }
-  .cablemenu-del{ width:100%; background:#3a1d22; color:var(--red); border:1px solid var(--red); border-radius:3px;
+  .cablemenu-del{ width:100%; background:#2a1518; color:var(--red); border:1px solid var(--red); border-radius:3px;
     padding:5px; font-family:inherit; font-size:0.62rem; cursor:pointer; }
-  .cablemenu-del:hover{ background:var(--red); color:#1a1420; }
-  .steppopup{ position:absolute; z-index:15; background:#1c1424; border:1px solid var(--amber-dim); border-radius:6px;
-    padding:8px 10px; box-shadow:0 6px 18px rgba(0,0,0,0.5); display:none; font-size:0.64rem; pointer-events:none; }
-  .steppopup div{ padding:2px 4px; color:var(--text-dim); white-space:nowrap; }
-  .steppopup div.active{ color:var(--amber); font-weight:bold; }
-  .led{ position:absolute; width:7px; height:7px; border-radius:50%; background:#3a2e1a;
+  .cablemenu-del:hover{ background:var(--red); color:#111111; }
+  .steppopup{ position:absolute; z-index:15; background:var(--bg-panel); border:2px solid var(--amber-dim); border-radius:50%;
+    padding:10px 8px; box-shadow:0 6px 18px rgba(0,0,0,0.65), inset 0 0 20px rgba(0,0,0,0.35);
+    display:none; font-size:0.58rem; pointer-events:none;
+    width:110px; height:110px; box-sizing:border-box;
+    flex-direction:column; align-items:center; justify-content:center; gap:1px;
+    overflow:hidden; text-align:center; }
+  .steppopup.open{ display:flex; }
+  .steppopup div{ padding:1px 4px; color:var(--text-dim); white-space:nowrap; line-height:1.25; max-width:96%; overflow:hidden; text-overflow:ellipsis; }
+  .steppopup div.active{ color:var(--amber); font-weight:bold; text-shadow:0 0 8px rgba(255,163,72,0.45); }
+  .led{ position:absolute; width:7px; height:7px; border-radius:50%; background:#2a2a1a;
     box-shadow:inset 0 0 2px rgba(0,0,0,0.8); transition:background .05s, box-shadow .05s; }
   .led.lit{ background:#ffe27a; box-shadow:0 0 8px #ffe27a; }
   .minijack-scope{ position:absolute; width:84px; height:84px; border-radius:50%; overflow:hidden;
     border:2px solid var(--amber); pointer-events:none; z-index:30; display:none;
-    box-shadow:0 4px 16px rgba(0,0,0,0.65); background:#0d0912; }
+    box-shadow:0 4px 16px rgba(0,0,0,0.65); background:var(--bg-sunken); }
   .minijack-scope canvas{ width:100%; height:100%; display:block; }
 
   .scopewrap{ display:flex; gap:14px; align-items:center; margin-top:16px; flex-wrap:wrap; }
   .scopebox{ position:relative; height:150px; width:360px; max-width:100%;
-    background:#150f1a; border:1px solid var(--panel-edge); border-radius:4px; }
-  canvas{ background:#150f1a; display:block; border:1px solid var(--panel-edge); border-radius:4px; }
+    background:var(--bg-sunken); border:1px solid var(--panel-edge); border-radius:4px; }
+  canvas{ background:var(--bg-sunken); display:block; border:1px solid var(--panel-edge); border-radius:4px; }
   #scope{
     position:absolute; inset:0; width:100%; height:100%; z-index:0;
-    opacity:0.32; pointer-events:none; border:none; border-radius:6px;
+    opacity:0.72; pointer-events:none; border:none; border-radius:6px;
   }
   .terminal{ position:absolute; top:6px; left:9px; right:9px; font-size:0.72rem; line-height:1.5;
     color:#8ef08e; font-family:'Courier New', monospace; pointer-events:none; text-shadow:0 0 4px rgba(0,0,0,0.9);
     max-height:130px; overflow:hidden; -webkit-user-select:none; user-select:none; }
   .terminal div:last-child{ color:#c8ffc8; }
   .vus{ position:absolute; bottom:8px; right:9px; display:flex; gap:4px; align-items:flex-end; height:46px; z-index:5; }
-  .vu{ width:7px; height:100%; background:rgba(21,15,26,0.55); border:1px solid var(--panel-edge); border-radius:2px; position:relative; overflow:hidden; }
+  .vu{ width:7px; height:100%; background:rgba(13,13,13,0.55); border:1px solid var(--panel-edge); border-radius:2px; position:relative; overflow:hidden; }
   .vu i{ position:absolute; bottom:0; left:0; right:0; background:linear-gradient(0deg, var(--amber), var(--red)); height:0%; }
   .cmdinput{
-    position:absolute; bottom:8px; left:9px; width:150px; z-index:5;
-    background:rgba(13,9,18,0.8); border:1px solid var(--amber-dim); color:#c8ffc8;
-    font-family:'Courier New', monospace; font-size:0.65rem; padding:4px 7px; border-radius:3px;
+    width:180px; z-index:5;
+    background:rgba(13,13,13,0.9); border:1px solid var(--amber-dim); color:#c8ffc8;
+    font-family:'Courier New', monospace; font-size:0.65rem; padding:6px 8px; border-radius:3px;
   }
   .cmdinput::placeholder{ color:var(--text-dim); }
   .legend{ display:flex; gap:14px; font-size:0.6rem; color:var(--text-dim); margin-top:4px; }
@@ -220,8 +337,11 @@
   <div class="aboutpopup" id="aboutPopup">
     <div class="aboutpopup-close" id="aboutClose">&times;</div>
     <div class="aboutpopup-body">
-      <p>Cyan jacks are outputs, violet jacks are inputs. Drag between them to patch. Click the dot on a cable for its attenuator, double-click the dot (or click the cable itself) to remove it.</p>
-      <p>Commands (type into the field by the scope, or use the keyboard on desktop): <b>1-0</b> play a preset, <b>ed3</b> arm/exit edit mode on preset 3, <b>xy</b> toggle the Lissajous scope, <b>rd</b> randomize, <b>xprt</b> start/stop recording, <b>n3name</b> name preset 3, <b>fllp/flhp/flbp/flnt/floff</b> set Filter2's mode.</p>
+      <p>Cyan jacks are outputs, violet jacks are inputs. Patch <b>from output → input</b> (inputs stay dim until you drag from an output). On phones: tap an output, then tap an input. Click the dot on a cable for its attenuator, double-click the dot (or click the cable itself) to remove it.</p>
+      <p>Osc B is independent of Osc A. Set Osc B→A Mode to <b>Mix</b> and use <b>Amt / Xfade</b> to crossfade A↔B in the main path; other modes (FM / AM / Ring / Fold / Sync) are modulation, not a blend.</p>
+      <p>Commands (type into the field by the scope, or use the keyboard on desktop): <b>1-0</b> play a preset, <b>ed3</b> arm/exit edit mode on preset 3, <b>xy</b> toggle the Lissajous scope, <b>rd</b> randomize, <b>xprt</b> start/stop recording (downloads 16-bit stereo .wav), <b>mic</b> toggle microphone input, <b>n3name</b> name preset 3, <b>psave/pload/pxprt/pimprt</b> persist or export/import presets, <b>fllp/flhp/flbp/flnt/floff</b> set Filter2's mode.</p>
+      <p>MIC arms a low-latency external input (echo cancel / AGC off). Patch the Mic out jack anywhere, or feed Ext In to run the mic through the filter / fold / delay / FX path.</p>
+      <p>Serve this folder over HTTP (e.g. <code>python3 -m http.server</code>) so AudioWorklets can load from <code>omchs-worklets.js</code>. Mic also needs HTTPS or localhost.</p>
       <p><!-- more notes to come --></p>
     </div>
   </div>
@@ -246,25 +366,36 @@
           <g class="mutedx"><path d="M16 9l6 6M22 9l-6 6"/></g>
         </svg>
       </button>
+      <button class="btn micbtn" id="micBtn" title="Microphone / external input" aria-label="Toggle microphone input" aria-pressed="false">◎</button>
       <button class="btn rec-indicator" id="recIndicator" style="display:none;">REC 0:00</button>
-      <button class="btn" id="randomBtn">RANDOM</button>
-      <button class="btn" id="randomPatchBtn">RANDOM PATCH</button>
-      <button class="btn" id="clearpatch">CLEAR PATCHES</button>
-      <button class="btn iconbtn" id="aboutBtn" title="About / help" aria-label="About and help">?</button>
+      <button class="btn" id="randomBtn" title="Randomize">⚄</button>
+      <button class="btn" id="randomPatchBtn" title="Random patch">↯</button>
+      <button class="btn" id="clearpatch" title="Clear patches">✕</button>
+      <button class="btn iconbtn" id="aboutBtn" title="About / help" aria-label="About and help" hidden>?</button>
+    </div>
+
+    <div class="scopebox head-term" id="scopebox">
+      <div class="terminal" id="terminal"></div>
+      <div class="vus">
+        <div class="vu"><i id="vuL"></i></div>
+        <div class="vu"><i id="vuR"></i></div>
+      </div>
+    </div>
+
+    <div class="secttabs" id="sectTabs" role="tablist" aria-label="Faceplate sections">
+      <button type="button" data-sect="all" class="on">ALL</button>
+      <button type="button" data-sect="mod">MOD</button>
+      <button type="button" data-sect="osc">OSC</button>
+      <button type="button" data-sect="delay">DELAY</button>
+      <button type="button" data-sect="fx">FX</button>
+      <button type="button" data-sect="presets">PRESETS</button>
     </div>
 
     <div class="items" id="items"></div>
 
-    <div class="facefoot">
-      <div class="scopebox">
-        <div class="terminal" id="terminal"></div>
-        <div class="vus">
-          <div class="vu"><i id="vuL"></i></div>
-          <div class="vu"><i id="vuR"></i></div>
-        </div>
-        <input type="text" id="cmdInput" class="cmdinput" placeholder="1-0 / fllp / xy / rd / xprt / n3name" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
-      </div>
-      <div class="legend"><span><i style="background:var(--amber);"></i>Left</span><span><i style="background:var(--cyan);"></i>Right</span></div>
+    <div class="facefoot" hidden>
+      <input type="text" id="cmdInput" class="cmdinput" placeholder="" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      <div class="legend"><span><i style="background:#39ff6a;"></i>Left</span><span><i style="background:#4da3ff;"></i>Right</span></div>
     </div>
   </div>
 </div>
@@ -281,16 +412,17 @@
   let foldDrive, foldNode;
   let oscBTri, oscBSqr, oscBSine, oscBTriGain, oscBSqrGain, oscBSineGain, oscBSum;
   let fmInteractGain, amInteractGain, syncShape, syncInteractGain, oscAAmStage, oscBFoldGain;
+  let oscMixAGain, oscMixBGain;
   let groupLIn, groupRIn, delayTaps = [], tapSumL, tapSumR, merger, filter, dcBlock;
   let filter2, fl2Mode = 'lowpass', absorbMode = 'lowpass';
   let fbCompressor, fbClip, fbSplit, feedGainL, feedGainR, crossGainL, crossGainR;
   let dryGain, wetGain, outPan, driveN, crushN, masterLimiter, mainG, muteGate;
   let splitAnalyser, analyserL, analyserR;
   let envLoopSrc, envLoopSrc2, env1GateSrc, env2GateSrc;
-  let lfo1Node, lfo1Silent, lfo2Node, lfo2Silent, lfo1State, lfo2State;
+  let lfo1Node, lfo1Silent, lfo2Node, lfo2Silent;
   let randGen1Src, randGen2Src;
   let vca1Stage, lpg1Filter, vca2Stage, lpg2Filter;
-  let recTap, recSilent, recBuffersL = [], recBuffersR = [], isRec = false, isMute = false;
+  let isRec = false, isMute = false;
   let envSchedTimer = null, envSchedTimer2 = null;
   let patchCables = [], destDefs = [];
   let audioReady = false;
@@ -300,9 +432,21 @@
   let editingSlot = null;
   let heldPresetSlot = null, preHoldSnapshot = null;
   let lissajous = false;
+  let scopeEnabled = true;
+  let scopeRafId = 0;
   let termLines = [];
   let edPrefix = 0, xyPrefix = 0;
+  let cmdBuf = '';
+  let useIcons = true;
   let bulkOp = false;
+  let lastDriveCurve = null;
+  let midiNoteStack = [];
+  let midiVelScale = 1;
+  let workletsReady = false;
+  let recNode = null, recSilent = null, recChunks = [], recSampleRate = 48000;
+  let micStream = null, micSource = null, micLevelGain = null, micOutGain = null, extInBus = null;
+  let micOn = false;
+  const PRESET_STORAGE_KEY = 'omchs-presets-v1';
 
   const accentBySection = { osc:'var(--violet)', delay:'var(--amber)', mod:'var(--cyan)', fx:'var(--rose)' };
 
@@ -315,8 +459,8 @@
     { id:'oscWaveMorph',  label:'Wave Sin\u2192Tri\u2192Sqr', min:0, max:1,  def:0.25, size:'md', section:'osc' },
     { id:'pitchB',        label:'Osc B Pitch',  min:5,    max:2000, def:220,  size:'lg', section:'osc' },
     { id:'oscBWaveMorph', label:'Osc B Wave Sin\u2192Tri\u2192Sqr', min:0, max:1, def:0.15, size:'sm', section:'osc' },
-    { id:'oscMode',       label:'Osc B\u2192A Mode', min:0, max:5,  def:0,    size:'md', section:'osc' },
-    { id:'oscModAmt',     label:'Interaction Amt', min:0, max:1,   def:0.3,  size:'sm', section:'osc' },
+    { id:'oscMode',       label:'Osc B\u2192A Mode', min:0, max:6,  def:0,    size:'md', section:'osc' },
+    { id:'oscModAmt',     label:'Amt / Xfade', min:0, max:1,   def:0.3,  size:'sm', section:'osc' },
 
     { id:'mix',           label:'Dry/Wet',      min:0,    max:1,    def:0.85, size:'md', section:'delay' },
     { id:'time',          label:'Delay Time',   min:0.001, max:1.8,  def:0.4,  size:'lg', section:'delay' },
@@ -329,44 +473,117 @@
     { id:'envDecay',      label:'Env1 Decay',   min:0.01, max:3,    def:0.35, size:'md', section:'mod' },
     { id:'envCurve',      label:'Env1 Curve',   min:-1,   max:1,    def:0,    size:'sm', section:'mod' },
     { id:'env2Attack',    label:'Env2 Attack',  min:0.01, max:2,    def:0.4,  size:'sm', section:'mod' },
-    { id:'env2Decay',     label:'Env2 Decay',   min:0.01, max:3,    def:1.1,  size:'sm', section:'mod' },
+    { id:'env2Decay',     label:'Env2 Decay',   min:0.01, max:3,    def:1.1,  size:'md', section:'mod' },
     { id:'env2Curve',     label:'Env2 Curve',   min:-1,   max:1,    def:0,    size:'sm', section:'mod' },
     { id:'lfo1Speed',     label:'LFO1 Speed',   min:0.02, max:25,   def:1.5,  size:'md', section:'mod' },
     { id:'lfo1Wave',      label:'LFO1 Wave',    min:0,    max:7,    def:0,    size:'sm', section:'mod' },
     { id:'lfo2Speed',     label:'LFO2 Speed',   min:0.02, max:25,   def:0.3,  size:'md', section:'mod' },
     { id:'lfo2Wave',      label:'LFO2 Wave',    min:0,    max:7,    def:1,    size:'sm', section:'mod' },
 
-    { id:'absorb',        label:'Absorb Filter',min:80,   max:8000, def:1200, size:'lg', section:'fx' },
+    { id:'absorb',        label:'Absorb Filter',min:0,    max:1,    def:0.588, size:'lg', section:'fx', hzLo:80, hzHi:8000 },
     { id:'absorbReso',     label:'Absorb Reso',  min:0.1,  max:20,   def:1.1,  size:'sm', section:'fx' },
-    { id:'flCutoff',       label:'Filter2 Cutoff', min:80, max:8000, def:4000, size:'lg', section:'osc' },
-    { id:'flReso',         label:'Filter2 Reso', min:0.1,  max:20,   def:0.8,  size:'md', section:'osc' },
+    { id:'flCutoff',       label:'Filter2 Cutoff', min:0, max:1, def:0.849, size:'lg', section:'osc', hzLo:80, hzHi:8000 },
+    { id:'flReso',         label:'Filter2 Reso', min:0.1,  max:20,   def:1.1,  size:'md', section:'osc' },
     { id:'activation',    label:'VCA Open',     min:0,    max:1,    def:0.5,  size:'lg', section:'fx' },
     { id:'envVcaDepth',   label:'Env\u2192VCA Depth', min:0, max:1, def:0.15, size:'md', section:'fx' },
     { id:'lpgAmount',     label:'LPG Amount',   min:0,    max:1,    def:0.2,  size:'md', section:'fx' },
     { id:'drive',         label:'Saturator',    min:1,    max:30,   def:2,    size:'md', section:'fx' },
     { id:'bitcrush',      label:'Bitcrush',     min:0,    max:0.95, def:0,    size:'sm', section:'fx' },
     { id:'pan',           label:'Pan',          min:-1,   max:1,    def:0,    size:'sm', section:'fx' },
+    { id:'micLevel',      label:'In Level',     min:0,    max:2.5,  def:0.85, size:'md', section:'mod' },
   ];
   const params = {};
   const configById = {};
   config.forEach(c => { params[c.id] = c.def; configById[c.id] = c; });
 
-  // Triangles are preset-recall pads now, numbered to match the keyboard row 1..9,0
+  // Unicode icons under knobs / on jack labels (full name stays in title)
+  const knobIcon = {
+    pitch:'♪', instability:'≈', sub:'♭', tones:'❋', oscWaveMorph:'∿',
+    pitchB:'♫', oscBWaveMorph:'∿', oscMode:'⇄', oscModAmt:'⋈',
+    mix:'⚖', time:'◷', spread:'⇔', smear:'↝', decay:'↺', width:'↔',
+    envAttack:'↗', envDecay:'↘', envCurve:'⌒',
+    env2Attack:'↗', env2Decay:'↘', env2Curve:'⌒',
+    lfo1Speed:'◠', lfo1Wave:'⌇', lfo2Speed:'◠', lfo2Wave:'⌇',
+    absorb:'⊃', absorbReso:'Q', flCutoff:'⊃', flReso:'Q',
+    activation:'◉', envVcaDepth:'▽', lpgAmount:'◐', drive:'⌁', bitcrush:'▦', pan:'⇔',
+    micLevel:'↧',
+  };
+  const clusterIcon = { env1:'⌃₁', env2:'⌃₂', lfo1:'∿₁', lfo2:'∿₂', oscA:'Α', oscB:'Β' };
+  const jackIcon = {
+    extin:'↧', mic:'↥',
+    loopenv:'⌃', loopenv2:'⌃', env1gate:'▮', env2gate:'▮',
+    oscA:'♪', oscB:'♫', lfo1:'∿', lfo2:'∿', randgen1:'⚄', randgen2:'⚄',
+  };
+
+  // Preset pads — numbered to match the keyboard row 1..9,0
   function keyLabel(slot){ return slot === 9 ? '0' : String(slot+1); }
   function randomizedValues(){
     const vals = {};
     config.forEach(c => {
       if(c.id === 'drive' || c.id === 'bitcrush') vals[c.id] = c.min;
       else if(c.id === 'pan') vals[c.id] = 0;
+      else if(c.id === 'micLevel') vals[c.id] = c.def;
       else vals[c.id] = c.min + Math.random()*(c.max-c.min);
     });
     return vals;
   }
   function generateDefaultPresets(){
-    for(let i=0;i<10;i++) presets[i] = { values: randomizedValues(), cables: [] };
-    termLog('> 10 random presets generated on the triangles (1-9,0). Name one with n<number><name>.');
+    const bank = clone(DEFAULT_PRESET_BANK);
+    presets = Array.isArray(bank.presets) ? bank.presets : new Array(10).fill(null);
+    presetNames = Array.isArray(bank.presetNames) ? bank.presetNames : new Array(10).fill(null);
+    while(presets.length < 10) presets.push(null);
+    while(presetNames.length < 10) presetNames.push(null);
+    for(let i=0;i<10;i++){
+      const plateEl = document.getElementById('plate-'+i);
+      if(plateEl) plateEl.title = presetNames[i] ? `Preset ${keyLabel(i)} — ${presetNames[i]}` : `Preset ${keyLabel(i)}`;
+    }
+    termLog('> factory presets loaded (1-9,0).');
+  }
+  function setLabelText(el, icon, text){
+    if(!el) return;
+    el.dataset.icon = icon;
+    el.dataset.text = text;
+    el.innerText = useIcons ? icon : text;
+  }
+  function applyLabelMode(){
+    document.body.classList.toggle('labels-text', !useIcons);
+    document.querySelectorAll('[data-icon][data-text]').forEach(el => {
+      el.innerText = useIcons ? el.dataset.icon : el.dataset.text;
+    });
+  }
+  function persistPresets(){
+    try {
+      localStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify({ version:1, presets, presetNames }));
+    } catch(_){}
+  }
+  function loadPersistedPresets(){
+    try {
+      const raw = localStorage.getItem(PRESET_STORAGE_KEY);
+      if(!raw) return false;
+      const data = JSON.parse(raw);
+      if(!data || !Array.isArray(data.presets)) return false;
+      presets = data.presets;
+      presetNames = Array.isArray(data.presetNames) ? data.presetNames : new Array(10).fill(null);
+      for(let i=0;i<10;i++){
+        const plateEl = document.getElementById('plate-'+i);
+        if(plateEl && presetNames[i]) plateEl.title = `Preset ${keyLabel(i)} — ${presetNames[i]}`;
+      }
+      return true;
+    } catch(_){ return false; }
   }
   function clampv(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+  // Log frequency map for filter knobs (0..1 ↔ Hz) — linear Hz made the bottom
+  // of the dial do all the work and the top feel dead.
+  function logHz(t, lo, hi){ return lo * Math.pow(hi / lo, clampv(t, 0, 1)); }
+  function hzToLog(hz, lo, hi){ return Math.log(clampv(hz, lo, hi) / lo) / Math.log(hi / lo); }
+  function filterCutoffHz(knobId, cvAdd){
+    const c = configById[knobId];
+    const lo = (c && c.hzLo) || 80, hi = (c && c.hzHi) || 8000;
+    let t = params[knobId];
+    // Migrate old presets that still store absolute Hz
+    if(t > 1.5) t = hzToLog(t, lo, hi);
+    return logHz(clampv(t + (cvAdd || 0), 0, 1), lo, hi);
+  }
   // Continuous 3-way morph across a single knob: 0=sine, 0.5=triangle, 1=square
   function waveGains(m){
     m = clampv(m, 0, 1);
@@ -374,12 +591,7 @@
     const b = (m-0.5)*2; return { sine:0, tri:1-b, sqr:b };
   }
   function clone(obj){ return JSON.parse(JSON.stringify(obj)); }
-  // A patched cable "breaks normalization": once a jack has a cable in it,
-  // the knob stops setting that parameter directly and the cable takes over
-  // (the CV swings around a fixed neutral point instead of around the knob).
-  // A patched cable no longer overrides the knob — the knob stays the center/
-  // baseline value and CV oscillates around it, scaled by the cable's attenuator.
-  function destPatched(destId){ return patchCables.some(c => c.dstId === destId); }
+  // Knob stays the baseline; CV from cables oscillates around it (attenuator-scaled).
   function baseOf(knobId, destId){ return params[knobId]; }
 
   const knobIO = {
@@ -414,6 +626,7 @@
     flCutoff:     { in:['fl2co'] },
     flReso:       { in:['fl2res'] },
     envVcaDepth:  { in:['envvcamod'] },
+    micLevel:     { out:'mic' },
   };
   knobIO.pitch.out = 'oscA';
 
@@ -421,31 +634,47 @@
     feedback:'Feedback CV', delay:'Delay Time CV', vca:'VCA CV', pan:'Pan CV', envAtk:'Env1 Attack CV',
     envDcy:'Env1 Decay CV', env2atk:'Env2 Attack CV', env2dcy:'Env2 Decay CV', wave:'Wave CV', waveB:'Osc B Wave CV',
     subton:'Sub Level CV', instab:'Instability CV', mix:'Dry/Wet CV', spread:'Spread CV', smear:'Smear CV',
-    sat:'Saturation CV', crush:'Bitcrush CV', oscamt:'Interaction Amt CV', oscmode:'Mode CV',
+    sat:'Saturation CV', crush:'Bitcrush CV', oscamt:'Amt / Xfade CV', oscmode:'Mode CV',
     trig1:'Env1 Trigger', trig2:'Env2 Trigger', lfo1cv:'LFO1 Speed CV', lfo1ping:'LFO1 Ping (sync)',
     lfo2cv:'LFO2 Speed CV', lfo2ping:'LFO2 Ping (sync)', randgen1ping:'Random1 Ping', randgen2ping:'Random2 Ping',
-    absres:'Absorb Reso CV', fl2co:'Filter2 Cutoff CV', fl2res:'Filter2 Reso CV', envvcamod:'Env\u2192VCA CV' };
+    absres:'Absorb Reso CV', fl2co:'Filter2 Cutoff CV', fl2res:'Filter2 Reso CV', envvcamod:'Env\u2192VCA CV',
+    extin:'Ext In (audio)' };
   const srcLabel = { loopenv:'Env1 out', loopenv2:'Env2 out', env1gate:'Env1 Gate out', env2gate:'Env2 Gate out',
-    oscA:'Osc A out', oscB:'Osc B out', lfo1:'LFO1 out', lfo2:'LFO2 out', randgen1:'Random 1 out', randgen2:'Random 2 out' };
-  const oscModeNames = ['Off','FM','AM','Ring Mod','Wavefolder','Sync (approx)'];
+    oscA:'Osc A out', oscB:'Osc B out', lfo1:'LFO1 out', lfo2:'LFO2 out', randgen1:'Random 1 out', randgen2:'Random 2 out',
+    mic:'Mic out' };
+  const oscModeNames = ['Off','FM','AM','Ring Mod','Wavefolder','Sync (approx)','Mix'];
   const lfoWaveNames = ['Sine','Triangle','Ramp Up','Ramp Down','Square','Pulse','Square Random','Softened Random'];
   const stepNamesFor = { oscMode:oscModeNames, lfo1Wave:lfoWaveNames, lfo2Wave:lfoWaveNames };
   const filterModes = ['lowpass','highpass','bandpass','notch','allpass'];
   const filterModeAbbr = { lowpass:'LP', highpass:'HP', bandpass:'BP', notch:'NT', allpass:'--' };
 
-  // ---------- Knobs grouped in space and color by function (no visible labels — kept unmarked on purpose) ----------
+  // ---------- Knobs clustered by module (env1 / env2 / osc A / osc B / lfo…) ----------
   const groups = [
     { key:'mod', items:[
-      {t:'knob', id:'envAttack'}, {t:'knob', id:'envDecay'}, {t:'knob', id:'envCurve'},
-      {t:'knob', id:'env2Attack'}, {t:'knob', id:'env2Decay'}, {t:'knob', id:'env2Curve'},
-      {t:'knob', id:'lfo1Speed'}, {t:'knob', id:'lfo1Wave'}, {t:'knob', id:'lfo2Speed'}, {t:'knob', id:'lfo2Wave'},
+      {t:'cluster', id:'env1', label:'ENV1', items:[
+        {t:'knob', id:'envAttack'}, {t:'knob', id:'envDecay'}, {t:'knob', id:'envCurve'},
+      ]},
+      {t:'cluster', id:'env2', label:'ENV2', items:[
+        {t:'knob', id:'env2Attack'}, {t:'knob', id:'env2Decay'}, {t:'knob', id:'env2Curve'},
+      ]},
+      {t:'cluster', id:'lfo1', label:'LFO1', items:[
+        {t:'knob', id:'lfo1Speed'}, {t:'knob', id:'lfo1Wave'},
+      ]},
+      {t:'cluster', id:'lfo2', label:'LFO2', items:[
+        {t:'knob', id:'lfo2Speed'}, {t:'knob', id:'lfo2Wave'},
+      ]},
       {t:'randgen', id:1}, {t:'randgen', id:2},
+      {t:'knob', id:'micLevel'},
     ]},
     { key:'osc', items:[
-      {t:'knob', id:'pitch'}, {t:'knob', id:'oscWaveMorph'}, {t:'knob', id:'tones'},
-      {t:'knob', id:'sub'}, {t:'knob', id:'pitchB'}, {t:'knob', id:'oscBWaveMorph'},
-      {t:'knob', id:'oscMode'}, {t:'knob', id:'oscModAmt'}, {t:'knob', id:'instability'},
-      {t:'knob', id:'flCutoff'}, {t:'knob', id:'flReso'},
+      {t:'cluster', id:'oscA', label:'OSC A', items:[
+        {t:'knob', id:'pitch'}, {t:'knob', id:'oscWaveMorph'}, {t:'knob', id:'tones'}, {t:'knob', id:'sub'},
+      ]},
+      {t:'cluster', id:'oscB', label:'OSC B', items:[
+        {t:'knob', id:'pitchB'}, {t:'knob', id:'oscBWaveMorph'}, {t:'knob', id:'oscMode'}, {t:'knob', id:'oscModAmt'},
+      ]},
+      {t:'knob', id:'instability'},
+      {t:'knob', id:'flCutoff'}, {t:'knob', id:'flReso'}, {t:'dst', id:'extin'},
     ]},
     { key:'delay', items:[
       {t:'knob', id:'mix'}, {t:'knob', id:'time'}, {t:'knob', id:'spread'},
@@ -460,6 +689,7 @@
   const plateOrder = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
   const itemsHost = document.getElementById('items');
+  const faceplateEl = document.querySelector('.faceplate');
 
   // Buchla/Serge-inspired patch-point color coding, by function
   const jackColors = {
@@ -478,7 +708,9 @@
     // modulation OUTPUTS (LFOs, envelopes, random gens): light blue
     lfo1:'#99c1f1', lfo2:'#99c1f1', loopenv:'#99c1f1', loopenv2:'#99c1f1', randgen1:'#99c1f1', randgen2:'#99c1f1',
     // audio OUTPUTS (the oscillators themselves): dark blue
-    oscA:'#1a5fb4', oscB:'#1a5fb4',
+    oscA:'#1a5fb4', oscB:'#1a5fb4', mic:'#1c71d8',
+    // external audio input destination
+    extin:'#26a269',
     // gate / trigger patches: reserved red, smaller connectors (see .jack.gate)
     trig1:'#e01b24', trig2:'#e01b24', lfo1ping:'#e01b24', lfo2ping:'#e01b24',
     randgen1ping:'#e01b24', randgen2ping:'#e01b24', env1gate:'#e01b24', env2gate:'#e01b24',
@@ -503,6 +735,11 @@
     const dy = (seedRand(id+'y') - 0.5) * 8;
     const rot = (seedRand(id+'r') - 0.5) * 4;
     el.style.transform = `translate(${dx}px, ${dy}px) rotate(${rot}deg)`;
+  }
+  function setPatchHighlight(kind){
+    if(!faceplateEl) return;
+    faceplateEl.classList.toggle('patching-from-src', kind === 'src');
+    faceplateEl.classList.toggle('patching-from-dst', kind === 'dst');
   }
 
   function pctOf(c, v){ return (v - c.min) / (c.max - c.min); }
@@ -538,16 +775,24 @@
   }
   const stepPopupEl = document.getElementById('stepPopup');
   function showStepPopup(dial, names, val){
-    const r = dial.getBoundingClientRect(), p = document.querySelector('.faceplate').getBoundingClientRect();
-    stepPopupEl.style.left = (r.left - p.left + r.width/2 - 55) + 'px';
-    stepPopupEl.style.top = (r.top - p.top - (names.length*20 + 14)) + 'px';
+    const r = dial.getBoundingClientRect(), p = faceplateEl.getBoundingClientRect();
+    const size = Math.max(100, Math.min(150, 36 + names.length * 12));
+    stepPopupEl.style.width = size + 'px';
+    stepPopupEl.style.height = size + 'px';
+    stepPopupEl.style.left = (r.left - p.left + r.width/2 - size/2) + 'px';
+    stepPopupEl.style.top = (r.top - p.top + r.height/2 - size/2) + 'px';
     const idx = Math.round(clampv(val, 0, names.length-1));
     stepPopupEl.innerHTML = names.map((n,i) => `<div class="${i===idx?'active':''}">${n}</div>`).join('');
-    stepPopupEl.style.display = 'block';
+    stepPopupEl.classList.add('open');
+    stepPopupEl.style.display = 'flex';
   }
-  function hideStepPopup(){ stepPopupEl.style.display = 'none'; }
+  function hideStepPopup(){
+    stepPopupEl.classList.remove('open');
+    stepPopupEl.style.display = 'none';
+  }
 
-  function buildKnob(c){
+  function buildKnob(c, opts){
+    opts = opts || {};
     const io = knobIO[c.id] || {};
     const wrap = document.createElement('div');
     wrap.className = `knob-wrap size-${c.size}`;
@@ -597,32 +842,41 @@
     }
     wrap.appendChild(dialbox);
 
-    // Filter mode dock (button + LED strip): sits right next to the cutoff
-    // knob, positioned like a modulation input would be.
+    // Filter mode button at ~1 o'clock, tight against the dial rim
     if(c.id === 'flCutoff' || c.id === 'absorb'){
       const dock = buildFilterModeDock(c.id === 'flCutoff' ? 'fl2' : 'absorb');
-      dock.style.position = 'absolute'; dock.style.left = (-O - 34) + 'px';
-      dock.style.top = '50%'; dock.style.transform = 'translateY(-50%)';
+      dock.style.right = '-6px';
+      dock.style.top = '-6px';
       dialbox.appendChild(dock);
     }
 
+    // Label sits under the dial at the same offset as the jacks (inlet distance)
     const label = document.createElement('div'); label.className = 'klabel';
-    label.innerText = c.label;
-    wrap.appendChild(label);
-    scatter(wrap, c.id);
+    const icon = knobIcon[c.id] || c.label;
+    setLabelText(label, icon, c.label);
+    label.title = c.label;
+    label.style.bottom = (-O) + 'px';
+    dialbox.appendChild(label);
+    wrap.title = c.label;
+    if(!opts.noScatter) scatter(wrap, c.id);
 
     const stepNames = stepNamesFor[c.id];
-    let dragging = false, sy = 0, sv = 0, didDrag = false;
+    let dragging = false, sy = 0, sx = 0, sv = 0, didDrag = false;
     const baseRange = c.size === 'lg' ? 190 : c.size === 'md' ? 150 : 115;
+    const coarsePtr = () => window.matchMedia && window.matchMedia('(pointer:coarse)').matches;
     dial.addEventListener('pointerdown', e => {
-      dial.setPointerCapture(e.pointerId); dragging = true; didDrag = false; sy = e.clientY; sv = params[c.id];
+      dial.setPointerCapture(e.pointerId); dragging = true; didDrag = false; sy = e.clientY; sx = e.clientX; sv = params[c.id];
       if(stepNames) showStepPopup(dial, stepNames, params[c.id]);
     });
     dial.addEventListener('pointermove', e => {
       if(!dragging) return;
-      const range = c.max - c.min, div = baseRange * (e.shiftKey ? 5 : 1);
+      const range = c.max - c.min;
+      const div = (coarsePtr() ? baseRange * 0.72 : baseRange) * (e.shiftKey ? 5 : 1);
+      // Vertical drag (desktop feel) plus horizontal on touch so thumbs aren't stuck to one axis
       const dy = sy - e.clientY;
-      params[c.id] = Math.max(c.min, Math.min(c.max, sv + (dy * (range/div))));
+      const dx = e.clientX - sx;
+      const delta = coarsePtr() ? (dy + dx * 0.85) : dy;
+      params[c.id] = Math.max(c.min, Math.min(c.max, sv + (delta * (range/div))));
       didDrag = true;
       updateKnobVisual(c); sync(); recordIfEditing();
       if(stepNames) showStepPopup(dial, stepNames, params[c.id]);
@@ -646,10 +900,40 @@
   function buildJackItem(kind, id, label){
     const wrap = document.createElement('div'); wrap.className = 'jackitem';
     const jack = makeJack(kind, id, label);
-    const lab = document.createElement('div'); lab.className = 'jacklabel'; lab.innerText = label;
+    const lab = document.createElement('div'); lab.className = 'jacklabel';
+    setLabelText(lab, jackIcon[id] || label, label);
+    lab.title = label;
     wrap.appendChild(jack); wrap.appendChild(lab);
     return wrap;
   }
+  function tagSection(el, section){
+    if(section) el.dataset.section = section;
+    return el;
+  }
+  function appendGroupItem(item, section, host){
+    let el = null;
+    if(item.t === 'cluster'){
+      el = document.createElement('div');
+      el.className = 'cluster';
+      el.dataset.cluster = item.id;
+      const title = document.createElement('div');
+      title.className = 'cluster-title';
+      const cText = item.label || item.id.toUpperCase();
+      setLabelText(title, clusterIcon[item.id] || cText, cText);
+      title.title = cText;
+      el.appendChild(title);
+      (item.items || []).forEach(sub => {
+        if(sub.t === 'knob') el.appendChild(buildKnob(configById[sub.id], { noScatter: true }));
+        else if(sub.t === 'src') el.appendChild(buildJackItem('src', sub.id, srcLabel[sub.id] || sub.id));
+        else if(sub.t === 'dst') el.appendChild(buildJackItem('dst', sub.id, destLabel[sub.id] || sub.id));
+      });
+    } else if(item.t === 'knob') el = buildKnob(configById[item.id]);
+    else if(item.t === 'src') el = buildJackItem('src', item.id, srcLabel[item.id] || item.id);
+    else if(item.t === 'dst') el = buildJackItem('dst', item.id, destLabel[item.id] || item.id);
+    else if(item.t === 'randgen') el = buildRandGen(item.id);
+    if(el){ tagSection(el, section); host.appendChild(el); }
+  }
+
   // A "random voltage generator" — no knob at all, just a ping-in, a voltage-out,
   // and the word RANDOM between them. Pinging it draws a fresh random value and
   // holds it until the next ping.
@@ -657,15 +941,14 @@
     const wrap = document.createElement('div'); wrap.className = 'randgen';
     const pingJack = makeJack('dst', 'randgen'+idx+'ping', 'Random'+idx+' Ping');
     const voltJack = makeJack('src', 'randgen'+idx, 'Random'+idx+' out');
-    const label = document.createElement('div'); label.className = 'randgen-label'; label.innerText = 'RANDOM';
+    const label = document.createElement('div'); label.className = 'randgen-label';
+    setLabelText(label, '⚄', 'RND');
+    label.title = 'RANDOM';
     wrap.appendChild(pingJack); wrap.appendChild(label); wrap.appendChild(voltJack);
     scatter(wrap, 'randgen'+idx);
     return wrap;
   }
-  // A small half-size touchpad-style button that cycles a filter's mode
-  // (lowpass/highpass/bandpass/notch/off) on click, paired with a vertical
-  // strip of LEDs showing which mode is currently engaged. Docked onto the
-  // filter's own cutoff knob, positioned like a modulation input would be.
+  // Filter mode button — cycles LP/HP/BP/NT/off; docked at ~1 o'clock on the cutoff knob
   function buildFilterModeDock(which){
     const dock = document.createElement('div'); dock.className = 'filterdock';
     const btn = document.createElement('div');
@@ -674,31 +957,50 @@
     btn.innerText = filterModeAbbr[which==='fl2' ? fl2Mode : absorbMode];
     btn.addEventListener('pointerdown', e => { e.stopPropagation(); cycleFilterMode(which); });
     dock.appendChild(btn);
-    const leds = document.createElement('div'); leds.className = 'modeleds'; leds.id = 'modeleds-'+which;
-    const curMode = which==='fl2' ? fl2Mode : absorbMode;
-    filterModes.forEach(m => {
-      const led = document.createElement('div'); led.className = 'led modeled' + (m===curMode?' lit':''); led.dataset.mode = m;
-      leds.appendChild(led);
-    });
-    dock.appendChild(leds);
     return dock;
   }
 
   groups.forEach(g => {
     const brk = document.createElement('div'); brk.className = 'groupbreak';
+    tagSection(brk, g.key);
     itemsHost.appendChild(brk);
-    g.items.forEach(item => {
-      if(item.t === 'knob') itemsHost.appendChild(buildKnob(configById[item.id]));
-      else if(item.t === 'src') itemsHost.appendChild(buildJackItem('src', item.id, srcLabel[item.id] || item.id));
-      else if(item.t === 'dst') itemsHost.appendChild(buildJackItem('dst', item.id, destLabel[item.id] || item.id));
-      else if(item.t === 'randgen') itemsHost.appendChild(buildRandGen(item.id));
-
-    });
+    g.items.forEach(item => appendGroupItem(item, g.key, itemsHost));
   });
   const platesRow = document.createElement('div'); platesRow.className = 'platesrow';
+  tagSection(platesRow, 'presets');
   plateOrder.forEach(idx => platesRow.appendChild(buildPlate(idx)));
   itemsHost.appendChild(platesRow);
   config.forEach(updateKnobVisual);
+
+  // Mobile section tabs: filter the dense faceplate down to one row of controls
+  const sectTabsEl = document.getElementById('sectTabs');
+  let activeSect = 'all';
+  function applySectionFilter(sect){
+    activeSect = sect || 'all';
+    sectTabsEl.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.sect === activeSect));
+    itemsHost.querySelectorAll('[data-section]').forEach(el => {
+      const show = activeSect === 'all' || el.dataset.section === activeSect;
+      el.classList.toggle('sect-hide', !show);
+    });
+    requestAnimationFrame(() => { updateCables(); updateNormalizedPaths(); });
+  }
+  sectTabsEl.addEventListener('click', e => {
+    const btn = e.target.closest('button[data-sect]');
+    if(!btn) return;
+    applySectionFilter(btn.dataset.sect);
+  });
+  // On resize past the mobile breakpoint, show everything again
+  const narrowMq = window.matchMedia('(max-width: 720px)');
+  function onNarrowChange(){
+    if(!narrowMq.matches){
+      itemsHost.querySelectorAll('[data-section]').forEach(el => el.classList.remove('sect-hide'));
+      sectTabsEl.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.sect === 'all'));
+      activeSect = 'all';
+    } else applySectionFilter(activeSect);
+    updateCables();
+  }
+  if(narrowMq.addEventListener) narrowMq.addEventListener('change', onNarrowChange);
+  else if(narrowMq.addListener) narrowMq.addListener(onNarrowChange);
 
   // ---------- Audio graph ----------
 
@@ -710,31 +1012,14 @@
   }
   // Genuine reflection wavefolder: mirrors the signal back at +-1 instead of
   // clamping, so it keeps folding (never flattens) no matter how hard it's driven.
-  function reflectFold(x){
-    let guard = 0;
-    while((x > 1 || x < -1) && guard < 16){
-      if(x > 1) x = 2 - x;
-      else if(x < -1) x = -2 - x;
-      guard++;
-    }
-    return x;
-  }
-  function setFoldNode(){
-    let prev = 0;
-    foldNode.onaudioprocess = e => {
-      const inp = e.inputBuffer.getChannelData(0), out = e.outputBuffer.getChannelData(0);
-      for(let i=0;i<inp.length;i++){
-        const cur = inp[i];
-        const mid = (prev + cur) * 0.5;
-        // cheap 2x oversample (midpoint + current, averaged) to soften fold aliasing
-        out[i] = (reflectFold(mid) + reflectFold(cur)) * 0.5;
-        prev = cur;
-      }
-    };
-  }
+  // (DSP lives in omchs-worklets.js; helpers below push params / load modules.)
   function setDriveCurve(d){
+    if(!driveN) return;
+    const clamped = clampv(d, 1, 30);
+    if(lastDriveCurve !== null && Math.abs(lastDriveCurve - clamped) < 0.001) return;
+    lastDriveCurve = clamped;
     const n = 2048, c = new Float32Array(n);
-    for(let i=0;i<n;i++){ const x = (i*2)/n - 1; c[i] = Math.tanh(x*d); }
+    for(let i=0;i<n;i++){ const x = (i*2)/n - 1; c[i] = Math.tanh(x*clamped); }
     driveN.curve = c;
   }
   function setSoftClip(node, amount){
@@ -742,69 +1027,58 @@
     for(let i=0;i<n;i++){ const x = (i*2)/n - 1; c[i] = Math.tanh(x*amount)/Math.tanh(amount); }
     node.curve = c;
   }
-  function setCrusher(){
-    let phase=0, holdL=0, holdR=0;
-    crushN.onaudioprocess = e => {
-      const inL = e.inputBuffer.getChannelData(0), inR = e.inputBuffer.getChannelData(1);
-      const outL = e.outputBuffer.getChannelData(0), outR = e.outputBuffer.getChannelData(1);
-      const effCrush = clampv(baseOf('bitcrush','crush') + (cvLive.crush||0), 0, 0.95);
-      const step = Math.pow(0.5, (1-effCrush)*16);
-      for(let i=0;i<inL.length;i++){
-        if(effCrush > 0){
-          phase += effCrush;
-          if(phase >= 1){ phase -= 1; holdL = Math.round(inL[i]/step)*step; holdR = Math.round(inR[i]/step)*step; }
-          outL[i] = holdL; outR[i] = holdR;
-        } else { outL[i] = inL[i]; outR[i] = inR[i]; }
-      }
-    };
-  }
-  function setRecTap(){
-    recTap.onaudioprocess = e => {
-      if(!isRec) return;
-      recBuffersL.push(new Float32Array(e.inputBuffer.getChannelData(0)));
-      recBuffersR.push(new Float32Array(e.inputBuffer.getChannelData(1)));
-    };
-  }
-  // Custom LFO: phase accumulator per-sample, gives waveform shapes native
-  // OscillatorNode can't do (ramp up/down independently, pulse, stepped/soft
-  // random). state.phase can be reset externally (the "ping" input = hard sync).
-  function makeLfoState(){ return { phase:0, softVal:0, softTarget:0, sqRand:1 }; }
-  function lfoSample(state, wave){
-    let v;
-    switch(Math.round(clampv(wave,0,7))){
-      case 0: v = Math.sin(state.phase*2*Math.PI); break;                          // sine
-      case 1: v = state.phase<0.5 ? (4*state.phase-1) : (3-4*state.phase); break;  // triangle
-      case 2: v = 2*state.phase-1; break;                                          // ramp up
-      case 3: v = 1-2*state.phase; break;                                          // ramp down
-      case 4: v = state.phase<0.5 ? 1 : -1; break;                                 // square
-      case 5: v = state.phase<0.2 ? 1 : -1; break;                                 // pulse
-      case 6: v = state.sqRand; break;                                             // square random
-      default: state.softVal += (state.softTarget-state.softVal)*0.0015; v = state.softVal; break; // softened random
+  function pushWorkletParams(){
+    if(!workletsReady || !ctx) return;
+    if(crushN && crushN.port){
+      crushN.port.postMessage({ type:'crush', value: clampv(baseOf('bitcrush','crush') + (cvLive.crush||0), 0, 0.95) });
     }
-    return v;
+    if(lfo1Node && lfo1Node.port){
+      lfo1Node.port.postMessage({
+        type:'params',
+        speed: clampv(baseOf('lfo1Speed','lfo1cv') + (cvLive.lfo1cv||0), 0.02, 25),
+        wave: params.lfo1Wave
+      });
+    }
+    if(lfo2Node && lfo2Node.port){
+      lfo2Node.port.postMessage({
+        type:'params',
+        speed: clampv(baseOf('lfo2Speed','lfo2cv') + (cvLive.lfo2cv||0), 0.02, 25),
+        wave: params.lfo2Wave
+      });
+    }
   }
-  function setLfo(node, state, getSpeed, getWave){
-    const sr = ctx.sampleRate;
-    node.onaudioprocess = e => {
-      const out = e.outputBuffer.getChannelData(0);
-      const freq = Math.max(0.001, getSpeed());
-      const wave = getWave();
-      for(let i=0;i<out.length;i++){
-        state.phase += freq/sr;
-        if(state.phase >= 1){
-          state.phase -= 1;
-          if(Math.random() < 0.5) state.sqRand *= -1;
-          state.softTarget = Math.random()*2-1;
-        }
-        out[i] = lfoSample(state, wave);
-      }
-    };
+  async function loadOmchsWorklets(audioCtx){
+    try {
+      await audioCtx.audioWorklet.addModule('omchs-worklets.js');
+      return;
+    } catch(_){}
+    try {
+      const res = await fetch('omchs-worklets.js');
+      const text = await res.text();
+      const blobUrl = URL.createObjectURL(new Blob([text], { type:'application/javascript' }));
+      await audioCtx.audioWorklet.addModule(blobUrl);
+      return;
+    } catch(_){}
+    throw new Error('AudioWorklet load failed — serve this folder over HTTP (python3 -m http.server)');
   }
 
-  function init(){
+  async function init(){
     const AudioCtor = window.AudioContext || window.webkitAudioContext;
     if(!AudioCtor){ alert('This browser does not support Web Audio.'); return; }
-    ctx = new AudioCtor(); ctx.resume().catch(()=>{});
+    // Prefer the smallest practical buffer for responsive mic / knob / MIDI feel
+    try { ctx = new AudioCtor({ latencyHint: 'interactive' }); }
+    catch(_){ ctx = new AudioCtor(); }
+    ctx.resume().catch(()=>{});
+    try {
+      await loadOmchsWorklets(ctx);
+      workletsReady = true;
+    } catch(err){
+      termLog('> ' + (err && err.message ? err.message : 'AudioWorklet load failed'));
+      alert(err && err.message ? err.message : 'AudioWorklet load failed');
+      try { ctx.close(); } catch(_){}
+      ctx = null;
+      return;
+    }
 
     // --- Osc A: sine / triangle / square morph ---
     oscTri = ctx.createOscillator(); oscTri.type = 'triangle'; oscTri.frequency.value = params.pitch;
@@ -838,13 +1112,21 @@
     // Osc A's own contribution is routed through a stage whose gain can be
     // modulated by Osc B (AM / Ring Mod / Sync) before joining the mix.
     oscAAmStage = ctx.createGain(); oscAAmStage.gain.value = 1;
-    oscASum.connect(oscAAmStage); oscAAmStage.connect(oscMix);
+    oscMixAGain = ctx.createGain(); oscMixAGain.gain.value = 1;
+    oscASum.connect(oscAAmStage); oscAAmStage.connect(oscMixAGain); oscMixAGain.connect(oscMix);
     subG.connect(oscMix);
 
-    // --- Osc B: identical to Osc A (same sine/tri/square morph, own pitch) but not
-    // mixed into the main path directly — it interacts with Osc A according to
-    // the Osc B->A Mode knob (FM / AM / Ring Mod / Wavefolder / Sync), and is
-    // also available as its own patchable FM / cross-mod source.
+    // External / mic audio bus — patch anything into Ext In to run it through
+    // Filter2 → fold → VCA/LPG → delay/FX (same path as the oscillators).
+    extInBus = ctx.createGain(); extInBus.gain.value = 1;
+    extInBus.connect(oscMix);
+    // Mic out jack always exists; silent until MIC is armed
+    micOutGain = ctx.createGain(); micOutGain.gain.value = 1;
+    micLevelGain = ctx.createGain(); micLevelGain.gain.value = params.micLevel;
+
+    // --- Osc B: fully independent twin (own pitch / wave). By default it is
+    // silent in the main mix (Off) and only heard via its patch jack, or when
+    // Osc B→A Mode engages FM / AM / Ring / Fold / Sync / Mix crossfade.
     oscBTri = ctx.createOscillator(); oscBTri.type = 'triangle'; oscBTri.frequency.value = params.pitchB;
     oscBSqr = ctx.createOscillator(); oscBSqr.type = 'square'; oscBSqr.frequency.value = params.pitchB;
     oscBSine = ctx.createOscillator(); oscBSine.type = 'sine'; oscBSine.frequency.value = params.pitchB;
@@ -857,11 +1139,15 @@
     oscBSqr.connect(oscBSqrGain).connect(oscBSum);
     oscBSine.connect(oscBSineGain).connect(oscBSum);
     oscBTri.start(); oscBSqr.start(); oscBSine.start();
+    // Direct mix path for Mix (crossfade) mode — gated to 0 unless mode=Mix
+    oscMixBGain = ctx.createGain(); oscMixBGain.gain.value = 0;
+    oscBSum.connect(oscMixBGain); oscMixBGain.connect(oscMix);
 
     // FM: Osc B's raw output added to Osc A's frequency (always wired, gated to 0 unless mode=FM)
     fmInteractGain = ctx.createGain(); fmInteractGain.gain.value = 0;
     oscBSum.connect(fmInteractGain);
-    fmInteractGain.connect(oscTri.frequency); fmInteractGain.connect(oscSqr.frequency);
+    fmInteractGain.connect(oscTri.frequency); fmInteractGain.connect(oscSqr.frequency); fmInteractGain.connect(oscSine.frequency);
+    fmInteractGain.connect(subTri.frequency); fmInteractGain.connect(subSqr.frequency); fmInteractGain.connect(subSine.frequency);
     // AM / Ring Mod: Osc B modulates Osc A's own gain stage (baseline set per-mode in applyOscMode)
     amInteractGain = ctx.createGain(); amInteractGain.gain.value = 0;
     oscBSum.connect(amInteractGain);
@@ -879,26 +1165,28 @@
     oscBFoldGain = ctx.createGain(); oscBFoldGain.gain.value = 0;
     oscBSum.connect(oscBFoldGain); oscBFoldGain.connect(oscMix);
 
-    // --- Resonant multimode filter, right after the oscillator section
-    // (before the wavefolder) — lowpass/highpass/bandpass/notch/off, default lowpass ---
-    filter2 = ctx.createBiquadFilter(); filter2.type = 'lowpass';
-    filter2.frequency.value = params.flCutoff; filter2.Q.value = params.flReso;
-    oscMix.connect(filter2);
-
-    // --- True wavefolder: reflects at the boundary, never clips ---
+    // --- True wavefolder (AudioWorklet) — before the VCF so filtering isn't
+    // undone by new fold harmonics (that made Filter2 feel dead until the bottom).
     foldDrive = ctx.createGain(); foldDrive.gain.value = 1 + params.tones*11;
-    foldNode = ctx.createScriptProcessor(1024, 1, 1); setFoldNode();
-    filter2.connect(foldDrive).connect(foldNode);
+    foldNode = new AudioWorkletNode(ctx, 'omchs-fold', {
+      numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1]
+    });
+    oscMix.connect(foldDrive).connect(foldNode);
 
-    // --- VCA/LPG pair, placed by default right after the fold and before
-    // anything else (delay loop, filter) — but with NO envelope hardwired to
-    // it anymore. Patch whichever source you want into the CV input on the
-    // Env->VCA Depth knob; nothing is assigned there by default.
+    // --- Filter2: same BiquadFilter recipe as Absorb (series LPF on the
+    // audible path, post-fold). Not parallel — dry/wet both hear it via excite.
+    filter2 = ctx.createBiquadFilter();
+    filter2.type = 'lowpass';
+    filter2.Q.value = 1.1;
+    filter2.frequency.value = filterCutoffHz('flCutoff');
+    foldNode.connect(filter2);
+
+    // --- VCA/LPG pair, placed by default right after the filter ---
     vca1Stage = ctx.createGain(); vca1Stage.gain.value = 1;
     lpg1Filter = ctx.createBiquadFilter(); lpg1Filter.type = 'lowpass'; lpg1Filter.Q.value = 0.7; lpg1Filter.frequency.value = 8000;
     vca2Stage = ctx.createGain(); vca2Stage.gain.value = 1;
     lpg2Filter = ctx.createBiquadFilter(); lpg2Filter.type = 'lowpass'; lpg2Filter.Q.value = 0.7; lpg2Filter.frequency.value = 8000;
-    foldNode.connect(vca1Stage).connect(lpg1Filter).connect(vca2Stage).connect(lpg2Filter);
+    filter2.connect(vca1Stage).connect(lpg1Filter).connect(vca2Stage).connect(lpg2Filter);
 
     const excite = ctx.createGain(); excite.gain.value = 0.55;
     lpg2Filter.connect(excite);
@@ -928,8 +1216,10 @@
     merger = ctx.createChannelMerger(2);
     tapSumL.connect(merger, 0, 0); tapSumR.connect(merger, 0, 1);
 
-    filter = ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.Q.value = 1.1;
-    filter.frequency.value = params.absorb;
+    filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.Q.value = 1.1;
+    filter.frequency.value = filterCutoffHz('absorb');
     merger.connect(filter);
 
     // Safety net only — high threshold/gentle ratio so it stays out of the way
@@ -959,7 +1249,10 @@
     wetGain.connect(outPan); dryGain.connect(outPan);
     driveN = ctx.createWaveShaper(); driveN.oversample = '2x'; setDriveCurve(params.drive);
     outPan.connect(driveN);
-    crushN = ctx.createScriptProcessor(2048, 2, 2); setCrusher();
+    crushN = new AudioWorkletNode(ctx, 'omchs-crush', {
+      numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2],
+      channelCount: 2, channelCountMode: 'explicit'
+    });
     driveN.connect(crushN);
     masterLimiter = ctx.createDynamicsCompressor();
     masterLimiter.threshold.value = -2; masterLimiter.knee.value = 4; masterLimiter.ratio.value = 14;
@@ -980,9 +1273,21 @@
     mainG.connect(splitAnalyser);
     splitAnalyser.connect(analyserL, 0); splitAnalyser.connect(analyserR, 1);
 
-    recTap = ctx.createScriptProcessor(4096, 2, 2); setRecTap();
+    // Recording: AudioWorklet PCM tap → WAV download (16-bit stereo)
+    recSampleRate = ctx.sampleRate;
+    recNode = new AudioWorkletNode(ctx, 'omchs-rec', {
+      numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1],
+      channelCount: 2, channelCountMode: 'explicit', channelInterpretation: 'speakers'
+    });
     recSilent = ctx.createGain(); recSilent.gain.value = 0;
-    mainG.connect(recTap); recTap.connect(recSilent); recSilent.connect(ctx.destination);
+    mainG.connect(recNode);
+    recNode.connect(recSilent); recSilent.connect(ctx.destination);
+    recNode.port.onmessage = e => {
+      const d = e.data;
+      if(!d) return;
+      if(d.type === 'rec-chunk' && d.buffer) recChunks.push(d.buffer);
+      else if(d.type === 'rec-end') finishWavDownload(d.sampleRate || recSampleRate);
+    };
 
     envLoopSrc = ctx.createConstantSource(); envLoopSrc.offset.value = 0; envLoopSrc.start();
     envLoopSrc2 = ctx.createConstantSource(); envLoopSrc2.offset.value = 0; envLoopSrc2.start();
@@ -996,16 +1301,18 @@
     randGen1Src = ctx.createConstantSource(); randGen1Src.offset.value = 0; randGen1Src.start();
     randGen2Src = ctx.createConstantSource(); randGen2Src.offset.value = 0; randGen2Src.start();
 
-    // Two standard LFOs: speed + waveform + ping (hard sync) input.
-    lfo1State = makeLfoState(); lfo2State = makeLfoState();
-    lfo1Node = ctx.createScriptProcessor(512, 1, 1);
-    setLfo(lfo1Node, lfo1State, () => clampv(baseOf('lfo1Speed','lfo1cv') + (cvLive.lfo1cv||0), 0.02, 25), () => params.lfo1Wave);
+    // Two standard LFOs (AudioWorklet): speed + waveform + ping (hard sync)
+    lfo1Node = new AudioWorkletNode(ctx, 'omchs-lfo', {
+      numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [1]
+    });
     lfo1Silent = ctx.createGain(); lfo1Silent.gain.value = 0;
     lfo1Node.connect(lfo1Silent); lfo1Silent.connect(ctx.destination);
-    lfo2Node = ctx.createScriptProcessor(512, 1, 1);
-    setLfo(lfo2Node, lfo2State, () => clampv(baseOf('lfo2Speed','lfo2cv') + (cvLive.lfo2cv||0), 0.02, 25), () => params.lfo2Wave);
+    lfo2Node = new AudioWorkletNode(ctx, 'omchs-lfo', {
+      numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [1]
+    });
     lfo2Silent = ctx.createGain(); lfo2Silent.gain.value = 0;
     lfo2Node.connect(lfo2Silent); lfo2Silent.connect(ctx.destination);
+    pushWorkletParams();
 
     oscTri.start(); oscSqr.start(); oscSine.start(); subTri.start(); subSqr.start(); subSine.start();
 
@@ -1036,45 +1343,36 @@
           t.node.delayTime.setTargetAtTime(Math.max(0.001, Math.min(4.9, wobble)), ctx.currentTime, 0.03);
         });
       }
+      pushWorkletParams();
     }, 40);
 
-    // --- CV monitor: samples patched modulation for parameters that aren't
-    // live AudioParams (env attack/decay, spread, smear, saturation, bitcrush,
-    // LFO speed, mode CV), plus rising-edge ("ping") detection for the envelope
-    // triggers, LFO hard-syncs, and the two random-voltage generators.
-    // Each gets a summing node CV cables connect into; a small ScriptProcessor
-    // reads the latest sample of each every ~23ms into cvLive for JS to use.
+    // --- CV monitor (AudioWorklet): samples patched modulation + rising-edge triggers
     const cvNames = ['envAtk','envDcy','instab','spread','smear','sat','crush','env2atk','env2dcy','oscamt',
-      'oscmode','lfo1cv','lfo2cv','trig1','trig2','lfo1ping','lfo2ping','randgen1ping','randgen2ping'];
+      'oscmode','lfo1cv','lfo2cv','trig1','trig2','lfo1ping','lfo2ping','randgen1ping','randgen2ping','wave','waveB'];
     const onRise = {
       trig1: () => scheduleEnvLoop(),
       trig2: () => scheduleEnvLoop2(),
-      lfo1ping: () => { lfo1State.phase = 0; },
-      lfo2ping: () => { lfo2State.phase = 0; },
+      lfo1ping: () => { if(lfo1Node && lfo1Node.port) lfo1Node.port.postMessage({ type:'ping' }); },
+      lfo2ping: () => { if(lfo2Node && lfo2Node.port) lfo2Node.port.postMessage({ type:'ping' }); },
       randgen1ping: () => { randGen1Src.offset.setTargetAtTime(Math.random()*2-1, ctx.currentTime, 0.002); },
       randgen2ping: () => { randGen2Src.offset.setTargetAtTime(Math.random()*2-1, ctx.currentTime, 0.002); },
     };
     cvNames.forEach(name => { cvSum[name] = ctx.createGain(); cvLive[name] = 0; });
     const cvMerger = ctx.createChannelMerger(cvNames.length);
     cvNames.forEach((name,i) => cvSum[name].connect(cvMerger, 0, i));
-    cvMonitorNode = ctx.createScriptProcessor(1024, cvNames.length, 1);
-    const prevEdge = {}; cvNames.forEach(name => { if(onRise[name]) prevEdge[name] = 0; });
-    const TRIG_THRESH = 0.3;
-    cvMonitorNode.onaudioprocess = e => {
-      cvNames.forEach((name,i) => {
-        const data = e.inputBuffer.getChannelData(i);
-        cvLive[name] = data[data.length-1];
-        if(onRise[name]){
-          let rose = false, prev = prevEdge[name];
-          for(let s=0;s<data.length;s++){
-            if(prev < TRIG_THRESH && data[s] >= TRIG_THRESH) rose = true;
-            prev = data[s];
-          }
-          prevEdge[name] = prev;
-          if(rose) onRise[name]();
-        }
-      });
-      setDriveCurve(clampv(baseOf('drive','sat') + cvLive.sat, 1, 30));
+    cvMonitorNode = new AudioWorkletNode(ctx, 'omchs-cv-monitor', {
+      numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1],
+      channelCount: cvNames.length, channelCountMode: 'explicit', channelInterpretation: 'discrete',
+      processorOptions: { names: cvNames, riseNames: Object.keys(onRise) }
+    });
+    cvMonitorNode.port.onmessage = e => {
+      const d = e.data;
+      if(!d || d.type !== 'cv') return;
+      if(d.live) Object.assign(cvLive, d.live);
+      if(d.rises) d.rises.forEach(name => { if(onRise[name]) onRise[name](); });
+      setDriveCurve(clampv(baseOf('drive','sat') + (cvLive.sat||0), 1, 30));
+      applyWaveMorphs();
+      pushWorkletParams();
     };
     cvMerger.connect(cvMonitorNode);
     cvMonitorSilent = ctx.createGain(); cvMonitorSilent.gain.value = 0;
@@ -1090,8 +1388,8 @@
       { id:'delay', targets: delayTaps.map(t => ({ getParam:()=>t.node.delayTime, sens:0.12 })) },
       { id:'vca', targets:[{ getParam:()=>mainG.gain, sens:0.5 }] },
       { id:'pan', targets:[{ getParam:()=>outPan.pan, sens:1 }] },
-      { id:'wave', targets:[{ getParam:()=>sqrGain.gain, sens:0.5 }, { getParam:()=>triGain.gain, sens:-0.5 }] },
-      { id:'waveB', targets:[{ getParam:()=>oscBSqrGain.gain, sens:0.5 }, { getParam:()=>oscBTriGain.gain, sens:-0.5 }] },
+      { id:'wave', targets:[{ getNode:()=>cvSum.wave, sens:0.5 }] },
+      { id:'waveB', targets:[{ getNode:()=>cvSum.waveB, sens:0.5 }] },
       { id:'subton', targets:[{ getParam:()=>subG.gain, sens:0.4 }] },
       { id:'mix', targets:[{ getParam:()=>wetGain.gain, sens:0.4 }, { getParam:()=>dryGain.gain, sens:-0.4 }] },
       { id:'envAtk', targets:[{ getNode:()=>cvSum.envAtk, sens:0.6 }] },
@@ -1106,7 +1404,7 @@
       { id:'oscamt', targets:[{ getNode:()=>cvSum.oscamt, sens:0.4 }] },
       { id:'trig1', targets:[{ getNode:()=>cvSum.trig1, sens:1 }] },
       { id:'trig2', targets:[{ getNode:()=>cvSum.trig2, sens:1 }] },
-      { id:'oscmode', targets:[{ getNode:()=>cvSum.oscmode, sens:2 }] },
+      { id:'oscmode', targets:[{ getNode:()=>cvSum.oscmode, sens:2.5 }] },
       { id:'lfo1cv', targets:[{ getNode:()=>cvSum.lfo1cv, sens:8 }] },
       { id:'lfo2cv', targets:[{ getNode:()=>cvSum.lfo2cv, sens:8 }] },
       { id:'lfo1ping', targets:[{ getNode:()=>cvSum.lfo1ping, sens:1 }] },
@@ -1120,6 +1418,7 @@
         { getParam:()=>vca1Stage.gain, sens:0.5 }, { getParam:()=>vca2Stage.gain, sens:0.5 },
         { getParam:()=>lpg1Filter.frequency, sens:3000 }, { getParam:()=>lpg2Filter.frequency, sens:3000 },
       ] },
+      { id:'extin', targets:[{ getNode:()=>extInBus, sens:1 }] },
     ];
 
     applyOscMode();
@@ -1131,10 +1430,52 @@
     drawScope();
     setupMidi();
     audioReady = true;
+    updateMicButton();
   }
 
-  // ---------- MIDI input: note-on sets Pitch and triggers both envelopes;
-  // gracefully does nothing if the browser/permissions don't support it ----------
+  // ---------- MIDI input: note-on sets Pitch, velocity scales VCA, and
+  // triggers both envelopes; note-off (or note-on vel=0) stops looping when
+  // the last key is released. ----------
+  function stopEnvLoops(){
+    if(!ctx) return;
+    clearTimeout(envSchedTimer); clearTimeout(envSchedTimer2);
+    envSchedTimer = envSchedTimer2 = null;
+    const now = ctx.currentTime;
+    if(envLoopSrc){
+      envLoopSrc.offset.cancelScheduledValues(now);
+      envLoopSrc.offset.setTargetAtTime(0, now, 0.03);
+    }
+    if(envLoopSrc2){
+      envLoopSrc2.offset.cancelScheduledValues(now);
+      envLoopSrc2.offset.setTargetAtTime(0, now, 0.03);
+    }
+    if(env1GateSrc) env1GateSrc.offset.setTargetAtTime(0, now, 0.01);
+    if(env2GateSrc) env2GateSrc.offset.setTargetAtTime(0, now, 0.01);
+  }
+  function midiApplyNote(note, vel){
+    const freq = 440 * Math.pow(2, (note-69)/12);
+    params.pitch = clampv(freq, configById.pitch.min, configById.pitch.max);
+    updateKnobVisual(configById.pitch);
+    midiVelScale = clampv(vel/127, 0.05, 1);
+    sync();
+    scheduleEnvLoop(); scheduleEnvLoop2();
+    termLog(`> MIDI note ${note} (${freq.toFixed(1)}Hz)`);
+  }
+  function midiNoteOn(note, vel){
+    if(!midiNoteStack.includes(note)) midiNoteStack.push(note);
+    midiApplyNote(note, vel);
+  }
+  function midiNoteOff(note){
+    midiNoteStack = midiNoteStack.filter(n => n !== note);
+    if(midiNoteStack.length === 0){
+      stopEnvLoops();
+      midiVelScale = 1;
+      if(mainG) mainG.gain.setTargetAtTime(baseOf('activation','vca'), ctx.currentTime, 0.02);
+      return;
+    }
+    const last = midiNoteStack[midiNoteStack.length - 1];
+    midiApplyNote(last, 100);
+  }
   function setupMidi(){
     if(!navigator.requestMIDIAccess){ termLog('> MIDI not supported in this browser.'); return; }
     navigator.requestMIDIAccess().then(access => {
@@ -1142,20 +1483,31 @@
       if(!inputs.length){ termLog('> MIDI: no input devices found.'); return; }
       inputs.forEach(input => {
         input.onmidimessage = msg => {
-          const [status, note, vel] = msg.data;
+          if(!msg.data || msg.data.length < 2) return;
+          const [status, note, vel = 0] = msg.data;
           const cmd = status & 0xf0;
-          if(cmd === 0x90 && vel > 0){
-            const freq = 440 * Math.pow(2, (note-69)/12);
-            params.pitch = clampv(freq, configById.pitch.min, configById.pitch.max);
-            updateKnobVisual(configById.pitch);
-            sync();
-            scheduleEnvLoop(); scheduleEnvLoop2();
-            termLog(`> MIDI note ${note} (${freq.toFixed(1)}Hz)`);
-          }
+          if(cmd === 0x90 && vel > 0) midiNoteOn(note, vel);
+          else if(cmd === 0x80 || (cmd === 0x90 && vel === 0)) midiNoteOff(note);
         };
         termLog(`> MIDI: connected to ${input.name || 'input device'}`);
       });
     }).catch(() => termLog('> MIDI access denied or unavailable.'));
+  }
+
+  function applyWaveMorphs(){
+    if(!ctx || !triGain) return;
+    const now = ctx.currentTime;
+    const gA = waveGains(clampv(baseOf('oscWaveMorph','wave') + (cvLive.wave||0), 0, 1));
+    triGain.gain.setTargetAtTime(gA.tri, now, 0.02);
+    sqrGain.gain.setTargetAtTime(gA.sqr, now, 0.02);
+    sineGain.gain.setTargetAtTime(gA.sine, now, 0.02);
+    subTriGain.gain.setTargetAtTime(gA.tri, now, 0.02);
+    subSqrGain.gain.setTargetAtTime(gA.sqr, now, 0.02);
+    subSineGain.gain.setTargetAtTime(gA.sine, now, 0.02);
+    const gB = waveGains(clampv(baseOf('oscBWaveMorph','waveB') + (cvLive.waveB||0), 0, 1));
+    oscBTriGain.gain.setTargetAtTime(gB.tri, now, 0.02);
+    oscBSqrGain.gain.setTargetAtTime(gB.sqr, now, 0.02);
+    oscBSineGain.gain.setTargetAtTime(gB.sine, now, 0.02);
   }
 
   function sync(){
@@ -1165,31 +1517,20 @@
     oscTri.frequency.setTargetAtTime(pitchBase, now, 0.01);
     oscSqr.frequency.setTargetAtTime(pitchBase, now, 0.01);
     oscSine.frequency.setTargetAtTime(pitchBase, now, 0.01);
-    const waveBase = baseOf('oscWaveMorph','wave');
-    const gA = waveGains(waveBase);
-    triGain.gain.setTargetAtTime(gA.tri, now, 0.02);
-    sqrGain.gain.setTargetAtTime(gA.sqr, now, 0.02);
-    sineGain.gain.setTargetAtTime(gA.sine, now, 0.02);
 
     subTri.frequency.setTargetAtTime(pitchBase/2, now, 0.01);
     subSqr.frequency.setTargetAtTime(pitchBase/2, now, 0.01);
     subSine.frequency.setTargetAtTime(pitchBase/2, now, 0.01);
-    subTriGain.gain.setTargetAtTime(gA.tri, now, 0.02);
-    subSqrGain.gain.setTargetAtTime(gA.sqr, now, 0.02);
-    subSineGain.gain.setTargetAtTime(gA.sine, now, 0.02);
     subG.gain.setTargetAtTime(baseOf('sub','subton'), now, 0.02);
+    applyWaveMorphs();
 
     const pitchBBase = baseOf('pitchB','fmb');
     oscBTri.frequency.setTargetAtTime(pitchBBase, now, 0.01);
     oscBSqr.frequency.setTargetAtTime(pitchBBase, now, 0.01);
     oscBSine.frequency.setTargetAtTime(pitchBBase, now, 0.01);
-    const waveBBase = baseOf('oscBWaveMorph','waveB');
-    const gB = waveGains(waveBBase);
-    oscBTriGain.gain.setTargetAtTime(gB.tri, now, 0.02);
-    oscBSqrGain.gain.setTargetAtTime(gB.sqr, now, 0.02);
-    oscBSineGain.gain.setTargetAtTime(gB.sine, now, 0.02);
 
     foldDrive.gain.setTargetAtTime(1 + baseOf('tones','fold')*11, now, 0.02);
+    if(micLevelGain) micLevelGain.gain.setTargetAtTime(params.micLevel, now, 0.02);
     const mixBase = baseOf('mix','mix');
     dryGain.gain.setTargetAtTime(1 - mixBase, now, 0.02);
     wetGain.gain.setTargetAtTime(mixBase, now, 0.02);
@@ -1207,13 +1548,13 @@
     const cross = decayBase * (1-params.width) * 0.6;
     crossGainL.gain.setTargetAtTime(cross, now, 0.05);
     crossGainR.gain.setTargetAtTime(cross, now, 0.05);
-    filter.frequency.setTargetAtTime(baseOf('absorb','absorb'), now, 0.01);
+    filter.frequency.setTargetAtTime(filterCutoffHz('absorb'), now, 0.01);
     filter.Q.setTargetAtTime(baseOf('absorbReso','absres'), now, 0.01);
-    filter2.frequency.setTargetAtTime(baseOf('flCutoff','fl2co'), now, 0.01);
+    filter2.frequency.setTargetAtTime(filterCutoffHz('flCutoff'), now, 0.01);
     filter2.Q.setTargetAtTime(baseOf('flReso','fl2res'), now, 0.01);
     outPan.pan.setTargetAtTime(baseOf('pan','pan'), now, 0.02);
     setDriveCurve(clampv(baseOf('drive','sat') + (cvLive.sat||0), 1, 30));
-    mainG.gain.setTargetAtTime(baseOf('activation','vca'), now, 0.02);
+    mainG.gain.setTargetAtTime(baseOf('activation','vca') * midiVelScale, now, 0.02);
 
     // VCA/LPG baseline (whatever's patched into the CV input swings around this)
     const vcaDepth = baseOf('envVcaDepth','envvcamod'), lpg = params.lpgAmount;
@@ -1223,6 +1564,7 @@
     lpg2Filter.frequency.setTargetAtTime(8000 - lpg*7800, now, 0.02);
 
     applyOscMode();
+    pushWorkletParams();
   }
 
   // ---------- Looping AD envelopes (two independent ones) ----------
@@ -1267,11 +1609,11 @@
     envSchedTimer2 = setTimeout(scheduleEnvLoop2, Math.max(20, (a+d)*1000 - 15));
   }
 
-  // ---------- Osc B -> A interaction mode ----------
+  // ---------- Osc B -> A interaction / Mix crossfade ----------
   function applyOscMode(){
     if(!ctx) return;
     const now = ctx.currentTime;
-    const mode = Math.round(clampv(baseOf('oscMode','oscmode') + (cvLive.oscmode||0), 0, 5));
+    const mode = Math.round(clampv(baseOf('oscMode','oscmode') + (cvLive.oscmode||0), 0, 6));
     const amt = clampv(baseOf('oscModAmt','oscamt') + (cvLive.oscamt||0), 0, 1);
     fmInteractGain.gain.setTargetAtTime(mode===1 ? amt*800 : 0, now, 0.02);
     amInteractGain.gain.setTargetAtTime((mode===2||mode===3) ? amt : 0, now, 0.02);
@@ -1280,6 +1622,16 @@
     // Baseline for the shared Osc A gain stage: 1 (passthrough) unless AM/RingMod/Sync claim it
     const baseline = (mode===3 || mode===5) ? 0 : 1;
     oscAAmStage.gain.setTargetAtTime(baseline, now, 0.02);
+    // Mix mode: Amt / Xfade blends independent Osc A ↔ Osc B into the main path
+    if(oscMixAGain && oscMixBGain){
+      if(mode === 6){
+        oscMixAGain.gain.setTargetAtTime(1 - amt, now, 0.02);
+        oscMixBGain.gain.setTargetAtTime(amt, now, 0.02);
+      } else {
+        oscMixAGain.gain.setTargetAtTime(1, now, 0.02);
+        oscMixBGain.gain.setTargetAtTime(0, now, 0.02);
+      }
+    }
     updateNormalizedPaths();
   }
 
@@ -1291,8 +1643,6 @@
     node.type = mode;
     const btn = document.getElementById('modebtn-'+which);
     if(btn) btn.innerText = filterModeAbbr[mode];
-    const leds = document.getElementById('modeleds-'+which);
-    if(leds) leds.querySelectorAll('.modeled').forEach(l => l.classList.toggle('lit', l.dataset.mode === mode));
   }
   function cycleFilterMode(which){
     const cur = which === 'fl2' ? fl2Mode : absorbMode;
@@ -1314,9 +1664,13 @@
     powerMuteBtn.classList.toggle('on', on);
     powerMuteBtn.classList.toggle('muted', !on);
   }
-  powerMuteBtn.addEventListener('click', () => {
-    if(!ctx){ init(); isMute = false; termLog('> online.'); }
-    else {
+  powerMuteBtn.addEventListener('click', async () => {
+    if(!ctx){
+      await init();
+      if(!ctx) return;
+      isMute = false;
+      termLog('> online.');
+    } else {
       if(ctx.state === 'suspended') ctx.resume().catch(()=>{});
       isMute = !isMute;
       muteGate.gain.setTargetAtTime(isMute ? 0 : 1, ctx.currentTime, 0.02);
@@ -1325,9 +1679,88 @@
   });
   updatePowerIcon();
 
+  // ---------- Microphone / external audio (low-latency getUserMedia) ----------
+  const micBtn = document.getElementById('micBtn');
+  function updateMicButton(){
+    micBtn.classList.toggle('on', !!micOn);
+    micBtn.setAttribute('aria-pressed', micOn ? 'true' : 'false');
+  }
+  function stopMic(){
+    if(micSource){
+      try { micSource.disconnect(); } catch(_){}
+      micSource = null;
+    }
+    if(micStream){
+      micStream.getTracks().forEach(t => t.stop());
+      micStream = null;
+    }
+    micOn = false;
+    updateMicButton();
+  }
+  async function startMic(){
+    if(!ctx){
+      await init();
+      if(!ctx) return;
+      isMute = false;
+      updatePowerIcon();
+      termLog('> online.');
+    }
+    if(ctx.state === 'suspended') ctx.resume().catch(()=>{});
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      termLog('> mic not supported in this browser');
+      return;
+    }
+    try {
+      // Disable phone DSP so the mic is a raw, low-latency instrument input
+      micStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+          channelCount: 1,
+          latency: 0
+        },
+        video: false
+      });
+    } catch(err){
+      termLog('> mic denied or unavailable');
+      return;
+    }
+    try {
+      micSource = ctx.createMediaStreamSource(micStream);
+      if(!micLevelGain){
+        micLevelGain = ctx.createGain();
+        micLevelGain.gain.value = params.micLevel;
+      }
+      if(!micOutGain){
+        micOutGain = ctx.createGain();
+        micOutGain.gain.value = 1;
+      }
+      micSource.connect(micLevelGain);
+      try { micLevelGain.disconnect(); } catch(_){}
+      micLevelGain.connect(micOutGain);
+      micOn = true;
+      updateMicButton();
+      // First arm: drop a default cable so the mic is immediately audible through the FX path
+      if(audioReady && !patchCables.some(c => c.srcId === 'mic' && c.dstId === 'extin')){
+        addPatch('mic', 'extin');
+      }
+      const lat = (ctx.baseLatency || 0) + (ctx.outputLatency || 0);
+      termLog(`> mic on${lat ? ` (~${Math.round(lat*1000)}ms ctx)` : ''} — Mic→Ext In / patch Mic out`);
+    } catch(err){
+      stopMic();
+      termLog('> mic failed to connect');
+    }
+  }
+  async function toggleMic(){
+    if(micOn){ stopMic(); termLog('> mic off'); }
+    else await startMic();
+  }
+  micBtn.addEventListener('click', () => { toggleMic(); });
+
   function buzz(ms){ if(navigator.vibrate) navigator.vibrate(ms); }
 
-  const randomPatchSrcIds = ['loopenv','loopenv2','env1gate','env2gate','lfo1','lfo2','randgen1','randgen2','oscA','oscB'];
+  const randomPatchSrcIds = ['loopenv','loopenv2','env1gate','env2gate','lfo1','lfo2','randgen1','randgen2','oscA','oscB','mic'];
   function runRandomPatch(){
     if(!ctx || patchCables.length >= 8) { termLog('> patch bay is full-ish, clear some cables first.'); return; }
     const dstIds = destDefs.map(d => d.id);
@@ -1339,6 +1772,7 @@
     config.forEach(c => {
       if(c.id === 'drive' || c.id === 'bitcrush'){ params[c.id] = c.min; }
       else if(c.id === 'pan'){ params[c.id] = 0; }
+      else if(c.id === 'micLevel'){ params[c.id] = c.def; }
       else { params[c.id] = c.min + Math.random()*(c.max-c.min); }
       updateKnobVisual(c);
     });
@@ -1350,40 +1784,68 @@
   document.getElementById('randomBtn').addEventListener('click', runRandomize);
   document.getElementById('randomPatchBtn').addEventListener('click', runRandomPatch);
 
+  // about / help UI parked for a later rewrite
   const aboutPopup = document.getElementById('aboutPopup');
-  document.getElementById('aboutBtn').addEventListener('click', () => aboutPopup.classList.toggle('open'));
-  document.getElementById('aboutClose').addEventListener('click', () => aboutPopup.classList.remove('open'));
+  const aboutBtn = document.getElementById('aboutBtn');
+  if(aboutBtn) aboutBtn.addEventListener('click', () => aboutPopup.classList.toggle('open'));
+  const aboutClose = document.getElementById('aboutClose');
+  if(aboutClose) aboutClose.addEventListener('click', () => aboutPopup.classList.remove('open'));
 
-  // ---------- WAV recorder ----------
-  function encodeWav(buffersL, buffersR, sampleRate){
-    let total = 0; for(const b of buffersL) total += b.length;
-    const interleaved = new Float32Array(total*2);
-    let o = 0;
-    for(let i=0;i<buffersL.length;i++){
-      const L = buffersL[i], R = buffersR[i];
-      for(let j=0;j<L.length;j++){ interleaved[o++] = L[j]; interleaved[o++] = R[j]; }
-    }
-    const buffer = new ArrayBuffer(44 + interleaved.length*2);
-    const view = new DataView(buffer);
-    const writeStr = (off, s) => { for(let i=0;i<s.length;i++) view.setUint8(off+i, s.charCodeAt(i)); };
-    writeStr(0,'RIFF'); view.setUint32(4, 36 + interleaved.length*2, true); writeStr(8,'WAVE');
-    writeStr(12,'fmt '); view.setUint32(16,16,true); view.setUint16(20,1,true); view.setUint16(22,2,true);
-    view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate*4, true);
-    view.setUint16(32,4,true); view.setUint16(34,16,true);
-    writeStr(36,'data'); view.setUint32(40, interleaved.length*2, true);
-    let idx = 44;
-    for(let i=0;i<interleaved.length;i++){
-      const s = Math.max(-1, Math.min(1, interleaved[i]));
-      view.setInt16(idx, s < 0 ? s*0x8000 : s*0x7FFF, true); idx += 2;
-    }
-    return new Blob([view], { type:'audio/wav' });
-  }
+  // ---------- WAV export (AudioWorklet PCM tap → 16-bit stereo .wav) ----------
   let recStartTime = 0, recTimerInterval = null;
   const recIndicator = document.getElementById('recIndicator');
+  function writeWavHeader(view, dataBytes, sampleRate, numChannels){
+    const blockAlign = numChannels * 2;
+    const byteRate = sampleRate * blockAlign;
+    function str(offset, s){ for(let i=0;i<s.length;i++) view.setUint8(offset+i, s.charCodeAt(i)); }
+    str(0, 'RIFF');
+    view.setUint32(4, 36 + dataBytes, true);
+    str(8, 'WAVE');
+    str(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, numChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, byteRate, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, 16, true);
+    str(36, 'data');
+    view.setUint32(40, dataBytes, true);
+  }
+  function buildWavBlob(sampleRate, chunks){
+    let dataBytes = 0;
+    for(let i=0;i<chunks.length;i++) dataBytes += chunks[i].byteLength;
+    const out = new ArrayBuffer(44 + dataBytes);
+    const view = new DataView(out);
+    writeWavHeader(view, dataBytes, sampleRate, 2);
+    const u8 = new Uint8Array(out);
+    let offset = 44;
+    for(let i=0;i<chunks.length;i++){
+      u8.set(new Uint8Array(chunks[i]), offset);
+      offset += chunks[i].byteLength;
+    }
+    return new Blob([out], { type: 'audio/wav' });
+  }
+  function finishWavDownload(sampleRate){
+    const chunks = recChunks;
+    recChunks = [];
+    if(!chunks.length){
+      termLog('> recording empty');
+      return;
+    }
+    const blob = buildWavBlob(sampleRate || recSampleRate, chunks);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `omchs-${Date.now()}.wav`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    const sec = (blob.size - 44) / (4 * (sampleRate || recSampleRate));
+    termLog(`> saved ${sec.toFixed(1)}s wav (${Math.round(blob.size/1024)}KB)`);
+  }
   function startRecording(){
-    if(!ctx || isRec) return;
+    if(!ctx || isRec || !recNode) return;
+    recChunks = [];
+    recNode.port.postMessage({ type: 'start' });
     isRec = true;
-    recBuffersL = []; recBuffersR = [];
     recStartTime = Date.now();
     recIndicator.style.display = 'inline-block';
     recIndicator.innerText = 'REC 0:00';
@@ -1391,19 +1853,15 @@
       const s = Math.floor((Date.now()-recStartTime)/1000);
       recIndicator.innerText = `REC ${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
     }, 500);
-    termLog('> recording started');
+    termLog('> recording wav…');
   }
   function stopRecording(){
     if(!ctx || !isRec) return;
     isRec = false;
     clearInterval(recTimerInterval);
     recIndicator.style.display = 'none';
-    const blob = encodeWav(recBuffersL, recBuffersR, ctx.sampleRate);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = `omchs-${Date.now()}.wav`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    recBuffersL = []; recBuffersR = [];
-    termLog('> recording saved.');
+    if(recNode) recNode.port.postMessage({ type: 'stop' });
+    else termLog('> recording stopped.');
   }
   recIndicator.addEventListener('click', stopRecording);
 
@@ -1419,6 +1877,7 @@
     if(id === 'randgen2') return randGen2Src;
     if(id === 'oscA') return oscASum;
     if(id === 'oscB') return oscBSum;
+    if(id === 'mic') return micOutGain;
   }
   // Reverse map: destId -> the knob whose ring should show modulation range for it
   const destOwner = {};
@@ -1449,30 +1908,58 @@
     modring.style.opacity = modPct > 0.002 ? '1' : '0';
   }
 
-  // ---------- Terminal (the scope doubles as a status readout) ----------
+  // ---------- Terminal (4 lines under the transport buttons) ----------
   const terminalEl = document.getElementById('terminal');
+  function renderTerminal(){
+    const lines = termLines.slice(-4).map(l => {
+      const esc = String(l).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      return `<div>${esc}</div>`;
+    });
+    if(cmdBuf){
+      const esc = String(cmdBuf).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      lines.push(`<div class="cmdlive">&gt; ${esc}█</div>`);
+      while(lines.length > 4) lines.shift();
+    }
+    terminalEl.innerHTML = lines.join('');
+  }
   function termLog(msg){
     termLines.push(msg);
-    if(termLines.length > 6) termLines.shift();
-    terminalEl.innerHTML = termLines.map(l => `<div>${l}</div>`).join('');
+    if(termLines.length > 4) termLines.shift();
+    renderTerminal();
   }
 
-  // ---------- Presets: the 10 triangles, momentary-recall + record mode ----------
-  function setActiveTriangle(slot, on){
+  // ---------- Presets: the 10 pads, momentary-recall + record mode ----------
+  function setActivePad(slot, on){
     if(slot === null || slot === undefined) return;
     const el = document.getElementById('plate-'+slot);
     if(el) el.classList.toggle('armed', !!on);
   }
-  function clearAllTriangles(){
-    for(let i=0;i<10;i++) setActiveTriangle(i, false);
+  function clearAllPads(){
+    for(let i=0;i<10;i++) setActivePad(i, false);
   }
   function snapshotState(){
-    return { values: clone(params), cables: patchCables.map(c => ({ srcId:c.srcId, dstId:c.dstId, depth:c.depth })) };
+    return {
+      values: clone(params),
+      cables: patchCables.map(c => ({ srcId:c.srcId, dstId:c.dstId, depth:c.depth })),
+      fl2Mode, absorbMode
+    };
   }
   function applyPreset(state){
     Object.assign(params, state.values);
+    // Old presets stored filter cutoffs as absolute Hz — fold into 0..1 log position
+    ['flCutoff','absorb'].forEach(id => {
+      const c = configById[id];
+      if(!c || params[id] == null) return;
+      if(params[id] > 1.5) params[id] = hzToLog(params[id], c.hzLo || 80, c.hzHi || 8000);
+    });
+    if(state.fl2Mode) fl2Mode = state.fl2Mode;
+    if(state.absorbMode) absorbMode = state.absorbMode;
     config.forEach(updateKnobVisual);
-    sync();
+    if(ctx){
+      applyFilterMode('fl2');
+      applyFilterMode('absorb');
+      sync();
+    }
     bulkOp = true;
     [...patchCables].forEach(removePatch);
     (state.cables || []).forEach(c => {
@@ -1492,63 +1979,101 @@
       heldPresetSlot = slot;
       preHoldSnapshot = snapshotState();
       applyPreset(presets[slot]);
-      setActiveTriangle(slot, true);
+      setActivePad(slot, true);
       buzz(15);
       termLog(`> preset ${presetLabel(slot)} playing`);
     } else {
       if(heldPresetSlot !== slot) return;
       heldPresetSlot = null;
       applyPreset(preHoldSnapshot);
-      setActiveTriangle(slot, false);
+      setActivePad(slot, false);
       termLog(`> preset ${presetLabel(slot)} released`);
     }
   }
   function enterEditMode(slot){
     if(!presets[slot]) presets[slot] = snapshotState();
     editingSlot = slot;
-    clearAllTriangles();
-    setActiveTriangle(slot, true);
+    clearAllPads();
+    setActivePad(slot, true);
     termLog(`> EDIT MODE — recording to preset ${presetLabel(slot)}`);
   }
   function exitEditMode(){
     if(editingSlot === null) return;
     termLog(`> preset ${presetLabel(editingSlot)} saved, edit mode off`);
-    setActiveTriangle(editingSlot, false);
+    setActivePad(editingSlot, false);
     editingSlot = null;
+    persistPresets();
   }
   function recordIfEditing(){
-    if(editingSlot !== null) presets[editingSlot] = snapshotState();
+    if(editingSlot !== null){ presets[editingSlot] = snapshotState(); persistPresets(); }
   }
 
-  // ---------- Keyboard: number keys recall presets; e,d,<n> arms edit mode;
-  // x,y,Enter toggles the Lissajous scope. On PC the window is always
-  // listening for these; typing in the on-screen command field (phones) is
-  // handled separately below so it doesn't also trigger this listener. ----------
+  // ---------- Keyboard: always-on command buffer + presets / ed / xy shortcuts ----------
+  // Type any command (rd, mic, xprt, xy, ed3, …) then Enter. Digits alone still
+  // recall presets when the buffer is empty.
   window.addEventListener('keydown', e => {
     if(e.repeat) return;
-    if(e.target && e.target.tagName === 'INPUT') return;
-    const key = e.key.toLowerCase();
+    if(e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+    if(e.ctrlKey || e.metaKey || e.altKey) return;
+    const key = e.key;
+
+    if(key === 'Escape'){
+      cmdBuf = ''; edPrefix = 0; xyPrefix = 0; renderTerminal();
+      return;
+    }
+    if(key === 'Backspace'){
+      if(cmdBuf.length){ e.preventDefault(); cmdBuf = cmdBuf.slice(0, -1); renderTerminal(); }
+      return;
+    }
+    if(key === 'Enter'){
+      e.preventDefault();
+      if(cmdBuf){
+        const raw = cmdBuf; cmdBuf = ''; renderTerminal();
+        runTypedCommand(raw);
+      } else if(xyPrefix === 2){
+        if(!scopeEnabled) setScopeEnabled(true);
+        lissajous = !lissajous; termLog(`> lissajous ${lissajous?'on':'off'}`);
+      }
+      xyPrefix = 0; edPrefix = 0;
+      return;
+    }
+
     if(/^[0-9]$/.test(key)){
-      const slot = key === '0' ? 9 : (parseInt(key,10) - 1);
       if(edPrefix === 2){
         edPrefix = 0;
+        const slot = key === '0' ? 9 : (parseInt(key,10) - 1);
         if(editingSlot === slot) exitEditMode(); else enterEditMode(slot);
+        cmdBuf = ''; renderTerminal();
+        return;
+      }
+      if(cmdBuf.length){
+        cmdBuf += key; renderTerminal();
         return;
       }
       edPrefix = 0; xyPrefix = 0;
       if(editingSlot !== null){ exitEditMode(); return; }
+      const slot = key === '0' ? 9 : (parseInt(key,10) - 1);
       playPresetMomentary(slot, true);
       return;
     }
-    if(key === 'e'){ edPrefix = 1; xyPrefix = 0; return; }
-    if(key === 'd'){ edPrefix = (edPrefix===1) ? 2 : 0; xyPrefix = 0; return; }
-    if(key === 'x'){ xyPrefix = 1; edPrefix = 0; return; }
-    if(key === 'y'){ xyPrefix = (xyPrefix===1) ? 2 : 0; edPrefix = 0; return; }
-    if(key === 'enter'){ if(xyPrefix===2){ lissajous = !lissajous; termLog(`> lissajous ${lissajous?'on':'off'}`); } xyPrefix=0; edPrefix=0; return; }
+
+    if(key.length === 1 && /[a-zA-Z._-]/.test(key)){
+      const k = key.toLowerCase();
+      cmdBuf += k;
+      if(k === 'e'){ edPrefix = 1; xyPrefix = 0; }
+      else if(k === 'd'){ edPrefix = (edPrefix === 1) ? 2 : 0; xyPrefix = 0; }
+      else if(k === 'x'){ xyPrefix = 1; edPrefix = 0; }
+      else if(k === 'y'){ xyPrefix = (xyPrefix === 1) ? 2 : 0; edPrefix = 0; }
+      else { edPrefix = 0; xyPrefix = 0; }
+      renderTerminal();
+      return;
+    }
+
     edPrefix = 0; xyPrefix = 0;
   });
   window.addEventListener('keyup', e => {
-    if(e.target && e.target.tagName === 'INPUT') return;
+    if(e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+    if(cmdBuf.length) return;
     const key = e.key.toLowerCase();
     if(/^[0-9]$/.test(key)){
       const slot = key === '0' ? 9 : (parseInt(key,10) - 1);
@@ -1556,9 +2081,7 @@
     }
   });
 
-  // ---------- Typed commands (mainly for phones, where there's no physical
-  // keyboard to hold a key down on) — the on-screen field submits a whole
-  // command at once, so digits get a short auto-release instead of a hold. ----------
+  // ---------- Typed commands (buffer / Enter, or hidden field) ----------
   function runTypedCommand(raw){
     const rawTrim = raw.trim();
     const nameMatch = rawTrim.match(/^[nN]([0-9])(\S+)$/);
@@ -1568,13 +2091,64 @@
       const plateEl = document.getElementById('plate-'+slot);
       if(plateEl) plateEl.title = `Preset ${keyLabel(slot)} — ${nameMatch[2]}`;
       termLog(`> preset ${keyLabel(slot)} named "${nameMatch[2]}"`);
+      persistPresets();
       return;
     }
     const str = raw.trim().toLowerCase().replace(/\s+/g,'');
     if(!str) return;
-    if(str === 'xy'){ lissajous = !lissajous; termLog(`> lissajous ${lissajous?'on':'off'}`); return; }
+    if(str === 'xy'){
+      if(!scopeEnabled) setScopeEnabled(true);
+      lissajous = !lissajous;
+      termLog(`> lissajous ${lissajous?'on':'off'}`);
+      return;
+    }
+    if(str === 'xyoff'){ setScopeEnabled(false); return; }
+    if(str === 'xyon'){ setScopeEnabled(true); return; }
+    if(str === 'icons'){ useIcons = !useIcons; applyLabelMode(); termLog(`> labels: ${useIcons?'icons':'text'}`); return; }
     if(str === 'rd'){ runRandomize(); return; }
+    if(str === 'mic'){ toggleMic(); return; }
     if(str === 'xprt'){ if(isRec) stopRecording(); else startRecording(); return; }
+    if(str === 'psave'){ persistPresets(); termLog('> presets saved to localStorage'); return; }
+    if(str === 'pload'){
+      if(loadPersistedPresets()) termLog('> presets loaded from localStorage');
+      else termLog('> no saved presets found');
+      return;
+    }
+    if(str === 'pxprt'){
+      const blob = new Blob([JSON.stringify({ version:1, presets, presetNames }, null, 2)], { type:'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `omchs-presets-${Date.now()}.json`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      termLog('> presets exported');
+      return;
+    }
+    if(str === 'pimprt'){
+      const inp = document.createElement('input');
+      inp.type = 'file'; inp.accept = 'application/json,.json';
+      inp.onchange = () => {
+        const file = inp.files && inp.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const data = JSON.parse(reader.result);
+            if(!data || !Array.isArray(data.presets)) throw new Error('bad format');
+            presets = data.presets;
+            presetNames = Array.isArray(data.presetNames) ? data.presetNames : new Array(10).fill(null);
+            for(let i=0;i<10;i++){
+              const plateEl = document.getElementById('plate-'+i);
+              if(plateEl) plateEl.title = presetNames[i] ? `Preset ${keyLabel(i)} — ${presetNames[i]}` : `Preset ${keyLabel(i)}`;
+            }
+            persistPresets();
+            termLog('> presets imported');
+          } catch(_){ termLog('> preset import failed'); }
+        };
+        reader.readAsText(file);
+      };
+      inp.click();
+      return;
+    }
     if(str === 'fllp'){ setFilterModeCommand('fl2', 'lowpass'); return; }
     if(str === 'floff'){ setFilterModeCommand('fl2', 'allpass'); return; }
     if(str === 'flhp'){ setFilterModeCommand('fl2', 'highpass'); return; }
@@ -1596,14 +2170,41 @@
     termLog(`> unrecognized command: ${raw}`);
   }
   const cmdInput = document.getElementById('cmdInput');
-  cmdInput.addEventListener('keydown', e => {
-    e.stopPropagation();
-    if(e.key === 'Enter'){ e.preventDefault(); runTypedCommand(cmdInput.value); cmdInput.value = ''; }
-  });
+  if(cmdInput){
+    cmdInput.addEventListener('keydown', e => {
+      e.stopPropagation();
+      if(e.key === 'Enter'){ e.preventDefault(); runTypedCommand(cmdInput.value); cmdInput.value = ''; }
+    });
+  }
 
   const cableColors = ['#dfb249', '#b98ff2', '#6fd8d0', '#ff9d5d', '#7ad1ff'];
   const cableLayer = document.getElementById('cableLayer');
   let dragTemp = null, dragOrigin = null;
+  let tapPatchJack = null;
+  let jackDragMeta = null;
+
+  function isCoarsePointer(){
+    return window.matchMedia && window.matchMedia('(pointer:coarse)').matches;
+  }
+  function clearTapPatch(){
+    if(tapPatchJack) tapPatchJack.classList.remove('tapselected');
+    document.querySelectorAll('.jack.tapdest').forEach(j => j.classList.remove('tapdest'));
+    tapPatchJack = null;
+    if(!dragOrigin) setPatchHighlight(null);
+  }
+  function highlightTapDests(fromJack){
+    document.querySelectorAll('.jack').forEach(j => {
+      j.classList.toggle('tapdest', j.dataset.kind !== fromJack.dataset.kind);
+    });
+  }
+  function tryCompletePatch(a, b){
+    if(!a || !b || a === b) return false;
+    if(a.dataset.kind === b.dataset.kind) return false;
+    const srcId = a.dataset.kind === 'src' ? a.dataset.id : b.dataset.id;
+    const dstId = a.dataset.kind === 'dst' ? a.dataset.id : b.dataset.id;
+    addPatch(srcId, dstId);
+    return true;
+  }
 
   function faceRect(){ return document.querySelector('.faceplate').getBoundingClientRect(); }
   function jackCenter(el){
@@ -1621,12 +2222,17 @@
   }
   function wireJacks(){
     document.querySelectorAll('.jack').forEach(j => {
+      // Avoid stacking duplicate listeners if init is ever retried
+      if(j.dataset.wired === '1') return;
+      j.dataset.wired = '1';
       j.addEventListener('pointerdown', e => {
         if(!ctx) return;
         e.stopPropagation();
         j.setPointerCapture(e.pointerId);
         dragOrigin = j;
+        jackDragMeta = { x: e.clientX, y: e.clientY, moved: false };
         j.classList.add('dragfrom');
+        setPatchHighlight(j.dataset.kind);
         dragTemp = document.createElementNS(svgNS, 'path');
         dragTemp.setAttribute('stroke', '#fff6'); dragTemp.setAttribute('fill', 'none'); dragTemp.setAttribute('stroke-width', 2);
         dragTemp.setAttribute('stroke-dasharray', '4 3');
@@ -1634,20 +2240,63 @@
       });
       j.addEventListener('pointerup', e => {
         if(!dragTemp) return;
+        const moved = jackDragMeta
+          ? Math.hypot(e.clientX - jackDragMeta.x, e.clientY - jackDragMeta.y)
+          : 99;
         const target = document.elementFromPoint(e.clientX, e.clientY);
         dragTemp.remove(); dragTemp = null;
         dragOrigin.classList.remove('dragfrom');
-        if(target && target.classList.contains('jack') && target.dataset.kind !== dragOrigin.dataset.kind){
-          const srcId = dragOrigin.dataset.kind === 'src' ? dragOrigin.dataset.id : target.dataset.id;
-          const dstId = dragOrigin.dataset.kind === 'dst' ? dragOrigin.dataset.id : target.dataset.id;
-          addPatch(srcId, dstId);
-        }
+        const origin = dragOrigin;
         dragOrigin = null;
+        jackDragMeta = null;
+
+        // Touch: short tap = two-step patch (source, then destination)
+        if(isCoarsePointer() && moved < 14){
+          if(tapPatchJack === origin){
+            clearTapPatch();
+            termLog('> patch cancel');
+            return;
+          }
+          if(tapPatchJack){
+            if(tryCompletePatch(tapPatchJack, origin)){ clearTapPatch(); }
+            else {
+              clearTapPatch();
+              tapPatchJack = origin;
+              origin.classList.add('tapselected');
+              highlightTapDests(origin);
+              setPatchHighlight(origin.dataset.kind);
+              termLog(`> selected ${origin.dataset.id} — tap a ${origin.dataset.kind==='src'?'input':'output'}`);
+            }
+            return;
+          }
+          tapPatchJack = origin;
+          origin.classList.add('tapselected');
+          highlightTapDests(origin);
+          setPatchHighlight(origin.dataset.kind);
+          termLog(`> selected ${origin.dataset.id} — tap a ${origin.dataset.kind==='src'?'input':'output'}`);
+          return;
+        }
+
+        clearTapPatch();
+        setPatchHighlight(null);
+        if(target && target.classList.contains('jack') && target.dataset.kind !== origin.dataset.kind){
+          tryCompletePatch(origin, target);
+        }
+      });
+      j.addEventListener('pointercancel', () => {
+        if(dragTemp){ dragTemp.remove(); dragTemp = null; }
+        if(dragOrigin){ dragOrigin.classList.remove('dragfrom'); dragOrigin = null; }
+        jackDragMeta = null;
+        if(!tapPatchJack) setPatchHighlight(null);
       });
     });
   }
   document.addEventListener('pointermove', e => {
     if(!dragTemp || !dragOrigin) return;
+    if(jackDragMeta){
+      const dist = Math.hypot(e.clientX - jackDragMeta.x, e.clientY - jackDragMeta.y);
+      if(dist > 10) jackDragMeta.moved = true;
+    }
     const p = faceRect();
     dragTemp.setAttribute('d', bezier(jackCenter(dragOrigin), { x: e.clientX - p.left, y: e.clientY - p.top }));
   });
@@ -1726,7 +2375,7 @@
   // Osc B->A interaction mode isn't Off) — a real cable in that jack still
   // just adds on top, since the interaction path is separate from patching. ----------
   const normalizedPaths = [
-    { srcId:'oscB', dstId:'fm', active: () => Math.round(clampv(params.oscMode,0,5)) !== 0 },
+    { srcId:'oscB', dstId:'fm', active: () => { const m = Math.round(clampv(params.oscMode,0,6)); return m !== 0 && m !== 6; } },
   ];
   normalizedPaths.forEach(np => {
     const el = document.createElementNS(svgNS, 'path');
@@ -1829,7 +2478,7 @@
     function draw(){
       scopeRaf = requestAnimationFrame(draw);
       scopeAnalyser.getByteTimeDomainData(data);
-      mctx.fillStyle = '#0d0912'; mctx.fillRect(0,0,84,84);
+      mctx.fillStyle = '#0d0d0d'; mctx.fillRect(0,0,84,84);
       mctx.strokeStyle = '#dfb249'; mctx.lineWidth = 1.4; mctx.beginPath();
       const step = 84/data.length;
       for(let i=0;i<data.length;i++){
@@ -1858,6 +2507,25 @@
   }
   window.addEventListener('resize', resizeScopeCanvas);
 
+  function setScopeEnabled(on){
+    scopeEnabled = !!on;
+    const canvas = document.getElementById('scope');
+    if(canvas){
+      canvas.style.display = scopeEnabled ? '' : 'none';
+      if(!scopeEnabled){
+        const sCtx = canvas.getContext('2d');
+        if(sCtx){ sCtx.fillStyle = '#0d0d0d'; sCtx.fillRect(0,0,canvas.width,canvas.height); }
+      }
+    }
+    if(scopeEnabled){
+      if(!scopeRafId && analyserL) drawScope();
+    } else if(scopeRafId){
+      cancelAnimationFrame(scopeRafId);
+      scopeRafId = 0;
+    }
+    termLog(`> scope ${scopeEnabled?'on':'off'}`);
+  }
+
   function drawScope(){
     resizeScopeCanvas();
     const canvas = document.getElementById('scope'), sCtx = canvas.getContext('2d');
@@ -1866,24 +2534,30 @@
     const vuL = document.getElementById('vuL'), vuR = document.getElementById('vuR');
     let frame = 0;
     function draw(){
-      requestAnimationFrame(draw);
+      if(!scopeEnabled){ scopeRafId = 0; return; }
+      scopeRafId = requestAnimationFrame(draw);
       if(!analyserL) return;
       analyserL.getByteTimeDomainData(dataL); analyserR.getByteTimeDomainData(dataR);
-      sCtx.fillStyle = '#150f1a'; sCtx.fillRect(0,0,canvas.width,canvas.height);
+      sCtx.fillStyle = '#0d0d0d'; sCtx.fillRect(0,0,canvas.width,canvas.height);
       if(lissajous){
         const cx = canvas.width/2, cy = canvas.height/2, scale = Math.min(canvas.width, canvas.height)/2 - 6;
         const shift = Math.floor(len/4); // ~90 degrees, lissajous mode only
-        sCtx.lineWidth = 1.3; sCtx.strokeStyle = '#b98ff2'; sCtx.beginPath();
+        sCtx.lineWidth = 2; sCtx.strokeStyle = '#39ff6a';
+        sCtx.shadowColor = '#4da3ff'; sCtx.shadowBlur = 12;
+        sCtx.beginPath();
         for(let i=0;i<len;i++){
           const x = cx + ((dataL[i]/128)-1) * scale;
           const y = cy + ((dataR[(i+shift)%len]/128)-1) * scale;
           if(i===0) sCtx.moveTo(x,y); else sCtx.lineTo(x,y);
         }
         sCtx.stroke();
+        sCtx.shadowBlur = 0;
       } else {
         const sw = canvas.width/len;
-        [{data:dataL, color:'#dfb249'}, {data:dataR, color:'#6fd8d0'}].forEach(ch => {
-          sCtx.lineWidth = 1.6; sCtx.strokeStyle = ch.color; sCtx.beginPath();
+        [{data:dataL, color:'#39ff6a', glow:'#1aff55'}, {data:dataR, color:'#4da3ff', glow:'#2b8cff'}].forEach(ch => {
+          sCtx.lineWidth = 2.2; sCtx.strokeStyle = ch.color;
+          sCtx.shadowColor = ch.glow; sCtx.shadowBlur = 10;
+          sCtx.beginPath();
           let x = 0;
           for(let i=0;i<len;i++){
             const y = (ch.data[i]/128.0) * canvas.height/2;
@@ -1892,6 +2566,7 @@
           }
           sCtx.stroke();
         });
+        sCtx.shadowBlur = 0;
       }
       let peakL = 0, peakR = 0;
       for(let i=0;i<len;i++){ peakL = Math.max(peakL, Math.abs(dataL[i]-128)); peakR = Math.max(peakR, Math.abs(dataR[i]-128)); }
@@ -1901,10 +2576,12 @@
         vuR.style.height = Math.min(100, (peakR/128)*130) + '%';
       }
     }
+    if(scopeRafId) cancelAnimationFrame(scopeRafId);
     draw();
   }
 
   generateDefaultPresets();
+  if(loadPersistedPresets()) termLog('> restored presets from localStorage');
   resizeScopeCanvas();
 })();
 </script>
