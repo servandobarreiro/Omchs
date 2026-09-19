@@ -569,15 +569,15 @@
     }
   ],
   "presetNames": [
-    Armenteira,
-    Dena,
-    Meaño,
-    Padrón,
-    Mosteiro,
-    PedrasNegras,
-    Sineiro,
-    Xeste,
-    Ouro,
+    "Armenteira",
+    "Dena",
+    "Meaño",
+    "Padrón",
+    "Mosteiro",
+    "PedrasNegras",
+    "Sineiro",
+    "Xeste",
+    "Ouro",
     null
   ]
 }

@@ -6,10 +6,10 @@ Enter. Most commands are case-insensitive and ignore spaces. Sequencer
 patterns (sq n / sq d / sq p / sq e) keep spaces so notes and durations
 stay separate.
 
-Presets (pads 1-9, 0)
----------------------
-1 .. 9, 0     Play the matching preset pad (momentary: hold a key, or ~400ms
-              if typed into the command field). Slot 0 is pad "0".
+Presets (pads 0-9)
+------------------
+0 .. 9        Latch the matching preset pad (like a typical synth). Pad 0
+              is the default on load. Slot number matches the digit.
 edN           Arm or exit edit mode on pad N (example: ed3). While editing,
               knob and patch changes are recorded to that pad and saved to
               localStorage.
@@ -21,10 +21,10 @@ pimprt        Import a bank from a JSON file, then save it to localStorage.
 
 Factory vs saved banks
 ----------------------
-On load, omchs-presets-defaults.json fills the pads first. A bank previously
-saved with psave (or by leaving edit mode / naming a pad / importing) then
-replaces those defaults. If that bank contains a seq field, the sequencer
-is restored too.
+On load, omchs-presets-defaults.json fills the pads first. Pad 0 is then
+selected as the live preset. A bank previously saved with psave (or by
+leaving edit mode / naming a pad / importing) then replaces those defaults.
+If that bank contains a seq field, the sequencer is restored too.
 
 Scope
 -----
@@ -59,14 +59,16 @@ icons         Toggle icon vs text labels on knobs and jacks.
 
 Sequencer
 ---------
-Stopped on power-on (looping envelopes do not start by themselves).
+Stopped on power-on. SEQ outlets: Seq Pitch, Seq CV, Seq Gate, Seq Clock.
+Patch Seq Pitch to Pitch, Fold, Osc B (FM / pitch B), or Filter as you like.
+Envelopes loop by default; LOOP on each env turns that off. TRIG fires a
+cycle. sqplay does not stop looping envelopes.
 sq            Show status (play/stop, mode, bpm, event count, division).
-sqplay        Start (powers the engine if needed). One-shot envelopes;
-              does not loop the live AD envelopes.
-sqstop        Stop and release envelopes.
-sqmode pitch  Each non-rest sets Osc A pitch (like MIDI) and fires both
-sqmode trig   envs. trig leaves the Pitch knob alone and only fires envs
-              / preset changes.
+sqplay        Start (powers the engine if needed). Writes SEQ outlets;
+              fires one-shot envs only if that envelope is not looping.
+sqstop        Stop the clock (envelopes keep looping if LOOP is on).
+sqmode pitch  Each non-rest writes Seq Pitch / Seq CV from the note.
+sqmode trig   Leaves pitch CV, still pulses Gate / Clock.
 bpm120        Set tempo (20–400). Also: bpm 120.
 sq n c4 e4 . g4
               Notes for successive events. . - r rest. Names (c4, c#4,
@@ -74,7 +76,7 @@ sq n c4 e4 . g4
               extra existing events are left as-is.
 sq d 8 8 4    Durations. Bare 4/8/16 = quarter / 8th / 16th. Also 4n,
               8nd (dotted), 8nt (triplet). 1, 2, 32 allowed.
-sq p 1 1 3 .  Preset pads per step (1-9, 0). . - x = hold last.
+sq p 0 0 3 .  Preset pads per step (0-9). . - x = hold last.
               Values only — cables are not rebuilt.
 sq e 5 8      Euclidean fill, 5 hits in 8 steps. Optional r2 to rotate.
               Step length follows sqdiv (default 16ths).
@@ -89,8 +91,7 @@ Keyboard extras
 Escape        Clear the command buffer.
 Backspace     Delete the last character in the command buffer.
 ed then N     Same as edN without pressing Enter (after typing e, then d).
-digits        With an empty buffer, 1-9 and 0 hold-play a preset; release
-              the key to restore the previous state. If edit mode is on,
+digits        With an empty buffer, 0-9 latch a preset. If edit mode is on,
               a digit exits edit mode instead. After other characters,
               digits append to the command (so sq e 5 8 works).
 space, #      Allowed in the command buffer after it has been started

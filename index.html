@@ -199,11 +199,15 @@
     position:relative; width:36px; height:36px; border-radius:50%;
     background:linear-gradient(180deg,#e8c96a,var(--amber));
     cursor:pointer; user-select:none; touch-action:none; pointer-events:auto;
-    display:flex; align-items:center; justify-content:center;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
     font-size:0.62rem; font-weight:bold; color:#111111;
     box-shadow:0 2px 4px rgba(0,0,0,0.45);
   }
+  .plate-led{ width:6px; height:6px; border-radius:50%; background:#3a2a12;
+    box-shadow:inset 0 0 2px rgba(0,0,0,0.8); flex-shrink:0; }
+  .plate.selected .plate-led{ background:#ffcc33; box-shadow:0 0 8px #ffb000, 0 0 2px #fff6c8; }
   .plate.armed{ background:linear-gradient(180deg,#fff,#ffe9a8); box-shadow:0 0 13px rgba(255,255,255,0.85); }
+  .plate.armed .plate-led{ background:#ffe27a; box-shadow:0 0 8px #ffe27a; }
   .platesrow{ flex-basis:100%; display:flex; justify-content:flex-start; gap:16px; margin-top:24px; padding-top:12px;
     border-top:1px dashed var(--panel-edge); flex-wrap:wrap; }
 
@@ -265,6 +269,17 @@
     box-shadow:0 1px 3px rgba(0,0,0,0.45); pointer-events:auto; touch-action:none;
   }
   .filterdock{ position:absolute; z-index:4; pointer-events:auto; }
+  .envctrls{ display:flex; flex-direction:column; gap:8px; justify-content:flex-end;
+    padding:6px 4px 14px; pointer-events:auto; }
+  .envbtn{
+    width:28px; height:22px; border-radius:3px; border:1px solid var(--amber-dim);
+    background:var(--bg-raised); color:var(--amber); cursor:pointer;
+    font-family:inherit; font-size:0.48rem; letter-spacing:0.4px; font-weight:bold;
+    display:flex; align-items:center; justify-content:center; touch-action:none;
+  }
+  .envbtn.on{ background:var(--amber); color:#111111; border-color:var(--amber); }
+  .cluster[data-cluster="seq"]{ padding:18px 14px 12px; }
+  .cluster[data-cluster="seq"] .jackitem{ width:64px; }
   .jack{
     width:21px; height:21px; border-radius:50%;
     border:4px solid var(--jcolor, var(--cyan));
@@ -339,8 +354,8 @@
     <div class="aboutpopup-body">
       <p>Cyan jacks are outputs, violet jacks are inputs. Patch <b>from output → input</b> (inputs stay dim until you drag from an output). On phones: tap an output, then tap an input. Click the dot on a cable for its attenuator, double-click the dot (or click the cable itself) to remove it.</p>
       <p>Osc B is independent of Osc A. Set Osc B→A Mode to <b>Mix</b> and use <b>Amt / Xfade</b> to crossfade A↔B in the main path; other modes (FM / AM / Ring / Fold / Sync) are modulation, not a blend.</p>
-      <p>Commands (type into the field by the scope, or use the keyboard on desktop): <b>1-0</b> play a preset, <b>ed3</b> arm/exit edit mode on preset 3, <b>xy</b> toggle the Lissajous scope, <b>rd</b> randomize, <b>xprt</b> start/stop recording (16-bit wav, or 24-bit in hq), <b>hq</b> toggle high-quality audio, <b>mic</b> toggle microphone input, <b>n3name</b> name preset 3, <b>psave/pload/pxprt/pimprt</b> persist or export/import presets, <b>fllp/flhp/flbp/flnt/floff</b> set Filter2's mode, <b>icons</b> toggle icon/text labels.</p>
-      <p>Sequencer: <b>sq</b> status, <b>sqplay/sqstop</b>, <b>sqmode pitch|trig</b>, <b>bpm120</b>, <b>sq n c4 e4 . g4</b> notes, <b>sq d 8 8 4</b> durations (4=quarter, 8=eighth, 16=16th), <b>sq p 1 1 3</b> presets (values only), <b>sq e 5 8</b> Euclidean, <b>sqdiv16 sqlen16 sqclear sqshow</b>. Saved with presets.</p>
+      <p>Commands (type into the field by the scope, or use the keyboard on desktop): <b>0-9</b> latch a preset (pad 0 is the default), <b>ed3</b> arm/exit edit mode on preset 3, <b>xy</b> toggle the Lissajous scope, <b>rd</b> randomize, <b>xprt</b> start/stop recording (16-bit wav, or 24-bit in hq), <b>hq</b> toggle high-quality audio, <b>mic</b> toggle microphone input, <b>n3name</b> name preset 3, <b>psave/pload/pxprt/pimprt</b> persist or export/import presets, <b>fllp/flhp/flbp/flnt/floff</b> set Filter2's mode, <b>icons</b> toggle icon/text labels.</p>
+      <p>Envelopes loop by default. <b>TRIG</b> fires one, <b>LOOP</b> turns looping off or on. Sequencer lives on its own SEQ outlets (Pitch / CV / Gate / Clock) — patch Seq Pitch to Pitch, Fold, Osc B, or Filter as you like. <b>sq</b> status, <b>sqplay/sqstop</b>, <b>sqmode pitch|trig</b>, <b>bpm120</b>, <b>sq n c4 e4 . g4</b> notes, <b>sq d 8 8 4</b> durations, <b>sq p 0 0 3</b> presets (values only), <b>sq e 5 8</b> Euclidean, <b>sqdiv16 sqlen16 sqclear sqshow</b>. Saved with presets.</p>
       <p>MIC arms a low-latency external input (echo cancel / AGC off). Patch the Mic out jack anywhere, or feed Ext In to run the mic through the filter / fold / delay / FX path.</p>
       <p>Serve this folder over HTTP (e.g. <code>python3 -m http.server</code>) so AudioWorklets can load from <code>omchs-worklets.js</code>. Mic also needs HTTPS or localhost.</p>
       <p><!-- more notes to come --></p>
@@ -389,6 +404,7 @@
       <button type="button" data-sect="osc">OSC</button>
       <button type="button" data-sect="delay">DELAY</button>
       <button type="button" data-sect="fx">FX</button>
+      <button type="button" data-sect="seq">SEQ</button>
       <button type="button" data-sect="presets">PRESETS</button>
     </div>
 
@@ -420,7 +436,9 @@
   let dryGain, wetGain, outPan, driveN, crushN, masterLimiter, mainG, muteGate;
   let splitAnalyser, analyserL, analyserR;
   let envLoopSrc, envLoopSrc2, env1GateSrc, env2GateSrc;
+  let env1Looping = true, env2Looping = true;
   let lfo1Node, lfo1Silent, lfo2Node, lfo2Silent;
+  let seqPitchSrc, seqCvSrc, seqGateSrc, seqClkSrc, seqSilent;
   let randGen1Src, randGen2Src;
   let vca1Stage, lpg1Filter, vca2Stage, lpg2Filter;
   let isRec = false, isMute = false;
@@ -431,7 +449,7 @@
   let presets = new Array(10).fill(null);
   let presetNames = new Array(10).fill(null);
   let editingSlot = null;
-  let heldPresetSlot = null, preHoldSnapshot = null;
+  let activePresetSlot = 0;
   let lissajous = false;
   let scopeEnabled = true;
   let scopeRafId = 0;
@@ -527,15 +545,17 @@
     activation:'◉', envVcaDepth:'▽', lpgAmount:'◐', drive:'⌁', bitcrush:'▦', pan:'⇔',
     micLevel:'↧',
   };
-  const clusterIcon = { env1:'⌃₁', env2:'⌃₂', lfo1:'∿₁', lfo2:'∿₂', oscA:'Α', oscB:'Β' };
+  const clusterIcon = { env1:'⌃₁', env2:'⌃₂', lfo1:'∿₁', lfo2:'∿₂', oscA:'Α', oscB:'Β', seq:'SEQ' };
   const jackIcon = {
     extin:'↧', mic:'↥',
     loopenv:'⌃', loopenv2:'⌃', env1gate:'▮', env2gate:'▮',
     oscA:'♪', oscB:'♫', lfo1:'∿', lfo2:'∿', randgen1:'⚄', randgen2:'⚄',
+    seqpitch:'♪', seqcv:'⌁', seqgate:'▮', seqclk:'◷',
   };
 
-  // Preset pads — numbered to match the keyboard row 1..9,0
-  function keyLabel(slot){ return slot === 9 ? '0' : String(slot+1); }
+  // Preset pads 0–9 match the keyboard digits and latch like a typical synth
+  function keyLabel(slot){ return String(slot); }
+  function slotFromDigit(d){ return parseInt(String(d), 10); }
   function randomizedValues(){
     const vals = {};
     config.forEach(c => {
@@ -573,7 +593,7 @@
     const data = await res.json();
     if(!data || !Array.isArray(data.presets)) throw new Error('bad factory format');
     generateDefaultPresets(data);
-    termLog('> factory presets loaded (1-9,0).');
+    termLog('> factory presets loaded (pads 0-9).');
     return true;
   }
   async function bootPresets(){
@@ -584,6 +604,8 @@
       termLog('> factory presets unavailable; pads empty until saved or imported');
     }
     if(loadPersistedPresets()) termLog('> restored presets from localStorage');
+    if(!presets[0]) presets[0] = snapshotState();
+    selectPreset(0, true);
     termLog('> ' + audioQualitySummary());
   }
   function setLabelText(el, icon, text){
@@ -683,7 +705,7 @@
     extin:'Ext In (audio)' };
   const srcLabel = { loopenv:'Env1 out', loopenv2:'Env2 out', env1gate:'Env1 Gate out', env2gate:'Env2 Gate out',
     oscA:'Osc A out', oscB:'Osc B out', lfo1:'LFO1 out', lfo2:'LFO2 out', randgen1:'Random 1 out', randgen2:'Random 2 out',
-    mic:'Mic out' };
+    mic:'Mic out', seqpitch:'Seq Pitch', seqcv:'Seq CV', seqgate:'Seq Gate', seqclk:'Seq Clock' };
   const oscModeNames = ['Off','FM','AM','Ring Mod','Wavefolder','Sync (approx)','Mix'];
   const lfoWaveNames = ['Sine','Triangle','Ramp Up','Ramp Down','Square','Pulse','Square Random','Softened Random'];
   const stepNamesFor = { oscMode:oscModeNames, lfo1Wave:lfoWaveNames, lfo2Wave:lfoWaveNames };
@@ -695,12 +717,14 @@
     { key:'mod', items:[
       {t:'cluster', id:'env1', label:'ENV1', items:[
         {t:'knob', id:'envAttack'}, {t:'knob', id:'envDecay'}, {t:'knob', id:'envCurve'},
-      ]},
-      {t:'cluster', id:'env2', label:'ENV2', items:[
-        {t:'knob', id:'env2Attack'}, {t:'knob', id:'env2Decay'}, {t:'knob', id:'env2Curve'},
+        {t:'envctrls', which:1},
       ]},
       {t:'cluster', id:'lfo1', label:'LFO1', items:[
         {t:'knob', id:'lfo1Speed'}, {t:'knob', id:'lfo1Wave'},
+      ]},
+      {t:'cluster', id:'env2', label:'ENV2', items:[
+        {t:'knob', id:'env2Attack'}, {t:'knob', id:'env2Decay'}, {t:'knob', id:'env2Curve'},
+        {t:'envctrls', which:2},
       ]},
       {t:'cluster', id:'lfo2', label:'LFO2', items:[
         {t:'knob', id:'lfo2Speed'}, {t:'knob', id:'lfo2Wave'},
@@ -727,8 +751,13 @@
       {t:'knob', id:'envVcaDepth'}, {t:'knob', id:'lpgAmount'}, {t:'knob', id:'drive'},
       {t:'knob', id:'bitcrush'}, {t:'knob', id:'pan'}, {t:'knob', id:'activation'},
     ]},
+    { key:'seq', items:[
+      {t:'cluster', id:'seq', label:'SEQ', items:[
+        {t:'src', id:'seqpitch'}, {t:'src', id:'seqcv'}, {t:'src', id:'seqgate'}, {t:'src', id:'seqclk'},
+      ]},
+    ]},
   ];
-  const plateOrder = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+  const plateOrder = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
 
   const itemsHost = document.getElementById('items');
   const faceplateEl = document.querySelector('.faceplate');
@@ -749,17 +778,18 @@
     lfo1cv:'#3584e4', lfo2cv:'#3584e4', instab:'#3584e4',
     // modulation OUTPUTS (LFOs, envelopes, random gens): light blue
     lfo1:'#99c1f1', lfo2:'#99c1f1', loopenv:'#99c1f1', loopenv2:'#99c1f1', randgen1:'#99c1f1', randgen2:'#99c1f1',
+    seqpitch:'#99c1f1', seqcv:'#99c1f1', seqclk:'#99c1f1',
     // audio OUTPUTS (the oscillators themselves): dark blue
     oscA:'#1a5fb4', oscB:'#1a5fb4', mic:'#1c71d8',
     // external audio input destination
     extin:'#26a269',
     // gate / trigger patches: reserved red, smaller connectors (see .jack.gate)
     trig1:'#e01b24', trig2:'#e01b24', lfo1ping:'#e01b24', lfo2ping:'#e01b24',
-    randgen1ping:'#e01b24', randgen2ping:'#e01b24', env1gate:'#e01b24', env2gate:'#e01b24',
+    randgen1ping:'#e01b24', randgen2ping:'#e01b24', env1gate:'#e01b24', env2gate:'#e01b24', seqgate:'#e01b24',
     // utility / everything else: green
     pan:'#33d17a', mix:'#33d17a', delay:'#33d17a', spread:'#33d17a', smear:'#33d17a', sat:'#33d17a', crush:'#33d17a', subton:'#33d17a',
   };
-  const gateJackIds = new Set(['trig1','trig2','lfo1ping','lfo2ping','randgen1ping','randgen2ping','env1gate','env2gate']);
+  const gateJackIds = new Set(['trig1','trig2','lfo1ping','lfo2ping','randgen1ping','randgen2ping','env1gate','env2gate','seqgate']);
   function jackColorFor(id){
     if(jackColors[id]) return jackColors[id];
     if(id.startsWith('plate')) return '#ff8fa3';
@@ -932,12 +962,36 @@
   function buildPlate(idx){
     const outer = document.createElement('div');
     outer.className = 'plate'; outer.id = `plate-${idx}`; outer.title = 'Preset ' + keyLabel(idx);
-    outer.innerText = keyLabel(idx);
-    outer.addEventListener('pointerdown', e => { outer.setPointerCapture(e.pointerId); playPresetMomentary(idx, true); });
-    outer.addEventListener('pointerup', () => playPresetMomentary(idx, false));
-    outer.addEventListener('pointercancel', () => playPresetMomentary(idx, false));
-    outer.addEventListener('pointerleave', () => playPresetMomentary(idx, false));
+    const led = document.createElement('div'); led.className = 'plate-led'; led.setAttribute('aria-hidden', 'true');
+    const num = document.createElement('span'); num.className = 'plate-num'; num.textContent = keyLabel(idx);
+    outer.appendChild(led); outer.appendChild(num);
+    outer.addEventListener('pointerdown', e => {
+      outer.setPointerCapture(e.pointerId);
+      selectPreset(idx);
+    });
     return outer;
+  }
+  function buildEnvCtrls(which){
+    const wrap = document.createElement('div'); wrap.className = 'envctrls';
+    const trig = document.createElement('button');
+    trig.type = 'button'; trig.className = 'envbtn'; trig.textContent = 'TRIG';
+    trig.title = 'Trigger envelope ' + which;
+    trig.addEventListener('pointerdown', e => {
+      e.stopPropagation();
+      if(!ctx) return;
+      fireAndMaybeLoop(which);
+    });
+    const loop = document.createElement('button');
+    loop.type = 'button'; loop.className = 'envbtn'; loop.id = 'envloop-' + which;
+    loop.textContent = 'LOOP';
+    loop.title = 'Toggle envelope ' + which + ' looping';
+    if((which === 1 && env1Looping) || (which === 2 && env2Looping)) loop.classList.add('on');
+    loop.addEventListener('pointerdown', e => {
+      e.stopPropagation();
+      toggleEnvLoop(which);
+    });
+    wrap.appendChild(trig); wrap.appendChild(loop);
+    return wrap;
   }
   function buildJackItem(kind, id, label){
     const wrap = document.createElement('div'); wrap.className = 'jackitem';
@@ -968,6 +1022,7 @@
         if(sub.t === 'knob') el.appendChild(buildKnob(configById[sub.id], { noScatter: true }));
         else if(sub.t === 'src') el.appendChild(buildJackItem('src', sub.id, srcLabel[sub.id] || sub.id));
         else if(sub.t === 'dst') el.appendChild(buildJackItem('dst', sub.id, destLabel[sub.id] || sub.id));
+        else if(sub.t === 'envctrls') el.appendChild(buildEnvCtrls(sub.which));
       });
     } else if(item.t === 'knob') el = buildKnob(configById[item.id]);
     else if(item.t === 'src') el = buildJackItem('src', item.id, srcLabel[item.id] || item.id);
@@ -1160,6 +1215,7 @@
     splitAnalyser = analyserL = analyserR = null;
     envLoopSrc = envLoopSrc2 = env1GateSrc = env2GateSrc = null;
     lfo1Node = lfo1Silent = lfo2Node = lfo2Silent = null;
+    seqPitchSrc = seqCvSrc = seqGateSrc = seqClkSrc = seqSilent = null;
     randGen1Src = randGen2Src = null;
     vca1Stage = lpg1Filter = vca2Stage = lpg2Filter = null;
     destDefs = [];
@@ -1467,6 +1523,15 @@
     env1GateSrc = ctx.createConstantSource(); env1GateSrc.offset.value = 0; env1GateSrc.start();
     env2GateSrc = ctx.createConstantSource(); env2GateSrc.offset.value = 0; env2GateSrc.start();
 
+    seqPitchSrc = ctx.createConstantSource(); seqPitchSrc.offset.value = 0; seqPitchSrc.start();
+    seqCvSrc = ctx.createConstantSource(); seqCvSrc.offset.value = 0; seqCvSrc.start();
+    seqGateSrc = ctx.createConstantSource(); seqGateSrc.offset.value = 0; seqGateSrc.start();
+    seqClkSrc = ctx.createConstantSource(); seqClkSrc.offset.value = 0; seqClkSrc.start();
+    seqSilent = ctx.createGain(); seqSilent.gain.value = 0;
+    seqPitchSrc.connect(seqSilent); seqCvSrc.connect(seqSilent);
+    seqGateSrc.connect(seqSilent); seqClkSrc.connect(seqSilent);
+    seqSilent.connect(ctx.destination);
+
     // Two random voltage generators: no knob, ping in -> new random value held
     // until the next ping.
     randGen1Src = ctx.createConstantSource(); randGen1Src.offset.value = 0; randGen1Src.start();
@@ -1522,8 +1587,8 @@
     const cvNames = ['envAtk','envDcy','instab','spread','smear','sat','crush','env2atk','env2dcy','oscamt',
       'oscmode','lfo1cv','lfo2cv','trig1','trig2','lfo1ping','lfo2ping','randgen1ping','randgen2ping','wave','waveB'];
     const onRise = {
-      trig1: () => scheduleEnvLoop(),
-      trig2: () => scheduleEnvLoop2(),
+      trig1: () => fireAndMaybeLoop(1),
+      trig2: () => fireAndMaybeLoop(2),
       lfo1ping: () => { if(lfo1Node && lfo1Node.port) lfo1Node.port.postMessage({ type:'ping' }); },
       lfo2ping: () => { if(lfo2Node && lfo2Node.port) lfo2Node.port.postMessage({ type:'ping' }); },
       randgen1ping: () => { randGen1Src.offset.setTargetAtTime(Math.random()*2-1, ctx.currentTime, 0.002); },
@@ -1598,6 +1663,11 @@
     applyFilterMode('absorb');
     seqStop(true);
     wireJacks();
+    if(activePresetSlot != null && presets[activePresetSlot]){
+      applyPreset(presets[activePresetSlot], true);
+    }
+    if(env1Looping) fireAndMaybeLoop(1);
+    if(env2Looping) fireAndMaybeLoop(2);
     drawScope();
     setupMidi();
     audioReady = true;
@@ -1605,23 +1675,29 @@
   }
 
   // ---------- MIDI input: note-on sets Pitch, velocity scales VCA, and
-  // triggers both envelopes; note-off (or note-on vel=0) stops looping when
-  // the last key is released. ----------
-  function stopEnvLoops(){
+  // triggers both envelopes; note-off only stops an envelope that is not looping. ----------
+  function stopEnvLoop(which){
     if(!ctx) return;
-    clearTimeout(envSchedTimer); clearTimeout(envSchedTimer2);
-    envSchedTimer = envSchedTimer2 = null;
     const now = ctx.currentTime;
-    if(envLoopSrc){
-      envLoopSrc.offset.cancelScheduledValues(now);
-      envLoopSrc.offset.setTargetAtTime(0, now, 0.03);
+    if(which !== 2){
+      clearTimeout(envSchedTimer); envSchedTimer = null;
+      if(envLoopSrc){
+        envLoopSrc.offset.cancelScheduledValues(now);
+        envLoopSrc.offset.setTargetAtTime(0, now, 0.03);
+      }
+      if(env1GateSrc) env1GateSrc.offset.setTargetAtTime(0, now, 0.01);
     }
-    if(envLoopSrc2){
-      envLoopSrc2.offset.cancelScheduledValues(now);
-      envLoopSrc2.offset.setTargetAtTime(0, now, 0.03);
+    if(which !== 1){
+      clearTimeout(envSchedTimer2); envSchedTimer2 = null;
+      if(envLoopSrc2){
+        envLoopSrc2.offset.cancelScheduledValues(now);
+        envLoopSrc2.offset.setTargetAtTime(0, now, 0.03);
+      }
+      if(env2GateSrc) env2GateSrc.offset.setTargetAtTime(0, now, 0.01);
     }
-    if(env1GateSrc) env1GateSrc.offset.setTargetAtTime(0, now, 0.01);
-    if(env2GateSrc) env2GateSrc.offset.setTargetAtTime(0, now, 0.01);
+  }
+  function stopEnvLoops(){
+    stopEnvLoop(1); stopEnvLoop(2);
   }
   function midiApplyNote(note, vel){
     const freq = 440 * Math.pow(2, (note-69)/12);
@@ -1629,7 +1705,7 @@
     updateKnobVisual(configById.pitch);
     midiVelScale = clampv(vel/127, 0.05, 1);
     sync();
-    scheduleEnvLoop(); scheduleEnvLoop2();
+    fireAndMaybeLoop(1); fireAndMaybeLoop(2);
     termLog(`> MIDI note ${note} (${freq.toFixed(1)}Hz)`);
   }
   function midiNoteOn(note, vel){
@@ -1639,7 +1715,8 @@
   function midiNoteOff(note){
     midiNoteStack = midiNoteStack.filter(n => n !== note);
     if(midiNoteStack.length === 0){
-      stopEnvLoops();
+      if(!env1Looping) stopEnvLoop(1);
+      if(!env2Looping) stopEnvLoop(2);
       midiVelScale = 1;
       if(mainG) mainG.gain.setTargetAtTime(baseOf('activation','vca'), ctx.currentTime, 0.02);
       return;
@@ -1775,21 +1852,54 @@
     const delay = Math.max(0, (t - ctx.currentTime) * 1000);
     setTimeout(() => flashLed(is2 ? 'env2' : 'env1'), delay);
   }
-  function scheduleEnvLoop(){
-    if(!ctx) return;
-    fireEnvOneShot(1, ctx.currentTime + 0.02);
-    const a = clampv(baseOf('envAttack','envAtk') + (cvLive.envAtk||0), 0.01, 2);
-    const d = clampv(baseOf('envDecay','envDcy') + (cvLive.envDcy||0), 0.01, 3);
-    clearTimeout(envSchedTimer);
-    envSchedTimer = setTimeout(scheduleEnvLoop, Math.max(20, (a+d)*1000 - 15));
+  function envTimes(which){
+    if(which === 2){
+      return {
+        a: clampv(baseOf('env2Attack','env2atk') + (cvLive.env2atk||0), 0.01, 2),
+        d: clampv(baseOf('env2Decay','env2dcy') + (cvLive.env2dcy||0), 0.01, 3)
+      };
+    }
+    return {
+      a: clampv(baseOf('envAttack','envAtk') + (cvLive.envAtk||0), 0.01, 2),
+      d: clampv(baseOf('envDecay','envDcy') + (cvLive.envDcy||0), 0.01, 3)
+    };
   }
-  function scheduleEnvLoop2(){
+  function fireAndMaybeLoop(which){
     if(!ctx) return;
-    fireEnvOneShot(2, ctx.currentTime + 0.02);
-    const a = clampv(baseOf('env2Attack','env2atk') + (cvLive.env2atk||0), 0.01, 2);
-    const d = clampv(baseOf('env2Decay','env2dcy') + (cvLive.env2dcy||0), 0.01, 3);
-    clearTimeout(envSchedTimer2);
-    envSchedTimer2 = setTimeout(scheduleEnvLoop2, Math.max(20, (a+d)*1000 - 15));
+    fireEnvOneShot(which, ctx.currentTime + 0.02);
+    const looping = which === 2 ? env2Looping : env1Looping;
+    const { a, d } = envTimes(which);
+    const wait = Math.max(20, (a + d) * 1000 - 15);
+    if(which === 2){
+      clearTimeout(envSchedTimer2);
+      envSchedTimer2 = looping ? setTimeout(() => fireAndMaybeLoop(2), wait) : null;
+    } else {
+      clearTimeout(envSchedTimer);
+      envSchedTimer = looping ? setTimeout(() => fireAndMaybeLoop(1), wait) : null;
+    }
+  }
+  function scheduleEnvLoop(){ fireAndMaybeLoop(1); }
+  function scheduleEnvLoop2(){ fireAndMaybeLoop(2); }
+  function updateEnvLoopBtns(){
+    const b1 = document.getElementById('envloop-1');
+    const b2 = document.getElementById('envloop-2');
+    if(b1) b1.classList.toggle('on', env1Looping);
+    if(b2) b2.classList.toggle('on', env2Looping);
+  }
+  function toggleEnvLoop(which){
+    if(which === 2){
+      env2Looping = !env2Looping;
+      updateEnvLoopBtns();
+      if(env2Looping && ctx) fireAndMaybeLoop(2);
+      else { clearTimeout(envSchedTimer2); envSchedTimer2 = null; }
+      termLog(`> env2 loop ${env2Looping ? 'on' : 'off'}`);
+    } else {
+      env1Looping = !env1Looping;
+      updateEnvLoopBtns();
+      if(env1Looping && ctx) fireAndMaybeLoop(1);
+      else { clearTimeout(envSchedTimer); envSchedTimer = null; }
+      termLog(`> env1 loop ${env1Looping ? 'on' : 'off'}`);
+    }
   }
 
   // ---------- Osc B -> A interaction / Mix crossfade ----------
@@ -2069,6 +2179,10 @@
     if(id === 'oscA') return oscASum;
     if(id === 'oscB') return oscBSum;
     if(id === 'mic') return micOutGain;
+    if(id === 'seqpitch') return seqPitchSrc;
+    if(id === 'seqcv') return seqCvSrc;
+    if(id === 'seqgate') return seqGateSrc;
+    if(id === 'seqclk') return seqClkSrc;
   }
   // Reverse map: destId -> the knob whose ring should show modulation range for it
   const destOwner = {};
@@ -2119,14 +2233,23 @@
     renderTerminal();
   }
 
-  // ---------- Presets: the 10 pads, momentary-recall + record mode ----------
+  // ---------- Presets: 10 latching pads (0 default) + record mode ----------
+  function refreshPadLeds(){
+    for(let i=0;i<10;i++){
+      const el = document.getElementById('plate-'+i);
+      if(!el) continue;
+      el.classList.toggle('selected', i === activePresetSlot || i === seqPadOn);
+      el.classList.toggle('armed', i === editingSlot);
+    }
+  }
   function setActivePad(slot, on){
-    if(slot === null || slot === undefined) return;
-    const el = document.getElementById('plate-'+slot);
-    if(el) el.classList.toggle('armed', !!on);
+    if(on) seqPadOn = slot;
+    else if(seqPadOn === slot) seqPadOn = null;
+    refreshPadLeds();
   }
   function clearAllPads(){
-    for(let i=0;i<10;i++) setActivePad(i, false);
+    seqPadOn = null;
+    refreshPadLeds();
   }
   function snapshotState(){
     return {
@@ -2165,38 +2288,36 @@
     }
   }
   function presetLabel(slot){ return presetNames[slot] ? `${keyLabel(slot)} (${presetNames[slot]})` : keyLabel(slot); }
-  function playPresetMomentary(slot, isDown){
-    if(!ctx || editingSlot !== null) return;
-    if(isDown){
-      if(heldPresetSlot !== null) return;
-      if(!presets[slot]){ termLog(`preset ${presetLabel(slot)} — empty`); return; }
-      heldPresetSlot = slot;
-      preHoldSnapshot = snapshotState();
-      applyPreset(presets[slot]);
-      setActivePad(slot, true);
+  function selectPreset(slot, quiet){
+    if(editingSlot !== null){
+      if(editingSlot === slot){ exitEditMode(); return; }
+      exitEditMode();
+    }
+    if(!presets[slot]){
+      if(!quiet) termLog(`preset ${presetLabel(slot)} — empty`);
+      return;
+    }
+    applyPreset(presets[slot], quiet);
+    activePresetSlot = slot;
+    seqPadOn = null;
+    refreshPadLeds();
+    if(!quiet){
       buzz(15);
-      termLog(`> preset ${presetLabel(slot)} playing`);
-    } else {
-      if(heldPresetSlot !== slot) return;
-      heldPresetSlot = null;
-      applyPreset(preHoldSnapshot);
-      setActivePad(slot, false);
-      termLog(`> preset ${presetLabel(slot)} released`);
+      termLog(`> preset ${presetLabel(slot)}`);
     }
   }
   function enterEditMode(slot){
     if(!presets[slot]) presets[slot] = snapshotState();
     editingSlot = slot;
-    clearAllPads();
-    setActivePad(slot, true);
+    refreshPadLeds();
     termLog(`> EDIT MODE — recording to preset ${presetLabel(slot)}`);
   }
   function exitEditMode(){
     if(editingSlot === null) return;
     termLog(`> preset ${presetLabel(editingSlot)} saved, edit mode off`);
-    setActivePad(editingSlot, false);
     editingSlot = null;
     persistPresets();
+    refreshPadLeds();
   }
   function recordIfEditing(){
     if(editingSlot !== null){ presets[editingSlot] = snapshotState(); persistPresets(); }
@@ -2235,7 +2356,7 @@
     if(/^[0-9]$/.test(key)){
       if(edPrefix === 2){
         edPrefix = 0;
-        const slot = key === '0' ? 9 : (parseInt(key,10) - 1);
+        const slot = slotFromDigit(key);
         if(editingSlot === slot) exitEditMode(); else enterEditMode(slot);
         cmdBuf = ''; renderTerminal();
         return;
@@ -2246,8 +2367,8 @@
       }
       edPrefix = 0; xyPrefix = 0;
       if(editingSlot !== null){ exitEditMode(); return; }
-      const slot = key === '0' ? 9 : (parseInt(key,10) - 1);
-      playPresetMomentary(slot, true);
+      const slot = slotFromDigit(key);
+      selectPreset(slot);
       return;
     }
 
@@ -2272,15 +2393,6 @@
     }
 
     edPrefix = 0; xyPrefix = 0;
-  });
-  window.addEventListener('keyup', e => {
-    if(e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
-    if(cmdBuf.length) return;
-    const key = e.key.toLowerCase();
-    if(/^[0-9]$/.test(key)){
-      const slot = key === '0' ? 9 : (parseInt(key,10) - 1);
-      playPresetMomentary(slot, false);
-    }
   });
 
   // ---------- Sequencer (terminal V1: clock, pitch/trig, durs, euclid, presets) ----------
@@ -2361,7 +2473,7 @@
     tok = String(tok || '').toLowerCase();
     if(tok === '.' || tok === '-' || tok === 'x') return { hold: true };
     if(!/^[0-9]$/.test(tok)) return null;
-    return { slot: tok === '0' ? 9 : (parseInt(tok, 10) - 1) };
+    return { slot: slotFromDigit(tok) };
   }
   function euclidPattern(hits, steps, rot){
     steps = Math.max(1, steps|0);
@@ -2380,36 +2492,43 @@
     }
     return pat.slice(rot).concat(pat.slice(0, rot));
   }
-  function seqSetPitchAt(hz, when){
-    const c = configById.pitch;
-    const p = clampv(hz, c.min, c.max);
-    params.pitch = p;
-    updateKnobVisual(c);
-    if(!ctx || !oscTri) return;
-    const t = Math.max(when, ctx.currentTime);
+  function hzToSeqCv(hz){
+    const lo = 30, hi = 800;
+    hz = clampv(hz, lo, hi);
+    return Math.log(hz / lo) / Math.log(hi / lo);
+  }
+  function seqWriteOuts(ev, when){
+    if(!ctx || !seqPitchSrc) return;
+    const t = Math.max(when || ctx.currentTime, ctx.currentTime);
     try {
-      oscTri.frequency.setValueAtTime(p, t);
-      oscSqr.frequency.setValueAtTime(p, t);
-      oscSine.frequency.setValueAtTime(p, t);
-      subTri.frequency.setValueAtTime(p/2, t);
-      subSqr.frequency.setValueAtTime(p/2, t);
-      subSine.frequency.setValueAtTime(p/2, t);
+      seqClkSrc.offset.setValueAtTime(1, t);
+      seqClkSrc.offset.setValueAtTime(0, t + 0.012);
+      if(!ev || ev.rest){
+        seqGateSrc.offset.setValueAtTime(0, t);
+        return;
+      }
+      seqGateSrc.offset.setValueAtTime(1, t);
+      if(seqMode === 'pitch' && ev.hz != null){
+        const cv = hzToSeqCv(ev.hz);
+        seqPitchSrc.offset.setValueAtTime(cv, t);
+        seqCvSrc.offset.setValueAtTime((clampv(ev.hz, 30, 800) - 30) / 770, t);
+      }
     } catch(_){}
   }
   function seqApplyPad(slot){
     if(slot == null || !presets[slot]) return;
     applyPreset(presets[slot], true, true);
-    if(seqPadOn !== null && seqPadOn !== slot) setActivePad(seqPadOn, false);
+    activePresetSlot = slot;
     seqPadOn = slot;
-    setActivePad(slot, true);
+    refreshPadLeds();
   }
   function seqTrigger(ev, when){
     if(!ev) return;
     if(ev.preset != null) seqApplyPad(ev.preset);
+    seqWriteOuts(ev, when);
     if(ev.rest) return;
-    if(seqMode === 'pitch' && ev.hz != null) seqSetPitchAt(ev.hz, when);
-    fireEnvOneShot(1, when);
-    fireEnvOneShot(2, when);
+    if(!env1Looping) fireEnvOneShot(1, when);
+    if(!env2Looping) fireEnvOneShot(2, when);
   }
   function seqScheduleAhead(){
     if(!seqPlaying || !ctx || !seqEvents.length) return;
@@ -2432,7 +2551,6 @@
       updatePowerIcon();
     }
     if(ctx.state === 'suspended') ctx.resume().catch(()=>{});
-    stopEnvLoops();
     seqPlaying = true;
     seqIndex = 0;
     seqNextTime = ctx.currentTime + 0.06;
@@ -2444,8 +2562,11 @@
   function seqStop(quiet){
     seqPlaying = false;
     seqClearTimer();
-    if(seqPadOn !== null){ setActivePad(seqPadOn, false); seqPadOn = null; }
-    stopEnvLoops();
+    seqPadOn = null;
+    if(ctx && seqGateSrc){
+      try { seqGateSrc.offset.setTargetAtTime(0, ctx.currentTime, 0.01); } catch(_){}
+    }
+    refreshPadLeds();
     if(!quiet) termLog('> ' + seqStatusLine());
   }
   function seqSetNotes(tokens){
@@ -2477,7 +2598,7 @@
     termLog(`> sq d ${beats.map(formatBeats).join(' ')}`);
   }
   function seqSetPresets(tokens){
-    if(!tokens.length){ termLog('> sq p 1 1 3 . 5  — pad 1-0, .=hold'); return; }
+    if(!tokens.length){ termLog('> sq p 0 0 3 . 5  — pad 0-9, .=hold'); return; }
     const vals = [];
     for(let i=0;i<tokens.length;i++){
       const p = parsePresetToken(tokens[i]);
@@ -2507,7 +2628,7 @@
     if(!seqEvents.length){ termLog('> sq empty'); return; }
     const notes = seqEvents.map(e => e.rest ? '.' : (e.note || (e.hz ? Math.round(e.hz)+'hz' : '·'))).join(' ');
     const durs = seqEvents.map(e => formatBeats(e.beats)).join(' ');
-    const pads = seqEvents.map(e => e.preset == null ? '.' : (e.preset === 9 ? '0' : String(e.preset+1))).join(' ');
+    const pads = seqEvents.map(e => e.preset == null ? '.' : keyLabel(e.preset)).join(' ');
     termLog('> n ' + notes);
     termLog('> d ' + durs);
     termLog('> p ' + pads);
@@ -2563,7 +2684,7 @@
     }
     const nameMatch = rawTrim.match(/^[nN]([0-9])(\S+)$/);
     if(nameMatch){
-      const slot = nameMatch[1] === '0' ? 9 : (parseInt(nameMatch[1],10) - 1);
+      const slot = slotFromDigit(nameMatch[1]);
       presetNames[slot] = nameMatch[2];
       const plateEl = document.getElementById('plate-'+slot);
       if(plateEl) plateEl.title = `Preset ${keyLabel(slot)} — ${nameMatch[2]}`;
@@ -2614,6 +2735,7 @@
             if(!data || !Array.isArray(data.presets)) throw new Error('bad format');
             applyPresetBank(data);
             persistPresets();
+            if(presets[0]) selectPreset(0, true);
             termLog('> presets imported');
           } catch(_){ termLog('> preset import failed'); }
         };
@@ -2629,15 +2751,14 @@
     if(str === 'flnt'){ setFilterModeCommand('fl2', 'notch'); return; }
     const edMatch = str.match(/^ed([0-9])$/);
     if(edMatch){
-      const slot = edMatch[1] === '0' ? 9 : (parseInt(edMatch[1],10) - 1);
+      const slot = slotFromDigit(edMatch[1]);
       if(editingSlot === slot) exitEditMode(); else enterEditMode(slot);
       return;
     }
     if(/^[0-9]$/.test(str)){
-      const slot = str === '0' ? 9 : (parseInt(str,10) - 1);
+      const slot = slotFromDigit(str);
       if(editingSlot !== null){ exitEditMode(); return; }
-      playPresetMomentary(slot, true);
-      setTimeout(() => playPresetMomentary(slot, false), 400);
+      selectPreset(slot);
       return;
     }
     termLog(`> unrecognized command: ${raw}`);

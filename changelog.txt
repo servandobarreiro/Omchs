@@ -25,5 +25,11 @@ Omchs changelog
 - Knob, jack, and cluster labels default to text instead of icons. icons
   still toggles back to symbols. Keyboard command buffer now accepts spaces
   and # so sequencer note strings can be typed.
-- Sequencer and looping envelopes stay stopped on power-on. Envelopes fire
-  from MIDI / trigger jacks / sqplay, not automatically at boot.
+- Sequencer stays stopped on power-on. Envelopes loop by default; TRIG fires
+  a cycle on demand and LOOP toggles looping per envelope.
+- Sequencer has its own SEQ faceplate (Seq Pitch / Seq CV / Seq Gate /
+  Seq Clock outlets). Pitch is no longer hard-wired to Osc A — patch Seq
+  Pitch to Pitch, Fold, Osc B, or Filter as needed.
+- Env1 sits next to LFO1 and Env2 next to LFO2 so the row wraps as pairs
+  on a phone. Preset pads 0–9 latch like a typical synth; pad 0 is the
+  default, with an LED on each plate.
