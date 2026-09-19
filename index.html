@@ -1596,10 +1596,7 @@
     applyOscMode();
     applyFilterMode('fl2');
     applyFilterMode('absorb');
-    if(!seqPlaying){
-      scheduleEnvLoop();
-      scheduleEnvLoop2();
-    }
+    seqStop(true);
     wireJacks();
     drawScope();
     setupMidi();

@@ -25,3 +25,5 @@ Omchs changelog
 - Knob, jack, and cluster labels default to text instead of icons. icons
   still toggles back to symbols. Keyboard command buffer now accepts spaces
   and # so sequencer note strings can be typed.
+- Sequencer and looping envelopes stay stopped on power-on. Envelopes fire
+  from MIDI / trigger jacks / sqplay, not automatically at boot.

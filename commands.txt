@@ -59,6 +59,7 @@ icons         Toggle icon vs text labels on knobs and jacks.
 
 Sequencer
 ---------
+Stopped on power-on (looping envelopes do not start by themselves).
 sq            Show status (play/stop, mode, bpm, event count, division).
 sqplay        Start (powers the engine if needed). One-shot envelopes;
               does not loop the live AD envelopes.
