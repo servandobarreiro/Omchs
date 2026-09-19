@@ -332,14 +332,15 @@
   .legend i{ display:inline-block; width:10px; height:2px; margin-right:4px; vertical-align:middle; }
 </style>
 </head>
-<body>
+<body class="labels-text">
 <div class="wrap">
   <div class="aboutpopup" id="aboutPopup">
     <div class="aboutpopup-close" id="aboutClose">&times;</div>
     <div class="aboutpopup-body">
       <p>Cyan jacks are outputs, violet jacks are inputs. Patch <b>from output → input</b> (inputs stay dim until you drag from an output). On phones: tap an output, then tap an input. Click the dot on a cable for its attenuator, double-click the dot (or click the cable itself) to remove it.</p>
       <p>Osc B is independent of Osc A. Set Osc B→A Mode to <b>Mix</b> and use <b>Amt / Xfade</b> to crossfade A↔B in the main path; other modes (FM / AM / Ring / Fold / Sync) are modulation, not a blend.</p>
-      <p>Commands (type into the field by the scope, or use the keyboard on desktop): <b>1-0</b> play a preset, <b>ed3</b> arm/exit edit mode on preset 3, <b>xy</b> toggle the Lissajous scope, <b>rd</b> randomize, <b>xprt</b> start/stop recording (16-bit wav, or 24-bit in hq), <b>hq</b> toggle high-quality audio, <b>mic</b> toggle microphone input, <b>n3name</b> name preset 3, <b>psave/pload/pxprt/pimprt</b> persist or export/import presets, <b>fllp/flhp/flbp/flnt/floff</b> set Filter2's mode.</p>
+      <p>Commands (type into the field by the scope, or use the keyboard on desktop): <b>1-0</b> play a preset, <b>ed3</b> arm/exit edit mode on preset 3, <b>xy</b> toggle the Lissajous scope, <b>rd</b> randomize, <b>xprt</b> start/stop recording (16-bit wav, or 24-bit in hq), <b>hq</b> toggle high-quality audio, <b>mic</b> toggle microphone input, <b>n3name</b> name preset 3, <b>psave/pload/pxprt/pimprt</b> persist or export/import presets, <b>fllp/flhp/flbp/flnt/floff</b> set Filter2's mode, <b>icons</b> toggle icon/text labels.</p>
+      <p>Sequencer: <b>sq</b> status, <b>sqplay/sqstop</b>, <b>sqmode pitch|trig</b>, <b>bpm120</b>, <b>sq n c4 e4 . g4</b> notes, <b>sq d 8 8 4</b> durations (4=quarter, 8=eighth, 16=16th), <b>sq p 1 1 3</b> presets (values only), <b>sq e 5 8</b> Euclidean, <b>sqdiv16 sqlen16 sqclear sqshow</b>. Saved with presets.</p>
       <p>MIC arms a low-latency external input (echo cancel / AGC off). Patch the Mic out jack anywhere, or feed Ext In to run the mic through the filter / fold / delay / FX path.</p>
       <p>Serve this folder over HTTP (e.g. <code>python3 -m http.server</code>) so AudioWorklets can load from <code>omchs-worklets.js</code>. Mic also needs HTTPS or localhost.</p>
       <p><!-- more notes to come --></p>
@@ -437,11 +438,20 @@
   let termLines = [];
   let edPrefix = 0, xyPrefix = 0;
   let cmdBuf = '';
-  let useIcons = true;
+  let useIcons = false;
   let bulkOp = false;
   let lastDriveCurve = null;
   let midiNoteStack = [];
   let midiVelScale = 1;
+  let seqBpm = 120;
+  let seqMode = 'trig';
+  let seqDiv = 16;
+  let seqEvents = [];
+  let seqPlaying = false;
+  let seqIndex = 0;
+  let seqNextTime = 0;
+  let seqTimer = null;
+  let seqPadOn = null;
   let workletsReady = false;
   let recNode = null, recSilent = null, recChunks = [], recSampleRate = 48000, recBits = 16;
   let recAccept = false;
@@ -552,6 +562,7 @@
     if(presets.length > 10) presets.length = 10;
     if(presetNames.length > 10) presetNames.length = 10;
     syncPresetPadTitles();
+    if(src.seq) applySeqState(src.seq);
   }
   function generateDefaultPresets(bank){
     applyPresetBank(bank);
@@ -589,7 +600,7 @@
   }
   function persistPresets(){
     try {
-      localStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify({ version:1, presets, presetNames }));
+      localStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify({ version:1, presets, presetNames, seq: seqSnapshot() }));
     } catch(_){}
   }
   function loadPersistedPresets(){
@@ -1002,6 +1013,7 @@
   plateOrder.forEach(idx => platesRow.appendChild(buildPlate(idx)));
   itemsHost.appendChild(platesRow);
   config.forEach(updateKnobVisual);
+  applyLabelMode();
 
   // Mobile section tabs: filter the dense faceplate down to one row of controls
   const sectTabsEl = document.getElementById('sectTabs');
@@ -1164,6 +1176,7 @@
     stopMiniScope();
     if(scopeRafId){ cancelAnimationFrame(scopeRafId); scopeRafId = 0; }
     if(driftTimer){ clearInterval(driftTimer); driftTimer = null; }
+    seqClearTimer();
     clearTimeout(envSchedTimer); clearTimeout(envSchedTimer2);
     envSchedTimer = envSchedTimer2 = null;
     bulkOp = true;
@@ -1187,6 +1200,8 @@
     const snap = snapshotState();
     const wasMute = isMute;
     const wasMic = micOn;
+    const wasSeq = seqPlaying;
+    seqClearTimer();
     if(isRec){
       isRec = false;
       recAccept = false;
@@ -1212,6 +1227,7 @@
       hqBusy = false;
     }
     if(wasMic) await startMic();
+    if(wasSeq) seqPlay(true);
   }
   async function init(){
     if(ctx && audioReady) return;
@@ -1580,8 +1596,10 @@
     applyOscMode();
     applyFilterMode('fl2');
     applyFilterMode('absorb');
-    scheduleEnvLoop();
-    scheduleEnvLoop2();
+    if(!seqPlaying){
+      scheduleEnvLoop();
+      scheduleEnvLoop2();
+    }
     wireJacks();
     drawScope();
     setupMidi();
@@ -1736,33 +1754,43 @@
     }
     return arr;
   }
+  function fireEnvOneShot(which, when){
+    if(!ctx) return;
+    const t = Math.max(when || ctx.currentTime, ctx.currentTime);
+    const is2 = which === 2;
+    const src = is2 ? envLoopSrc2 : envLoopSrc;
+    const gate = is2 ? env2GateSrc : env1GateSrc;
+    if(!src || !gate) return;
+    const a = is2
+      ? clampv(baseOf('env2Attack','env2atk') + (cvLive.env2atk||0), 0.01, 2)
+      : clampv(baseOf('envAttack','envAtk') + (cvLive.envAtk||0), 0.01, 2);
+    const d = is2
+      ? clampv(baseOf('env2Decay','env2dcy') + (cvLive.env2dcy||0), 0.01, 3)
+      : clampv(baseOf('envDecay','envDcy') + (cvLive.envDcy||0), 0.01, 3);
+    const curve = is2 ? params.env2Curve : params.envCurve;
+    try {
+      src.offset.cancelScheduledValues(t);
+      src.offset.setValueCurveAtTime(envCurveArray(curve, true), t, a);
+      src.offset.setValueCurveAtTime(envCurveArray(curve, false), t + a, d);
+      gate.offset.setTargetAtTime(1, t, 0.002);
+      gate.offset.setTargetAtTime(0, t + 0.02, 0.01);
+    } catch(_){}
+    const delay = Math.max(0, (t - ctx.currentTime) * 1000);
+    setTimeout(() => flashLed(is2 ? 'env2' : 'env1'), delay);
+  }
   function scheduleEnvLoop(){
     if(!ctx) return;
+    fireEnvOneShot(1, ctx.currentTime + 0.02);
     const a = clampv(baseOf('envAttack','envAtk') + (cvLive.envAtk||0), 0.01, 2);
     const d = clampv(baseOf('envDecay','envDcy') + (cvLive.envDcy||0), 0.01, 3);
-    const now = ctx.currentTime + 0.02;
-    envLoopSrc.offset.cancelScheduledValues(now);
-    envLoopSrc.offset.setValueCurveAtTime(envCurveArray(params.envCurve, true), now, a);
-    envLoopSrc.offset.setValueCurveAtTime(envCurveArray(params.envCurve, false), now + a, d);
-    // Gate pulse + LED flash: fires right as the new cycle begins (= the
-    // previous cycle just ended)
-    env1GateSrc.offset.setTargetAtTime(1, now, 0.002);
-    env1GateSrc.offset.setTargetAtTime(0, now + 0.02, 0.01);
-    flashLed('env1');
     clearTimeout(envSchedTimer);
     envSchedTimer = setTimeout(scheduleEnvLoop, Math.max(20, (a+d)*1000 - 15));
   }
   function scheduleEnvLoop2(){
     if(!ctx) return;
+    fireEnvOneShot(2, ctx.currentTime + 0.02);
     const a = clampv(baseOf('env2Attack','env2atk') + (cvLive.env2atk||0), 0.01, 2);
     const d = clampv(baseOf('env2Decay','env2dcy') + (cvLive.env2dcy||0), 0.01, 3);
-    const now = ctx.currentTime + 0.02;
-    envLoopSrc2.offset.cancelScheduledValues(now);
-    envLoopSrc2.offset.setValueCurveAtTime(envCurveArray(params.env2Curve, true), now, a);
-    envLoopSrc2.offset.setValueCurveAtTime(envCurveArray(params.env2Curve, false), now + a, d);
-    env2GateSrc.offset.setTargetAtTime(1, now, 0.002);
-    env2GateSrc.offset.setTargetAtTime(0, now + 0.02, 0.01);
-    flashLed('env2');
     clearTimeout(envSchedTimer2);
     envSchedTimer2 = setTimeout(scheduleEnvLoop2, Math.max(20, (a+d)*1000 - 15));
   }
@@ -2110,7 +2138,8 @@
       fl2Mode, absorbMode
     };
   }
-  function applyPreset(state, quiet){
+  function applyPreset(state, quiet, valuesOnly){
+    if(!state || !state.values) return;
     Object.assign(params, state.values);
     // Old presets stored filter cutoffs as absolute Hz — fold into 0..1 log position
     ['flCutoff','absorb'].forEach(id => {
@@ -2126,15 +2155,17 @@
       applyFilterMode('absorb');
       sync();
     }
-    bulkOp = true;
-    [...patchCables].forEach(removePatch);
-    (state.cables || []).forEach(c => {
-      addPatch(c.srcId, c.dstId);
-      const added = patchCables[patchCables.length-1];
-      if(added){ added.depth = c.depth; applyDepth(added); }
-    });
-    bulkOp = false;
-    if(!quiet) termLog(`> ${(state.cables||[]).length} cable(s) restored`);
+    if(!valuesOnly){
+      bulkOp = true;
+      [...patchCables].forEach(removePatch);
+      (state.cables || []).forEach(c => {
+        addPatch(c.srcId, c.dstId);
+        const added = patchCables[patchCables.length-1];
+        if(added){ added.depth = c.depth; applyDepth(added); }
+      });
+      bulkOp = false;
+      if(!quiet) termLog(`> ${(state.cables||[]).length} cable(s) restored`);
+    }
   }
   function presetLabel(slot){ return presetNames[slot] ? `${keyLabel(slot)} (${presetNames[slot]})` : keyLabel(slot); }
   function playPresetMomentary(slot, isDown){
@@ -2175,7 +2206,7 @@
   }
 
   // ---------- Keyboard: always-on command buffer + presets / ed / xy shortcuts ----------
-  // Type any command (rd, mic, xprt, hq, xy, ed3, …) then Enter. Digits alone still
+  // Type any command (rd, mic, xprt, hq, sq n c4 e4, xy, ed3, …) then Enter. Digits alone still
   // recall presets when the buffer is empty.
   window.addEventListener('keydown', e => {
     if(e.repeat) return;
@@ -2223,6 +2254,14 @@
       return;
     }
 
+    if((key === ' ' || key === '#') && cmdBuf.length){
+      e.preventDefault();
+      cmdBuf += key;
+      edPrefix = 0; xyPrefix = 0;
+      renderTerminal();
+      return;
+    }
+
     if(key.length === 1 && /[a-zA-Z._-]/.test(key)){
       const k = key.toLowerCase();
       cmdBuf += k;
@@ -2247,9 +2286,284 @@
     }
   });
 
+  // ---------- Sequencer (terminal V1: clock, pitch/trig, durs, euclid, presets) ----------
+  function seqSnapshot(){
+    return { bpm: seqBpm, mode: seqMode, div: seqDiv, events: seqEvents.map(e => ({
+      beats: e.beats, rest: !!e.rest, note: e.note || null, hz: e.hz == null ? null : e.hz,
+      preset: (e.preset == null ? null : e.preset)
+    })) };
+  }
+  function applySeqState(s){
+    if(!s || typeof s !== 'object') return;
+    if(typeof s.bpm === 'number') seqBpm = clampv(s.bpm, 20, 400);
+    if(s.mode === 'pitch' || s.mode === 'trig') seqMode = s.mode;
+    if(typeof s.div === 'number') seqDiv = clampv(Math.round(s.div), 1, 32);
+    if(Array.isArray(s.events)){
+      seqEvents = s.events.map(e => seqNormalizeEvent(e));
+    }
+  }
+  function seqNormalizeEvent(e){
+    e = e || {};
+    return {
+      beats: Math.max(0.03125, Number(e.beats) || (4 / seqDiv)),
+      rest: !!e.rest,
+      note: e.note || null,
+      hz: (typeof e.hz === 'number' && isFinite(e.hz)) ? e.hz : null,
+      preset: (e.preset == null || e.preset === '') ? null : clampv(Math.round(e.preset), 0, 9)
+    };
+  }
+  function seqDefaultEvent(){
+    return seqNormalizeEvent({ beats: 4 / seqDiv, rest: false });
+  }
+  function seqGrow(n){
+    while(seqEvents.length < n) seqEvents.push(seqDefaultEvent());
+  }
+  function seqClearTimer(){
+    if(seqTimer){ clearInterval(seqTimer); seqTimer = null; }
+  }
+  function seqStatusLine(){
+    const st = seqPlaying ? `play ${seqEvents.length ? (seqIndex+1) : 0}/${seqEvents.length}` : 'stop';
+    return `sq ${st} · ${seqMode} · ${Math.round(seqBpm)}bpm · ${seqEvents.length} ev · /${seqDiv}`;
+  }
+  function midiToHz(n){ return 440 * Math.pow(2, (n - 69) / 12); }
+  function parseNoteToken(tok){
+    tok = String(tok || '').toLowerCase();
+    if(tok === '.' || tok === '-' || tok === 'r' || tok === 'rest') return { rest: true, note: null, hz: null };
+    const hzM = tok.match(/^(\d+(?:\.\d+)?)hz$/);
+    if(hzM) return { rest: false, note: tok, hz: parseFloat(hzM[1]) };
+    if(/^\d{1,3}$/.test(tok)){
+      const n = parseInt(tok, 10);
+      if(n <= 127) return { rest: false, note: tok, hz: midiToHz(n) };
+    }
+    const m = tok.match(/^([a-g])([#b]?)(-?\d)$/);
+    if(!m) return null;
+    const offs = { c:0, d:2, e:4, f:5, g:7, a:9, b:11 };
+    let pc = offs[m[1]];
+    if(m[2] === '#') pc += 1;
+    if(m[2] === 'b') pc -= 1;
+    const midi = (parseInt(m[3], 10) + 1) * 12 + pc;
+    return { rest: false, note: tok, hz: midiToHz(midi) };
+  }
+  function parseDurToken(tok){
+    tok = String(tok || '').toLowerCase();
+    const m = tok.match(/^(\d+)n?(d|t)?$/);
+    if(!m) return null;
+    const den = parseInt(m[1], 10);
+    if(![1, 2, 4, 8, 16, 32].includes(den)) return null;
+    let beats = 4 / den;
+    if(m[2] === 'd') beats *= 1.5;
+    if(m[2] === 't') beats *= (2 / 3);
+    return beats;
+  }
+  function formatBeats(beats){
+    const q = Math.round(beats * 1000) / 1000;
+    const named = { 4:'1n', 2:'2n', 1:'4n', 0.5:'8n', 0.25:'16n', 0.125:'32n', 1.5:'4nd', 0.75:'8nd', 0.375:'8nt' };
+    return named[q] || (q + 'b');
+  }
+  function parsePresetToken(tok){
+    tok = String(tok || '').toLowerCase();
+    if(tok === '.' || tok === '-' || tok === 'x') return { hold: true };
+    if(!/^[0-9]$/.test(tok)) return null;
+    return { slot: tok === '0' ? 9 : (parseInt(tok, 10) - 1) };
+  }
+  function euclidPattern(hits, steps, rot){
+    steps = Math.max(1, steps|0);
+    hits = clampv(hits|0, 0, steps);
+    rot = ((rot|0) % steps + steps) % steps;
+    const pat = [];
+    if(hits === 0){
+      for(let i=0;i<steps;i++) pat.push(0);
+    } else {
+      let bucket = 0;
+      for(let i=0;i<steps;i++){
+        bucket += hits;
+        if(bucket >= steps){ bucket -= steps; pat.push(1); }
+        else pat.push(0);
+      }
+    }
+    return pat.slice(rot).concat(pat.slice(0, rot));
+  }
+  function seqSetPitchAt(hz, when){
+    const c = configById.pitch;
+    const p = clampv(hz, c.min, c.max);
+    params.pitch = p;
+    updateKnobVisual(c);
+    if(!ctx || !oscTri) return;
+    const t = Math.max(when, ctx.currentTime);
+    try {
+      oscTri.frequency.setValueAtTime(p, t);
+      oscSqr.frequency.setValueAtTime(p, t);
+      oscSine.frequency.setValueAtTime(p, t);
+      subTri.frequency.setValueAtTime(p/2, t);
+      subSqr.frequency.setValueAtTime(p/2, t);
+      subSine.frequency.setValueAtTime(p/2, t);
+    } catch(_){}
+  }
+  function seqApplyPad(slot){
+    if(slot == null || !presets[slot]) return;
+    applyPreset(presets[slot], true, true);
+    if(seqPadOn !== null && seqPadOn !== slot) setActivePad(seqPadOn, false);
+    seqPadOn = slot;
+    setActivePad(slot, true);
+  }
+  function seqTrigger(ev, when){
+    if(!ev) return;
+    if(ev.preset != null) seqApplyPad(ev.preset);
+    if(ev.rest) return;
+    if(seqMode === 'pitch' && ev.hz != null) seqSetPitchAt(ev.hz, when);
+    fireEnvOneShot(1, when);
+    fireEnvOneShot(2, when);
+  }
+  function seqScheduleAhead(){
+    if(!seqPlaying || !ctx || !seqEvents.length) return;
+    const horizon = ctx.currentTime + 0.12;
+    let guard = 0;
+    while(seqNextTime < horizon && guard++ < 64){
+      const ev = seqEvents[seqIndex];
+      seqTrigger(ev, seqNextTime);
+      const beats = Math.max(0.03125, (ev && ev.beats) || (4 / seqDiv));
+      seqNextTime += beats * (60 / Math.max(20, seqBpm));
+      seqIndex = (seqIndex + 1) % seqEvents.length;
+    }
+  }
+  async function seqPlay(quiet){
+    if(!seqEvents.length){ termLog('> sq empty — sq n c4 e4 g4 / sq e 5 8'); return; }
+    if(!ctx){
+      await init();
+      if(!ctx) return;
+      isMute = false;
+      updatePowerIcon();
+    }
+    if(ctx.state === 'suspended') ctx.resume().catch(()=>{});
+    stopEnvLoops();
+    seqPlaying = true;
+    seqIndex = 0;
+    seqNextTime = ctx.currentTime + 0.06;
+    seqClearTimer();
+    seqTimer = setInterval(seqScheduleAhead, 25);
+    seqScheduleAhead();
+    if(!quiet) termLog('> ' + seqStatusLine());
+  }
+  function seqStop(quiet){
+    seqPlaying = false;
+    seqClearTimer();
+    if(seqPadOn !== null){ setActivePad(seqPadOn, false); seqPadOn = null; }
+    stopEnvLoops();
+    if(!quiet) termLog('> ' + seqStatusLine());
+  }
+  function seqSetNotes(tokens){
+    if(!tokens.length){ termLog('> sq n c4 e4 . g4'); return; }
+    const parsed = [];
+    for(let i=0;i<tokens.length;i++){
+      const n = parseNoteToken(tokens[i]);
+      if(!n){ termLog(`> sq n: bad note "${tokens[i]}"`); return; }
+      parsed.push(n);
+    }
+    seqGrow(parsed.length);
+    parsed.forEach((n, i) => {
+      seqEvents[i].rest = n.rest;
+      seqEvents[i].note = n.note;
+      seqEvents[i].hz = n.hz;
+    });
+    termLog(`> sq n ${parsed.length} · ` + seqStatusLine());
+  }
+  function seqSetDurs(tokens){
+    if(!tokens.length){ termLog('> sq d 8 8 4  — 4=quarter 8=8th 16=16th'); return; }
+    const beats = [];
+    for(let i=0;i<tokens.length;i++){
+      const b = parseDurToken(tokens[i]);
+      if(b == null){ termLog(`> sq d: bad dur "${tokens[i]}"`); return; }
+      beats.push(b);
+    }
+    seqGrow(beats.length);
+    beats.forEach((b, i) => { seqEvents[i].beats = b; });
+    termLog(`> sq d ${beats.map(formatBeats).join(' ')}`);
+  }
+  function seqSetPresets(tokens){
+    if(!tokens.length){ termLog('> sq p 1 1 3 . 5  — pad 1-0, .=hold'); return; }
+    const vals = [];
+    for(let i=0;i<tokens.length;i++){
+      const p = parsePresetToken(tokens[i]);
+      if(!p){ termLog(`> sq p: bad pad "${tokens[i]}"`); return; }
+      vals.push(p.hold ? null : p.slot);
+    }
+    seqGrow(vals.length);
+    vals.forEach((slot, i) => { seqEvents[i].preset = slot; });
+    termLog(`> sq p ${vals.length} steps`);
+  }
+  function seqSetEuclid(tokens){
+    const hits = parseInt(tokens[0], 10);
+    const steps = parseInt(tokens[1], 10);
+    if(!isFinite(hits) || !isFinite(steps) || steps < 1){ termLog('> sq e 5 8  (optional r2)'); return; }
+    let rot = 0;
+    if(tokens[2] && /^r-?\d+$/.test(tokens[2])) rot = parseInt(tokens[2].slice(1), 10);
+    const pat = euclidPattern(hits, Math.min(64, steps), rot);
+    const beats = 4 / seqDiv;
+    const old = seqEvents;
+    seqEvents = pat.map((hit, i) => {
+      const prev = old[i] || seqDefaultEvent();
+      return seqNormalizeEvent({ ...prev, beats, rest: !hit });
+    });
+    termLog(`> sq e ${hits}/${seqEvents.length}` + (rot ? ` r${rot}` : '') + ` · /${seqDiv}`);
+  }
+  function seqShow(){
+    if(!seqEvents.length){ termLog('> sq empty'); return; }
+    const notes = seqEvents.map(e => e.rest ? '.' : (e.note || (e.hz ? Math.round(e.hz)+'hz' : '·'))).join(' ');
+    const durs = seqEvents.map(e => formatBeats(e.beats)).join(' ');
+    const pads = seqEvents.map(e => e.preset == null ? '.' : (e.preset === 9 ? '0' : String(e.preset+1))).join(' ');
+    termLog('> n ' + notes);
+    termLog('> d ' + durs);
+    termLog('> p ' + pads);
+  }
+  function runSeqCommand(raw){
+    const lower = raw.trim().toLowerCase();
+    const compact = lower.replace(/\s+/g,'');
+    const parts = lower.split(/\s+/).filter(Boolean);
+    if(compact === 'sq' || compact === 'sqstat'){ termLog('> ' + seqStatusLine()); return; }
+    if(compact === 'sqplay' || (parts[0]==='sq' && parts[1]==='play')){ seqPlay(); return; }
+    if(compact === 'sqstop' || (parts[0]==='sq' && parts[1]==='stop')){ seqStop(); return; }
+    if(compact === 'sqclear' || (parts[0]==='sq' && parts[1]==='clear')){
+      seqStop(true); seqEvents = []; seqIndex = 0;
+      termLog('> sq cleared'); return;
+    }
+    if(compact === 'sqshow' || (parts[0]==='sq' && parts[1]==='show')){ seqShow(); return; }
+    if(compact === 'sqsave' || (parts[0]==='sq' && parts[1]==='save')){
+      persistPresets(); termLog('> seq saved with presets'); return;
+    }
+    const bpmM = compact.match(/^bpm(\d+(?:\.\d+)?)$/);
+    if(bpmM){
+      seqBpm = clampv(parseFloat(bpmM[1]), 20, 400);
+      termLog(`> bpm ${Math.round(seqBpm)}`); return;
+    }
+    const modeM = compact.match(/^sqmode(pitch|trig)$/) || (parts[0]==='sqmode' && (parts[1]==='pitch'||parts[1]==='trig') ? [0, parts[1]] : null)
+      || (parts[0]==='sq' && parts[1]==='mode' && (parts[2]==='pitch'||parts[2]==='trig') ? [0, parts[2]] : null);
+    if(modeM){ seqMode = modeM[1]; termLog('> ' + seqStatusLine()); return; }
+    const lenM = compact.match(/^sqlen(\d+)$/) || (parts[0]==='sqlen' ? compact.match(/^sqlen(\d+)$/) : null)
+      || (parts[0]==='sq' && parts[1]==='len' ? ['', parts[2]] : null);
+    if(lenM && lenM[1] != null && /^\d+$/.test(String(lenM[1]))){
+      const n = clampv(parseInt(lenM[1], 10), 1, 64);
+      seqGrow(n); if(seqEvents.length > n) seqEvents.length = n;
+      termLog(`> sq len ${seqEvents.length}`); return;
+    }
+    const divM = compact.match(/^sqdiv(\d+)$/) || (parts[0]==='sq' && parts[1]==='div' ? ['', parts[2]] : null);
+    if(divM && divM[1] != null && /^\d+$/.test(String(divM[1]))){
+      seqDiv = clampv(parseInt(divM[1], 10), 1, 32);
+      termLog(`> sq div ${seqDiv}`); return;
+    }
+    if(parts[0] === 'sq' && parts[1] === 'n'){ seqSetNotes(parts.slice(2)); return; }
+    if(parts[0] === 'sq' && parts[1] === 'd'){ seqSetDurs(parts.slice(2)); return; }
+    if(parts[0] === 'sq' && parts[1] === 'p'){ seqSetPresets(parts.slice(2)); return; }
+    if(parts[0] === 'sq' && parts[1] === 'e'){ seqSetEuclid(parts.slice(2)); return; }
+    termLog('> sq n|d|p|e|play|stop|mode|div|len|show|clear');
+  }
+
   // ---------- Typed commands (buffer / Enter, or hidden field) ----------
   function runTypedCommand(raw){
     const rawTrim = raw.trim();
+    if(/^(sq\b|bpm\d|bpm\s)/i.test(rawTrim) || /^sq(play|stop|mode|len|div|clear|show|save|n|d|p|e)/i.test(rawTrim.replace(/\s+/g,''))){
+      runSeqCommand(rawTrim);
+      return;
+    }
     const nameMatch = rawTrim.match(/^[nN]([0-9])(\S+)$/);
     if(nameMatch){
       const slot = nameMatch[1] === '0' ? 9 : (parseInt(nameMatch[1],10) - 1);
@@ -2282,7 +2596,7 @@
       return;
     }
     if(str === 'pxprt'){
-      const blob = new Blob([JSON.stringify({ version:1, presets, presetNames }, null, 2)], { type:'application/json' });
+      const blob = new Blob([JSON.stringify({ version:1, presets, presetNames, seq: seqSnapshot() }, null, 2)], { type:'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a'); a.href = url; a.download = `omchs-presets-${Date.now()}.json`;
       document.body.appendChild(a); a.click(); document.body.removeChild(a);

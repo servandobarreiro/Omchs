@@ -2,7 +2,9 @@ Omchs commands
 ==============
 
 Type into the field by the scope, or type on the keyboard (desktop) and press
-Enter. Commands are case-insensitive and ignore spaces.
+Enter. Most commands are case-insensitive and ignore spaces. Sequencer
+patterns (sq n / sq d / sq p / sq e) keep spaces so notes and durations
+stay separate.
 
 Presets (pads 1-9, 0)
 ---------------------
@@ -12,16 +14,17 @@ edN           Arm or exit edit mode on pad N (example: ed3). While editing,
               knob and patch changes are recorded to that pad and saved to
               localStorage.
 nNname        Name pad N (example: n3drone). No spaces in the name.
-psave         Write the current 10-pad bank to localStorage.
+psave         Write the current 10-pad bank (and sequencer) to localStorage.
 pload         Reload the bank from localStorage (does nothing if none saved).
-pxprt         Download the current bank as JSON.
+pxprt         Download the current bank as JSON (includes sequencer).
 pimprt        Import a bank from a JSON file, then save it to localStorage.
 
 Factory vs saved banks
 ----------------------
 On load, omchs-presets-defaults.json fills the pads first. A bank previously
 saved with psave (or by leaving edit mode / naming a pad / importing) then
-replaces those defaults.
+replaces those defaults. If that bank contains a seq field, the sequencer
+is restored too.
 
 Scope
 -----
@@ -33,7 +36,13 @@ Sound / capture
 ---------------
 rd            Randomize knob values (same as the dice button).
 mic           Toggle microphone / external input.
-xprt          Start or stop recording; stop downloads a 16-bit stereo .wav.
+xprt          Start or stop recording. Stop downloads a stereo .wav
+              (16-bit normally, 24-bit when hq is on).
+hq            Toggle high-quality audio. Off: interactive latency, cheap
+              fold, shaper 2x, 16-bit wav. On: playback latency, 96kHz if
+              allowed, 4x fold, shaper 4x, 24-bit wav. Remembered across
+              reloads. Rebuilds the engine if already powered on.
+              The terminal prints the live profile on load / power / hq.
 
 Filter 2 mode
 -------------
@@ -46,6 +55,33 @@ floff         Off (allpass)
 Labels
 ------
 icons         Toggle icon vs text labels on knobs and jacks.
+              Default is text.
+
+Sequencer
+---------
+sq            Show status (play/stop, mode, bpm, event count, division).
+sqplay        Start (powers the engine if needed). One-shot envelopes;
+              does not loop the live AD envelopes.
+sqstop        Stop and release envelopes.
+sqmode pitch  Each non-rest sets Osc A pitch (like MIDI) and fires both
+sqmode trig   envs. trig leaves the Pitch knob alone and only fires envs
+              / preset changes.
+bpm120        Set tempo (20–400). Also: bpm 120.
+sq n c4 e4 . g4
+              Notes for successive events. . - r rest. Names (c4, c#4,
+              db3), MIDI numbers (60), or 220hz. Grows the sequence;
+              extra existing events are left as-is.
+sq d 8 8 4    Durations. Bare 4/8/16 = quarter / 8th / 16th. Also 4n,
+              8nd (dotted), 8nt (triplet). 1, 2, 32 allowed.
+sq p 1 1 3 .  Preset pads per step (1-9, 0). . - x = hold last.
+              Values only — cables are not rebuilt.
+sq e 5 8      Euclidean fill, 5 hits in 8 steps. Optional r2 to rotate.
+              Step length follows sqdiv (default 16ths).
+sqdiv16       Grid division used by Euclidean / new events (1–32).
+sqlen16       Resize the event list (1–64).
+sqshow        Dump notes, durations, and preset lane.
+sqclear       Stop and empty the sequence.
+sqsave        Save sequencer + pads to localStorage (same as psave).
 
 Keyboard extras
 ---------------
@@ -54,6 +90,9 @@ Backspace     Delete the last character in the command buffer.
 ed then N     Same as edN without pressing Enter (after typing e, then d).
 digits        With an empty buffer, 1-9 and 0 hold-play a preset; release
               the key to restore the previous state. If edit mode is on,
-              a digit exits edit mode instead.
+              a digit exits edit mode instead. After other characters,
+              digits append to the command (so sq e 5 8 works).
+space, #      Allowed in the command buffer after it has been started
+              (needed for sq n c#4 e4).
 
 Unrecognized text logs: unrecognized command: <what you typed>

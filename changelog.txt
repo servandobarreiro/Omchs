@@ -12,3 +12,16 @@ Omchs changelog
 - If the JSON file cannot be fetched (not served over HTTP, missing file),
   pads start empty and a terminal message is logged.
 - Added commands.txt listing typed commands and keyboard shortcuts.
+- High-quality audio mode, toggled with hq (no UI switch). Off = interactive
+  latency, cheap fold, WaveShaper 2x, 16-bit wav. On = playback latency,
+  96kHz if the browser allows it, 4x oversampled fold, WaveShaper 4x,
+  24-bit wav, scope glow off. Remembered in localStorage (omchs-hq). If the
+  engine is already running, hq rebuilds the graph and keeps the patch.
+- Terminal prints the current sample rate / latency / oversampling / wav
+  depth on page load, after power-on, and after hq.
+- Sequencer V1 (terminal): internal clock, pitch or trig mode, per-step
+  duration, rests, Euclidean fill, values-only preset-per-step, one-shot
+  envelopes. Pattern is stored with the preset bank (psave / pxprt / sqsave).
+- Knob, jack, and cluster labels default to text instead of icons. icons
+  still toggles back to symbols. Keyboard command buffer now accepts spaces
+  and # so sequencer note strings can be typed.
