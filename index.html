@@ -339,7 +339,7 @@
     <div class="aboutpopup-body">
       <p>Cyan jacks are outputs, violet jacks are inputs. Patch <b>from output → input</b> (inputs stay dim until you drag from an output). On phones: tap an output, then tap an input. Click the dot on a cable for its attenuator, double-click the dot (or click the cable itself) to remove it.</p>
       <p>Osc B is independent of Osc A. Set Osc B→A Mode to <b>Mix</b> and use <b>Amt / Xfade</b> to crossfade A↔B in the main path; other modes (FM / AM / Ring / Fold / Sync) are modulation, not a blend.</p>
-      <p>Commands (type into the field by the scope, or use the keyboard on desktop): <b>1-0</b> play a preset, <b>ed3</b> arm/exit edit mode on preset 3, <b>xy</b> toggle the Lissajous scope, <b>rd</b> randomize, <b>xprt</b> start/stop recording (downloads 16-bit stereo .wav), <b>mic</b> toggle microphone input, <b>n3name</b> name preset 3, <b>psave/pload/pxprt/pimprt</b> persist or export/import presets, <b>fllp/flhp/flbp/flnt/floff</b> set Filter2's mode.</p>
+      <p>Commands (type into the field by the scope, or use the keyboard on desktop): <b>1-0</b> play a preset, <b>ed3</b> arm/exit edit mode on preset 3, <b>xy</b> toggle the Lissajous scope, <b>rd</b> randomize, <b>xprt</b> start/stop recording (16-bit wav, or 24-bit in hq), <b>hq</b> toggle high-quality audio, <b>mic</b> toggle microphone input, <b>n3name</b> name preset 3, <b>psave/pload/pxprt/pimprt</b> persist or export/import presets, <b>fllp/flhp/flbp/flnt/floff</b> set Filter2's mode.</p>
       <p>MIC arms a low-latency external input (echo cancel / AGC off). Patch the Mic out jack anywhere, or feed Ext In to run the mic through the filter / fold / delay / FX path.</p>
       <p>Serve this folder over HTTP (e.g. <code>python3 -m http.server</code>) so AudioWorklets can load from <code>omchs-worklets.js</code>. Mic also needs HTTPS or localhost.</p>
       <p><!-- more notes to come --></p>
@@ -443,10 +443,19 @@
   let midiNoteStack = [];
   let midiVelScale = 1;
   let workletsReady = false;
-  let recNode = null, recSilent = null, recChunks = [], recSampleRate = 48000;
+  let recNode = null, recSilent = null, recChunks = [], recSampleRate = 48000, recBits = 16;
+  let recAccept = false;
   let micStream = null, micSource = null, micLevelGain = null, micOutGain = null, extInBus = null;
   let micOn = false;
+  let midiReady = false;
+  let driftTimer = null;
+  let hqBusy = false;
+  let lastAudioHint = 'interactive';
+  let lastAskedSr = null;
   const PRESET_STORAGE_KEY = 'omchs-presets-v1';
+  const HQ_STORAGE_KEY = 'omchs-hq';
+  let hqMode = false;
+  try { hqMode = localStorage.getItem(HQ_STORAGE_KEY) === '1'; } catch(_){}
 
   const accentBySection = { osc:'var(--violet)', delay:'var(--amber)', mod:'var(--cyan)', fx:'var(--rose)' };
 
@@ -564,6 +573,7 @@
       termLog('> factory presets unavailable; pads empty until saved or imported');
     }
     if(loadPersistedPresets()) termLog('> restored presets from localStorage');
+    termLog('> ' + audioQualitySummary());
   }
   function setLabelText(el, icon, text){
     if(!el) return;
@@ -1050,6 +1060,9 @@
   }
   function pushWorkletParams(){
     if(!workletsReady || !ctx) return;
+    if(foldNode && foldNode.port){
+      foldNode.port.postMessage({ type:'hq', value: hqMode });
+    }
     if(crushN && crushN.port){
       crushN.port.postMessage({ type:'crush', value: clampv(baseOf('bitcrush','crush') + (cvLive.crush||0), 0, 0.95) });
     }
@@ -1083,12 +1096,129 @@
     throw new Error('AudioWorklet load failed — serve this folder over HTTP (python3 -m http.server)');
   }
 
+  function audioQualitySummary(){
+    const hint = hqMode ? 'playback' : 'interactive';
+    const fold = hqMode ? 'fold 4x' : 'fold ~2x';
+    const shaper = hqMode ? 'shaper 4x' : 'shaper 2x';
+    const wav = hqMode ? 'wav 24-bit' : 'wav 16-bit';
+    let sr, lat = lastAudioHint || hint;
+    if(ctx){
+      sr = `${Math.round(ctx.sampleRate)}Hz`;
+      if(lastAskedSr && Math.abs(ctx.sampleRate - lastAskedSr) > 50){
+        sr += ` (asked ${Math.round(lastAskedSr/1000)}k)`;
+      }
+      const ms = ((ctx.baseLatency || 0) + (ctx.outputLatency || 0)) * 1000;
+      lat = ms > 0 ? `${hint} ~${Math.round(ms)}ms` : hint;
+    } else {
+      sr = hqMode ? '96k asked' : 'default sr';
+      lat = hint;
+    }
+    return `${hqMode?'hq on':'hq off'} · ${sr} · ${lat} · ${fold} · ${shaper} · ${wav}`;
+  }
+  function persistHqMode(){
+    try { localStorage.setItem(HQ_STORAGE_KEY, hqMode ? '1' : '0'); } catch(_){}
+  }
+  function createAudioContext(){
+    const AudioCtor = window.AudioContext || window.webkitAudioContext;
+    if(!AudioCtor) return null;
+    lastAskedSr = hqMode ? 96000 : null;
+    lastAudioHint = hqMode ? 'playback' : 'interactive';
+    const tryOpts = [];
+    if(hqMode) tryOpts.push({ latencyHint: 'playback', sampleRate: 96000 });
+    tryOpts.push({ latencyHint: lastAudioHint });
+    tryOpts.push({});
+    for(let i=0;i<tryOpts.length;i++){
+      try { return new AudioCtor(tryOpts[i]); }
+      catch(_){ }
+    }
+    return null;
+  }
+  function resetAudioNodeRefs(){
+    oscTri = oscSqr = oscSine = triGain = sqrGain = sineGain = oscASum = null;
+    subTri = subSqr = subSine = subTriGain = subSqrGain = subSineGain = subSum = subG = oscMix = null;
+    foldDrive = foldNode = null;
+    oscBTri = oscBSqr = oscBSine = oscBTriGain = oscBSqrGain = oscBSineGain = oscBSum = null;
+    fmInteractGain = amInteractGain = syncShape = syncInteractGain = oscAAmStage = oscBFoldGain = null;
+    oscMixAGain = oscMixBGain = null;
+    groupLIn = groupRIn = tapSumL = tapSumR = merger = filter = dcBlock = null;
+    delayTaps = [];
+    filter2 = null;
+    fbCompressor = fbClip = fbSplit = feedGainL = feedGainR = crossGainL = crossGainR = null;
+    dryGain = wetGain = outPan = driveN = crushN = masterLimiter = mainG = muteGate = null;
+    splitAnalyser = analyserL = analyserR = null;
+    envLoopSrc = envLoopSrc2 = env1GateSrc = env2GateSrc = null;
+    lfo1Node = lfo1Silent = lfo2Node = lfo2Silent = null;
+    randGen1Src = randGen2Src = null;
+    vca1Stage = lpg1Filter = vca2Stage = lpg2Filter = null;
+    destDefs = [];
+    cvLive = {}; cvSum = {}; cvMonitorNode = cvMonitorSilent = null;
+    recNode = recSilent = null;
+    micLevelGain = micOutGain = extInBus = null;
+    lastDriveCurve = null;
+  }
+  async function teardownAudio(){
+    audioReady = false;
+    workletsReady = false;
+    recAccept = false;
+    recChunks = [];
+    stopMiniScope();
+    if(scopeRafId){ cancelAnimationFrame(scopeRafId); scopeRafId = 0; }
+    if(driftTimer){ clearInterval(driftTimer); driftTimer = null; }
+    clearTimeout(envSchedTimer); clearTimeout(envSchedTimer2);
+    envSchedTimer = envSchedTimer2 = null;
+    bulkOp = true;
+    [...patchCables].forEach(removePatch);
+    bulkOp = false;
+    if(ctx){
+      try { await ctx.close(); } catch(_){}
+    }
+    ctx = null;
+    resetAudioNodeRefs();
+  }
+  async function toggleHq(){
+    if(hqBusy) return;
+    hqMode = !hqMode;
+    persistHqMode();
+    if(!ctx){
+      termLog(`> ${audioQualitySummary()} — applies at power on`);
+      return;
+    }
+    hqBusy = true;
+    const snap = snapshotState();
+    const wasMute = isMute;
+    const wasMic = micOn;
+    if(isRec){
+      isRec = false;
+      recAccept = false;
+      recChunks = [];
+      clearInterval(recTimerInterval);
+      recIndicator.style.display = 'none';
+      try { recNode.port.postMessage({ type: 'stop' }); } catch(_){}
+    }
+    if(micOn) stopMic();
+    try {
+      await teardownAudio();
+      await init();
+      if(!ctx){
+        termLog('> hq engine rebuild failed');
+        return;
+      }
+      applyPreset(snap, true);
+      isMute = wasMute;
+      if(muteGate) muteGate.gain.value = isMute ? 0 : 1;
+      updatePowerIcon();
+      termLog('> ' + audioQualitySummary());
+    } finally {
+      hqBusy = false;
+    }
+    if(wasMic) await startMic();
+  }
   async function init(){
+    if(ctx && audioReady) return;
     const AudioCtor = window.AudioContext || window.webkitAudioContext;
     if(!AudioCtor){ alert('This browser does not support Web Audio.'); return; }
-    // Prefer the smallest practical buffer for responsive mic / knob / MIDI feel
-    try { ctx = new AudioCtor({ latencyHint: 'interactive' }); }
-    catch(_){ ctx = new AudioCtor(); }
+    ctx = createAudioContext();
+    if(!ctx){ alert('This browser does not support Web Audio.'); return; }
     ctx.resume().catch(()=>{});
     try {
       await loadOmchsWorklets(ctx);
@@ -1178,6 +1308,7 @@
     // gating rather than a true sample-accurate phase reset (not possible with
     // stock oscillator nodes without a fully custom DSP oscillator).
     syncShape = ctx.createWaveShaper();
+    syncShape.oversample = hqMode ? '4x' : 'none';
     { const n=1024, c=new Float32Array(n); for(let i=0;i<n;i++){ const x=(i*2)/n-1; c[i]=(Math.tanh(x*40)+1)/2; } syncShape.curve = c; }
     syncInteractGain = ctx.createGain(); syncInteractGain.gain.value = 0;
     oscBSum.connect(syncShape).connect(syncInteractGain);
@@ -1190,8 +1321,10 @@
     // undone by new fold harmonics (that made Filter2 feel dead until the bottom).
     foldDrive = ctx.createGain(); foldDrive.gain.value = 1 + params.tones*11;
     foldNode = new AudioWorkletNode(ctx, 'omchs-fold', {
-      numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1]
+      numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1],
+      processorOptions: { hq: hqMode }
     });
+    foldNode.port.postMessage({ type:'hq', value: hqMode });
     oscMix.connect(foldDrive).connect(foldNode);
 
     // --- Filter2: same BiquadFilter recipe as Absorb (series LPF on the
@@ -1249,7 +1382,7 @@
     fbCompressor = ctx.createDynamicsCompressor();
     fbCompressor.threshold.value = -1; fbCompressor.knee.value = 4; fbCompressor.ratio.value = 4;
     fbCompressor.attack.value = 0.003; fbCompressor.release.value = 0.15;
-    fbClip = ctx.createWaveShaper(); fbClip.oversample = '2x'; setSoftClip(fbClip, 1.15);
+    fbClip = ctx.createWaveShaper(); fbClip.oversample = hqMode ? '4x' : '2x'; setSoftClip(fbClip, 1.15);
     filter.connect(dcBlock).connect(fbCompressor).connect(fbClip);
 
     fbSplit = ctx.createChannelSplitter(2);
@@ -1268,7 +1401,7 @@
     wetGain = ctx.createGain(); wetGain.gain.value = params.mix;
     filter.connect(wetGain);
     wetGain.connect(outPan); dryGain.connect(outPan);
-    driveN = ctx.createWaveShaper(); driveN.oversample = '2x'; setDriveCurve(params.drive);
+    driveN = ctx.createWaveShaper(); driveN.oversample = hqMode ? '4x' : '2x'; setDriveCurve(params.drive);
     outPan.connect(driveN);
     crushN = new AudioWorkletNode(ctx, 'omchs-crush', {
       numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2],
@@ -1294,7 +1427,7 @@
     mainG.connect(splitAnalyser);
     splitAnalyser.connect(analyserL, 0); splitAnalyser.connect(analyserR, 1);
 
-    // Recording: AudioWorklet PCM tap → WAV download (16-bit stereo)
+    // Recording: AudioWorklet PCM tap → WAV download (16-bit, or 24-bit in hq)
     recSampleRate = ctx.sampleRate;
     recNode = new AudioWorkletNode(ctx, 'omchs-rec', {
       numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1],
@@ -1306,8 +1439,9 @@
     recNode.port.onmessage = e => {
       const d = e.data;
       if(!d) return;
+      if(!recAccept) return;
       if(d.type === 'rec-chunk' && d.buffer) recChunks.push(d.buffer);
-      else if(d.type === 'rec-end') finishWavDownload(d.sampleRate || recSampleRate);
+      else if(d.type === 'rec-end') finishWavDownload(d.sampleRate || recSampleRate, d.bits || recBits);
     };
 
     envLoopSrc = ctx.createConstantSource(); envLoopSrc.offset.value = 0; envLoopSrc.start();
@@ -1337,7 +1471,8 @@
 
     oscTri.start(); oscSqr.start(); oscSine.start(); subTri.start(); subSqr.start(); subSine.start();
 
-    setInterval(() => {
+    if(driftTimer) clearInterval(driftTimer);
+    driftTimer = setInterval(() => {
       if(!ctx || isMute) return;
       const effInstability = clampv(baseOf('instability','instab') + (cvLive.instab||0), 0, 1);
       const effSpread = clampv(baseOf('spread','spread') + (cvLive.spread||0), 0, 1);
@@ -1498,6 +1633,8 @@
     midiApplyNote(last, 100);
   }
   function setupMidi(){
+    if(midiReady) return;
+    midiReady = true;
     if(!navigator.requestMIDIAccess){ termLog('> MIDI not supported in this browser.'); return; }
     navigator.requestMIDIAccess().then(access => {
       const inputs = Array.from(access.inputs.values());
@@ -1686,11 +1823,12 @@
     powerMuteBtn.classList.toggle('muted', !on);
   }
   powerMuteBtn.addEventListener('click', async () => {
+    if(hqBusy) return;
     if(!ctx){
       await init();
       if(!ctx) return;
       isMute = false;
-      termLog('> online.');
+      termLog('> online. ' + audioQualitySummary());
     } else {
       if(ctx.state === 'suspended') ctx.resume().catch(()=>{});
       isMute = !isMute;
@@ -1719,12 +1857,13 @@
     updateMicButton();
   }
   async function startMic(){
+    if(hqBusy) return;
     if(!ctx){
       await init();
       if(!ctx) return;
       isMute = false;
       updatePowerIcon();
-      termLog('> online.');
+      termLog('> online. ' + audioQualitySummary());
     }
     if(ctx.state === 'suspended') ctx.resume().catch(()=>{});
     if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
@@ -1812,11 +1951,12 @@
   const aboutClose = document.getElementById('aboutClose');
   if(aboutClose) aboutClose.addEventListener('click', () => aboutPopup.classList.remove('open'));
 
-  // ---------- WAV export (AudioWorklet PCM tap → 16-bit stereo .wav) ----------
+  // ---------- WAV export (AudioWorklet PCM tap → 16-bit or 24-bit stereo .wav) ----------
   let recStartTime = 0, recTimerInterval = null;
   const recIndicator = document.getElementById('recIndicator');
-  function writeWavHeader(view, dataBytes, sampleRate, numChannels){
-    const blockAlign = numChannels * 2;
+  function writeWavHeader(view, dataBytes, sampleRate, numChannels, bitsPerSample){
+    bitsPerSample = bitsPerSample || 16;
+    const blockAlign = numChannels * (bitsPerSample / 8);
     const byteRate = sampleRate * blockAlign;
     function str(offset, s){ for(let i=0;i<s.length;i++) view.setUint8(offset+i, s.charCodeAt(i)); }
     str(0, 'RIFF');
@@ -1829,16 +1969,16 @@
     view.setUint32(24, sampleRate, true);
     view.setUint32(28, byteRate, true);
     view.setUint16(32, blockAlign, true);
-    view.setUint16(34, 16, true);
+    view.setUint16(34, bitsPerSample, true);
     str(36, 'data');
     view.setUint32(40, dataBytes, true);
   }
-  function buildWavBlob(sampleRate, chunks){
+  function buildWavBlob(sampleRate, chunks, bitsPerSample){
     let dataBytes = 0;
     for(let i=0;i<chunks.length;i++) dataBytes += chunks[i].byteLength;
     const out = new ArrayBuffer(44 + dataBytes);
     const view = new DataView(out);
-    writeWavHeader(view, dataBytes, sampleRate, 2);
+    writeWavHeader(view, dataBytes, sampleRate, 2, bitsPerSample || 16);
     const u8 = new Uint8Array(out);
     let offset = 44;
     for(let i=0;i<chunks.length;i++){
@@ -1847,25 +1987,30 @@
     }
     return new Blob([out], { type: 'audio/wav' });
   }
-  function finishWavDownload(sampleRate){
+  function finishWavDownload(sampleRate, bitsPerSample){
+    recAccept = false;
     const chunks = recChunks;
     recChunks = [];
+    const bits = bitsPerSample || recBits || 16;
     if(!chunks.length){
       termLog('> recording empty');
       return;
     }
-    const blob = buildWavBlob(sampleRate || recSampleRate, chunks);
+    const blob = buildWavBlob(sampleRate || recSampleRate, chunks, bits);
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = `omchs-${Date.now()}.wav`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    const sec = (blob.size - 44) / (4 * (sampleRate || recSampleRate));
-    termLog(`> saved ${sec.toFixed(1)}s wav (${Math.round(blob.size/1024)}KB)`);
+    const bytesPerFrame = 2 * (bits / 8);
+    const sec = (blob.size - 44) / (bytesPerFrame * (sampleRate || recSampleRate));
+    termLog(`> saved ${sec.toFixed(1)}s ${bits}-bit wav (${Math.round(blob.size/1024)}KB)`);
   }
   function startRecording(){
     if(!ctx || isRec || !recNode) return;
     recChunks = [];
-    recNode.port.postMessage({ type: 'start' });
+    recBits = hqMode ? 24 : 16;
+    recAccept = true;
+    recNode.port.postMessage({ type: 'start', bits: recBits });
     isRec = true;
     recStartTime = Date.now();
     recIndicator.style.display = 'inline-block';
@@ -1874,7 +2019,7 @@
       const s = Math.floor((Date.now()-recStartTime)/1000);
       recIndicator.innerText = `REC ${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
     }, 500);
-    termLog('> recording wav…');
+    termLog(`> recording ${recBits}-bit wav…`);
   }
   function stopRecording(){
     if(!ctx || !isRec) return;
@@ -1965,7 +2110,7 @@
       fl2Mode, absorbMode
     };
   }
-  function applyPreset(state){
+  function applyPreset(state, quiet){
     Object.assign(params, state.values);
     // Old presets stored filter cutoffs as absolute Hz — fold into 0..1 log position
     ['flCutoff','absorb'].forEach(id => {
@@ -1989,7 +2134,7 @@
       if(added){ added.depth = c.depth; applyDepth(added); }
     });
     bulkOp = false;
-    termLog(`> ${(state.cables||[]).length} cable(s) restored`);
+    if(!quiet) termLog(`> ${(state.cables||[]).length} cable(s) restored`);
   }
   function presetLabel(slot){ return presetNames[slot] ? `${keyLabel(slot)} (${presetNames[slot]})` : keyLabel(slot); }
   function playPresetMomentary(slot, isDown){
@@ -2030,7 +2175,7 @@
   }
 
   // ---------- Keyboard: always-on command buffer + presets / ed / xy shortcuts ----------
-  // Type any command (rd, mic, xprt, xy, ed3, …) then Enter. Digits alone still
+  // Type any command (rd, mic, xprt, hq, xy, ed3, …) then Enter. Digits alone still
   // recall presets when the buffer is empty.
   window.addEventListener('keydown', e => {
     if(e.repeat) return;
@@ -2129,6 +2274,7 @@
     if(str === 'rd'){ runRandomize(); return; }
     if(str === 'mic'){ toggleMic(); return; }
     if(str === 'xprt'){ if(isRec) stopRecording(); else startRecording(); return; }
+    if(str === 'hq'){ toggleHq(); return; }
     if(str === 'psave'){ persistPresets(); termLog('> presets saved to localStorage'); return; }
     if(str === 'pload'){
       if(loadPersistedPresets()) termLog('> presets loaded from localStorage');
@@ -2550,16 +2696,16 @@
     const vuL = document.getElementById('vuL'), vuR = document.getElementById('vuR');
     let frame = 0;
     function draw(){
-      if(!scopeEnabled){ scopeRafId = 0; return; }
+      if(!scopeEnabled || !analyserL){ scopeRafId = 0; return; }
       scopeRafId = requestAnimationFrame(draw);
-      if(!analyserL) return;
       analyserL.getByteTimeDomainData(dataL); analyserR.getByteTimeDomainData(dataR);
       sCtx.fillStyle = '#0d0d0d'; sCtx.fillRect(0,0,canvas.width,canvas.height);
+      const glow = hqMode ? 0 : 1;
       if(lissajous){
         const cx = canvas.width/2, cy = canvas.height/2, scale = Math.min(canvas.width, canvas.height)/2 - 6;
         const shift = Math.floor(len/4); // ~90 degrees, lissajous mode only
         sCtx.lineWidth = 2; sCtx.strokeStyle = '#39ff6a';
-        sCtx.shadowColor = '#4da3ff'; sCtx.shadowBlur = 12;
+        sCtx.shadowColor = '#4da3ff'; sCtx.shadowBlur = glow ? 12 : 0;
         sCtx.beginPath();
         for(let i=0;i<len;i++){
           const x = cx + ((dataL[i]/128)-1) * scale;
@@ -2572,7 +2718,7 @@
         const sw = canvas.width/len;
         [{data:dataL, color:'#39ff6a', glow:'#1aff55'}, {data:dataR, color:'#4da3ff', glow:'#2b8cff'}].forEach(ch => {
           sCtx.lineWidth = 2.2; sCtx.strokeStyle = ch.color;
-          sCtx.shadowColor = ch.glow; sCtx.shadowBlur = 10;
+          sCtx.shadowColor = ch.glow; sCtx.shadowBlur = glow ? 10 : 0;
           sCtx.beginPath();
           let x = 0;
           for(let i=0;i<len;i++){

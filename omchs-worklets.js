@@ -11,15 +11,49 @@ function reflectFold(x){
 }
 
 class OmchsFoldProcessor extends AudioWorkletProcessor {
-  constructor(){
+  constructor(options){
     super();
     this.prev = 0;
+    this.z1 = 0;
+    this.z2 = 0;
+    this.b0 = 1; this.b1 = 0; this.b2 = 0; this.a1 = 0; this.a2 = 0;
+    const opts = (options && options.processorOptions) || {};
+    this.hq = !!opts.hq;
+    this.initOsFilter();
+    this.port.onmessage = e => {
+      if(e.data && e.data.type === 'hq'){
+        this.hq = !!e.data.value;
+        if(this.hq){ this.z1 = 0; this.z2 = 0; }
+      }
+    };
+  }
+  initOsFilter(){
+    // 2-pole Butterworth lowpass on the 4x stream, cutoff just below original Nyquist
+    const osSr = sampleRate * 4;
+    const cutoff = Math.min(18000, sampleRate * 0.45);
+    const w0 = 2 * Math.PI * cutoff / osSr;
+    const cosw = Math.cos(w0);
+    const sinw = Math.sin(w0);
+    const alpha = sinw / (2 * 0.7071067811865476);
+    const b0 = (1 - cosw) * 0.5;
+    const b1 = 1 - cosw;
+    const b2 = (1 - cosw) * 0.5;
+    const a0 = 1 + alpha;
+    const a1 = -2 * cosw;
+    const a2 = 1 - alpha;
+    this.b0 = b0 / a0; this.b1 = b1 / a0; this.b2 = b2 / a0;
+    this.a1 = a1 / a0; this.a2 = a2 / a0;
   }
   process(inputs, outputs){
     const input = inputs[0] && inputs[0][0];
     const output = outputs[0] && outputs[0][0];
     if(!output) return true;
     if(!input){ output.fill(0); return true; }
+    if(this.hq) this.processHq(input, output);
+    else this.processLq(input, output);
+    return true;
+  }
+  processLq(input, output){
     let prev = this.prev;
     for(let i = 0; i < output.length; i++){
       const cur = input[i];
@@ -28,7 +62,29 @@ class OmchsFoldProcessor extends AudioWorkletProcessor {
       prev = cur;
     }
     this.prev = prev;
-    return true;
+  }
+  processHq(input, output){
+    let prev = this.prev;
+    let z1 = this.z1, z2 = this.z2;
+    const b0 = this.b0, b1 = this.b1, b2 = this.b2, a1 = this.a1, a2 = this.a2;
+    for(let i = 0; i < output.length; i++){
+      const cur = input[i];
+      const d = (cur - prev) * 0.25;
+      let x = prev;
+      let y = 0;
+      for(let k = 0; k < 4; k++){
+        x += d;
+        const f = reflectFold(x);
+        y = b0 * f + z1;
+        z1 = b1 * f - a1 * y + z2;
+        z2 = b2 * f - a2 * y;
+      }
+      output[i] = y;
+      prev = cur;
+    }
+    this.prev = prev;
+    this.z1 = z1;
+    this.z2 = z2;
   }
 }
 
@@ -171,22 +227,25 @@ class OmchsCvMonitorProcessor extends AudioWorkletProcessor {
   }
 }
 
-// Stereo PCM tap for WAV export: Int16 interleaved chunks posted to the main thread
+// Stereo PCM tap for WAV export: 16-bit or 24-bit interleaved chunks posted to the main thread
 class OmchsRecProcessor extends AudioWorkletProcessor {
   constructor(){
     super();
     this.recording = false;
     this.buf = null;
     this.bufPos = 0;
-    this.chunkSamples = 0;
+    this.chunkBytes = 0;
+    this.bits = 16;
     this.port.onmessage = e => {
       const d = e.data;
       if(!d) return;
       if(d.type === 'start'){
         this.recording = true;
-        // ~0.25s of interleaved stereo Int16 per postMessage
-        this.chunkSamples = Math.max(4096, Math.floor(sampleRate * 0.25) * 2);
-        this.buf = new Int16Array(this.chunkSamples);
+        this.bits = d.bits === 24 ? 24 : 16;
+        const frames = Math.max(2048, Math.floor(sampleRate * 0.25));
+        const bytesPerFrame = 2 * (this.bits === 24 ? 3 : 2);
+        this.chunkBytes = frames * bytesPerFrame;
+        this.buf = new Uint8Array(this.chunkBytes);
         this.bufPos = 0;
       } else if(d.type === 'stop'){
         this.recording = false;
@@ -194,13 +253,26 @@ class OmchsRecProcessor extends AudioWorkletProcessor {
       }
     };
   }
+  write16(x){
+    const v = (x < 0 ? x * 0x8000 : x * 0x7FFF) | 0;
+    this.buf[this.bufPos++] = v & 0xFF;
+    this.buf[this.bufPos++] = (v >> 8) & 0xFF;
+  }
+  write24(x){
+    let v = x < 0 ? Math.round(x * 0x800000) : Math.round(x * 0x7FFFFF);
+    if(v > 0x7FFFFF) v = 0x7FFFFF;
+    else if(v < -0x800000) v = -0x800000;
+    this.buf[this.bufPos++] = v & 0xFF;
+    this.buf[this.bufPos++] = (v >> 8) & 0xFF;
+    this.buf[this.bufPos++] = (v >> 16) & 0xFF;
+  }
   flush(final){
     if(this.buf && this.bufPos > 0){
       const copy = this.buf.slice(0, this.bufPos);
-      this.port.postMessage({ type: 'rec-chunk', buffer: copy.buffer }, [copy.buffer]);
+      this.port.postMessage({ type: 'rec-chunk', buffer: copy.buffer, bits: this.bits }, [copy.buffer]);
       this.bufPos = 0;
     }
-    if(final) this.port.postMessage({ type: 'rec-end', sampleRate });
+    if(final) this.port.postMessage({ type: 'rec-end', sampleRate, bits: this.bits });
   }
   process(inputs){
     if(!this.recording || !this.buf) return true;
@@ -208,13 +280,16 @@ class OmchsRecProcessor extends AudioWorkletProcessor {
     const L = inn && inn[0];
     if(!L) return true;
     const R = (inn && inn[1]) || L;
+    const write = this.bits === 24
+      ? (x) => this.write24(x)
+      : (x) => this.write16(x);
     for(let i = 0; i < L.length; i++){
       let l = L[i], r = R[i];
       if(l > 1) l = 1; else if(l < -1) l = -1;
       if(r > 1) r = 1; else if(r < -1) r = -1;
-      this.buf[this.bufPos++] = (l < 0 ? l * 0x8000 : l * 0x7FFF) | 0;
-      this.buf[this.bufPos++] = (r < 0 ? r * 0x8000 : r * 0x7FFF) | 0;
-      if(this.bufPos >= this.chunkSamples) this.flush(false);
+      write(l);
+      write(r);
+      if(this.bufPos >= this.chunkBytes) this.flush(false);
     }
     return true;
   }
