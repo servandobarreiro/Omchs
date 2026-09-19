@@ -1,0 +1,14 @@
+Omchs changelog
+===============
+
+2026-09-19
+- Factory presets now load from omchs-presets-defaults.json and are assigned
+  to the numbered pad buttons (1-9, then 0).
+- If a preset bank exists in localStorage (key omchs-presets-v1), that bank
+  overrides the JSON factory set after it loads. Use psave after editing to
+  keep the override; a fresh browser with no saved bank uses the JSON file.
+- Shared applyPresetBank() so factory load, localStorage restore, and pimprt
+  all fill the same 10 slots and refresh pad titles.
+- If the JSON file cannot be fetched (not served over HTTP, missing file),
+  pads start empty and a terminal message is logged.
+- Added commands.txt listing typed commands and keyboard shortcuts.

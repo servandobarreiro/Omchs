@@ -527,17 +527,43 @@
     });
     return vals;
   }
-  function generateDefaultPresets(){
-    const bank = clone(DEFAULT_PRESET_BANK);
-    presets = Array.isArray(bank.presets) ? bank.presets : new Array(10).fill(null);
-    presetNames = Array.isArray(bank.presetNames) ? bank.presetNames : new Array(10).fill(null);
-    while(presets.length < 10) presets.push(null);
-    while(presetNames.length < 10) presetNames.push(null);
+  const FACTORY_PRESETS_URL = 'omchs-presets-defaults.json';
+  function syncPresetPadTitles(){
     for(let i=0;i<10;i++){
       const plateEl = document.getElementById('plate-'+i);
       if(plateEl) plateEl.title = presetNames[i] ? `Preset ${keyLabel(i)} — ${presetNames[i]}` : `Preset ${keyLabel(i)}`;
     }
+  }
+  function applyPresetBank(bank){
+    const src = bank && typeof bank === 'object' ? bank : {};
+    presets = Array.isArray(src.presets) ? src.presets.slice() : new Array(10).fill(null);
+    presetNames = Array.isArray(src.presetNames) ? src.presetNames.slice() : new Array(10).fill(null);
+    while(presets.length < 10) presets.push(null);
+    while(presetNames.length < 10) presetNames.push(null);
+    if(presets.length > 10) presets.length = 10;
+    if(presetNames.length > 10) presetNames.length = 10;
+    syncPresetPadTitles();
+  }
+  function generateDefaultPresets(bank){
+    applyPresetBank(bank);
+  }
+  async function loadFactoryPresets(){
+    const res = await fetch(FACTORY_PRESETS_URL, { cache: 'no-cache' });
+    if(!res.ok) throw new Error('factory fetch failed');
+    const data = await res.json();
+    if(!data || !Array.isArray(data.presets)) throw new Error('bad factory format');
+    generateDefaultPresets(data);
     termLog('> factory presets loaded (1-9,0).');
+    return true;
+  }
+  async function bootPresets(){
+    try {
+      await loadFactoryPresets();
+    } catch(_){
+      generateDefaultPresets(null);
+      termLog('> factory presets unavailable; pads empty until saved or imported');
+    }
+    if(loadPersistedPresets()) termLog('> restored presets from localStorage');
   }
   function setLabelText(el, icon, text){
     if(!el) return;
@@ -562,12 +588,7 @@
       if(!raw) return false;
       const data = JSON.parse(raw);
       if(!data || !Array.isArray(data.presets)) return false;
-      presets = data.presets;
-      presetNames = Array.isArray(data.presetNames) ? data.presetNames : new Array(10).fill(null);
-      for(let i=0;i<10;i++){
-        const plateEl = document.getElementById('plate-'+i);
-        if(plateEl && presetNames[i]) plateEl.title = `Preset ${keyLabel(i)} — ${presetNames[i]}`;
-      }
+      applyPresetBank(data);
       return true;
     } catch(_){ return false; }
   }
@@ -2134,12 +2155,7 @@
           try {
             const data = JSON.parse(reader.result);
             if(!data || !Array.isArray(data.presets)) throw new Error('bad format');
-            presets = data.presets;
-            presetNames = Array.isArray(data.presetNames) ? data.presetNames : new Array(10).fill(null);
-            for(let i=0;i<10;i++){
-              const plateEl = document.getElementById('plate-'+i);
-              if(plateEl) plateEl.title = presetNames[i] ? `Preset ${keyLabel(i)} — ${presetNames[i]}` : `Preset ${keyLabel(i)}`;
-            }
+            applyPresetBank(data);
             persistPresets();
             termLog('> presets imported');
           } catch(_){ termLog('> preset import failed'); }
@@ -2580,8 +2596,7 @@
     draw();
   }
 
-  generateDefaultPresets();
-  if(loadPersistedPresets()) termLog('> restored presets from localStorage');
+  bootPresets();
   resizeScopeCanvas();
 })();
 </script>
