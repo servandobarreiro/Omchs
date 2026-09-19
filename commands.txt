@@ -1,0 +1,59 @@
+Omchs commands
+==============
+
+Type into the field by the scope, or type on the keyboard (desktop) and press
+Enter. Commands are case-insensitive and ignore spaces.
+
+Presets (pads 1-9, 0)
+---------------------
+1 .. 9, 0     Play the matching preset pad (momentary: hold a key, or ~400ms
+              if typed into the command field). Slot 0 is pad "0".
+edN           Arm or exit edit mode on pad N (example: ed3). While editing,
+              knob and patch changes are recorded to that pad and saved to
+              localStorage.
+nNname        Name pad N (example: n3drone). No spaces in the name.
+psave         Write the current 10-pad bank to localStorage.
+pload         Reload the bank from localStorage (does nothing if none saved).
+pxprt         Download the current bank as JSON.
+pimprt        Import a bank from a JSON file, then save it to localStorage.
+
+Factory vs saved banks
+----------------------
+On load, omchs-presets-defaults.json fills the pads first. A bank previously
+saved with psave (or by leaving edit mode / naming a pad / importing) then
+replaces those defaults.
+
+Scope
+-----
+xy            Toggle Lissajous scope (also: type x then y, then Enter).
+xyon          Turn the scope on.
+xyoff         Turn the scope off.
+
+Sound / capture
+---------------
+rd            Randomize knob values (same as the dice button).
+mic           Toggle microphone / external input.
+xprt          Start or stop recording; stop downloads a 16-bit stereo .wav.
+
+Filter 2 mode
+-------------
+fllp          Lowpass
+flhp          Highpass
+flbp          Bandpass
+flnt          Notch
+floff         Off (allpass)
+
+Labels
+------
+icons         Toggle icon vs text labels on knobs and jacks.
+
+Keyboard extras
+---------------
+Escape        Clear the command buffer.
+Backspace     Delete the last character in the command buffer.
+ed then N     Same as edN without pressing Enter (after typing e, then d).
+digits        With an empty buffer, 1-9 and 0 hold-play a preset; release
+              the key to restore the previous state. If edit mode is on,
+              a digit exits edit mode instead.
+
+Unrecognized text logs: unrecognized command: <what you typed>
