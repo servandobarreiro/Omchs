@@ -74,20 +74,14 @@
     .jack.gate{ width:20px; height:20px; border-width:4px; }
     .plate{ width:48px; height:48px; font-size:0.72rem; }
     .modebtn{ width:24px; height:24px; font-size:0.5rem; }
+    .envbtn{ width:22px; height:22px; font-size:0.42rem; }
+    .filterdock{ top:-30px; }
+    .envdock{ top:-30px; }
     .cablemenu-del, .cmdinput{ font-size:0.75rem; padding:8px 9px; }
     .dial{ cursor: grab; }
     .btn{ padding:11px 14px; min-height:40px; }
   }
-  .secttabs{
-    display:none; position:relative; z-index:5; gap:6px; flex-wrap:wrap;
-    margin:0 0 12px; padding:0;
-  }
-  .secttabs button{
-    flex:1 1 auto; min-width:3.2rem; background:var(--bg-raised); color:var(--text-dim);
-    border:1px solid var(--panel-edge); border-radius:3px; padding:8px 10px;
-    font-family:inherit; font-size:0.68rem; letter-spacing:0.6px; cursor:pointer;
-  }
-  .secttabs button.on{ color:var(--amber); border-color:var(--amber-dim); background:#222222; }
+  .secttabs{ display:none !important; }
   .jack.tapselected{ box-shadow:0 0 0 4px rgba(255,255,255,0.45), 0 0 18px var(--jcolor, #fff); }
   .jack.tapdest{ outline:2px dashed rgba(255,255,255,0.35); outline-offset:3px; }
   .micbtn.on{ background:var(--cyan); color:#111111; border-color:var(--cyan); }
@@ -98,27 +92,38 @@
     .faceplate{ padding:18px 10px 12px; border-radius:4px; }
     .facehead{ gap:6px; margin-bottom:10px; }
     .facehead .btn{ font-size:0.7rem; padding:8px 10px; }
-    .secttabs{ display:flex; }
-    .items{ gap: 10px 8px; justify-content:center; }
-    .knob-wrap{ width:70px; }
-    .size-lg .dial{ width:58px; height:58px; }
-    .size-md .dial{ width:46px; height:46px; }
-    .size-sm .dial{ width:34px; height:34px; }
-    .size-lg .ring{ width:70px; height:70px; }
-    .size-md .ring{ width:56px; height:56px; }
-    .size-sm .ring{ width:44px; height:44px; }
-    .size-lg .modring{ width:78px; height:78px; }
-    .size-md .modring{ width:64px; height:64px; }
-    .size-sm .modring{ width:52px; height:52px; }
-    .dialbox{ margin: 22px 18px 18px; }
-    .klabel{ font-size:1.2rem; max-width:none; }
-    body.labels-text .klabel{ font-size:0.5rem; max-width:64px; }
-    .groupbreak{ height:10px; }
+    .items{ gap: 6px 4px; justify-content:flex-start; }
+    .knob-wrap{ width:56px; }
+    .size-lg .dial{ width:44px; height:44px; }
+    .size-md .dial{ width:36px; height:36px; }
+    .size-sm .dial{ width:28px; height:28px; }
+    .size-lg .ring{ width:54px; height:54px; }
+    .size-md .ring{ width:46px; height:46px; }
+    .size-sm .ring{ width:38px; height:38px; }
+    .size-lg .modring{ width:60px; height:60px; }
+    .size-md .modring{ width:52px; height:52px; }
+    .size-sm .modring{ width:44px; height:44px; }
+    .dialbox{ margin: 16px 10px 12px; }
+    .klabel{ font-size:1.05rem; max-width:none; }
+    body.labels-text .klabel{ font-size:0.45rem; max-width:52px; }
+    .groupbreak{ height:8px; }
+    .cluster{ gap:2px 0; padding:8px 4px 4px; margin:1px 2px; }
+    .cluster .knob-wrap{ width:52px; }
+    .cluster .dialbox{ margin: 14px 6px 10px; }
+    .cluster .size-md .dial{ width:34px; height:34px; }
+    .cluster .size-sm .dial{ width:28px; height:28px; }
+    .cluster .size-md .ring{ width:44px; height:44px; }
+    .cluster .size-sm .ring{ width:36px; height:36px; }
+    .cluster .size-md .modring{ width:50px; height:50px; }
+    .cluster .size-sm .modring{ width:42px; height:42px; }
+    .filterdock{ top:-30px; }
+    .envdock{ top:-24px; gap:3px; }
+    .envbtn{ width:16px; height:16px; font-size:0.36rem; }
     .platesrow{ gap:10px; margin-top:14px; padding-top:10px; justify-content:flex-start; }
     .facefoot{ flex-direction:column; align-items:stretch; gap:8px; margin-top:14px; }
     .scopewrap, .scopebox{ width:100%; max-width:100%; }
-    .scopebox.head-term{ height:68px; margin-bottom:8px; }
-    .scopebox:not(.head-term){ height:132px; }
+    .scopebox.head-term{ height:52px; margin-bottom:6px; }
+    .scopebox:not(.head-term){ height:100px; }
     .cmdinput{
       width:100%; font-size:0.78rem; padding:10px 12px;
     }
@@ -227,9 +232,18 @@
   }
   .cluster .knob-wrap{ width:70px; }
   .cluster .dialbox{ margin: 22px 14px 16px; }
+  /* Room above curve knobs for T/L without clipping the cluster frame */
+  .cluster[data-cluster="env1"],
+  .cluster[data-cluster="env2"]{
+    padding-top:14px;
+  }
+  .cluster[data-cluster="env1"] .dialbox,
+  .cluster[data-cluster="env2"] .dialbox{
+    margin-top:30px;
+  }
   @media (max-width: 720px){
-    .cluster{ flex-wrap:wrap; justify-content:center; max-width:100%; gap:4px 2px; }
-    .cluster .knob-wrap{ width:64px; }
+    .cluster{ flex-wrap:nowrap; justify-content:flex-start; max-width:100%; gap:2px 0; }
+    .cluster .knob-wrap{ width:52px; }
   }
 
   /* Patch direction: inputs slightly dim so outs read first; brighten when patching */
@@ -268,16 +282,24 @@
     font-size:0.42rem; font-weight:bold; color:#111111; cursor:pointer;
     box-shadow:0 1px 3px rgba(0,0,0,0.45); pointer-events:auto; touch-action:none;
   }
-  .filterdock{ position:absolute; z-index:4; pointer-events:auto; }
-  .envctrls{ display:flex; flex-direction:column; gap:8px; justify-content:flex-end;
-    padding:6px 4px 14px; pointer-events:auto; }
-  .envbtn{
-    width:28px; height:22px; border-radius:3px; border:1px solid var(--amber-dim);
-    background:var(--bg-raised); color:var(--amber); cursor:pointer;
-    font-family:inherit; font-size:0.48rem; letter-spacing:0.4px; font-weight:bold;
-    display:flex; align-items:center; justify-content:center; touch-action:none;
+  .filterdock{
+    position:absolute; z-index:4; pointer-events:auto;
+    left:50%; top:-28px; transform:translateX(-50%);
   }
-  .envbtn.on{ background:var(--amber); color:#111111; border-color:var(--amber); }
+  .envdock{
+    position:absolute; z-index:4; pointer-events:auto;
+    display:flex; flex-direction:row; gap:4px; align-items:center;
+    left:50%; top:-28px; transform:translateX(-50%);
+  }
+  .envbtn{
+    width:18px; height:18px; border-radius:50%; border:none;
+    background:linear-gradient(180deg,#e8c96a,var(--amber));
+    color:#111111; cursor:pointer;
+    font-family:inherit; font-size:0.4rem; letter-spacing:0; font-weight:bold;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 1px 3px rgba(0,0,0,0.45); touch-action:none; padding:0;
+  }
+  .envbtn.on{ background:linear-gradient(180deg,#fff,#ffe9a8); box-shadow:0 0 8px rgba(255,226,122,0.7); }
   .cluster[data-cluster="seq"]{ padding:18px 14px 12px; }
   .cluster[data-cluster="seq"] .jackitem{ width:64px; }
   .cluster[data-cluster="seq"].seq-outs-hidden,
@@ -344,6 +366,26 @@
     border:2px solid var(--amber); pointer-events:none; z-index:30; display:none;
     box-shadow:0 4px 16px rgba(0,0,0,0.65); background:var(--bg-sunken); }
   .minijack-scope canvas{ width:100%; height:100%; display:block; }
+  .freq-popup{
+    position:absolute; width:84px; height:84px; border-radius:50%; overflow:hidden;
+    border:2px solid var(--amber); pointer-events:none; z-index:30; display:none;
+    box-shadow:0 4px 16px rgba(0,0,0,0.65); background:var(--bg-sunken);
+    flex-direction:column; align-items:center; justify-content:center; gap:2px;
+    box-sizing:border-box; padding:8px;
+  }
+  .freq-popup.open{ display:flex; }
+  .freq-popup .freq-main{ font-size:0.72rem; color:var(--amber); font-weight:bold; letter-spacing:0.2px;
+    text-shadow:0 0 6px rgba(255,163,72,0.5); line-height:1.1; text-align:center; }
+  .freq-popup .freq-zero{ font-size:0.5rem; color:var(--text-dim); letter-spacing:1px; }
+  .freq-popup .freq-zero.at0{ color:#ffe27a; text-shadow:0 0 8px #ffe27a; font-weight:bold; }
+  .freq-popup .freq-sub{ font-size:0.42rem; color:var(--text-dim); text-align:center; max-width:72px; }
+  /* Fixed 12 o'clock tick = resting zero for bipolar knobs */
+  .dialbox.zero-rest::after{
+    content:''; position:absolute; left:50%; top:-2px; z-index:5; pointer-events:none;
+    width:2px; height:6px; margin-left:-1px;
+    background:var(--amber); border-radius:1px;
+    box-shadow:0 0 4px rgba(223,178,73,0.7);
+  }
 
   .scopewrap{ display:flex; gap:14px; align-items:center; margin-top:16px; flex-wrap:wrap; }
   .scopebox{ position:relative; height:150px; width:360px; max-width:100%;
@@ -395,6 +437,7 @@
       <button class="cablemenu-del" id="cableMenuDel">Delete cable</button>
     </div>
     <div class="minijack-scope" id="miniScope"><canvas id="miniScopeCanvas" width="84" height="84"></canvas></div>
+    <div class="freq-popup" id="freqPopup"></div>
     <div class="steppopup" id="stepPopup"></div>
 
     <div class="facehead">
@@ -419,16 +462,6 @@
         <div class="vu"><i id="vuL"></i></div>
         <div class="vu"><i id="vuR"></i></div>
       </div>
-    </div>
-
-    <div class="secttabs" id="sectTabs" role="tablist" aria-label="Faceplate sections">
-      <button type="button" data-sect="all" class="on">ALL</button>
-      <button type="button" data-sect="mod">MOD</button>
-      <button type="button" data-sect="osc">OSC</button>
-      <button type="button" data-sect="delay">DELAY</button>
-      <button type="button" data-sect="fx">FX</button>
-      <button type="button" data-sect="seq">SEQ</button>
-      <button type="button" data-sect="presets">PRESETS</button>
     </div>
 
     <div class="items" id="items"></div>
@@ -533,7 +566,7 @@
     { id:'smear',         label:'Head Smear',   min:0,    max:0.3,  def:0.02, size:'sm', section:'delay' },
     { id:'decay',         label:'Feedback',     min:0,    max:0.99, def:0.6,  size:'lg', section:'delay' },
     { id:'width',         label:'Stereo Width', min:0,    max:1,    def:0.6,  size:'md', section:'delay' },
-    { id:'fbShift',       label:'FB Freq Shift', min:-400, max:400, def:0,    size:'sm', section:'delay' },
+    { id:'fbShift',       label:'FB Freq Shift', min:-400, max:400, def:0,    size:'lg', section:'delay' },
 
     { id:'envAttack',     label:'Env1 Attack',  min:0.01, max:2,    def:0.08, size:'sm', section:'mod' },
     { id:'envDecay',      label:'Env1 Decay',   min:0.01, max:3,    def:0.35, size:'md', section:'mod' },
@@ -751,14 +784,12 @@
     { key:'mod', items:[
       {t:'cluster', id:'env1', label:'ENV1', items:[
         {t:'knob', id:'envAttack'}, {t:'knob', id:'envDecay'}, {t:'knob', id:'envCurve'},
-        {t:'envctrls', which:1},
       ]},
       {t:'cluster', id:'lfo1', label:'LFO1', items:[
         {t:'knob', id:'lfo1Speed'}, {t:'knob', id:'lfo1Wave'},
       ]},
       {t:'cluster', id:'env2', label:'ENV2', items:[
         {t:'knob', id:'env2Attack'}, {t:'knob', id:'env2Decay'}, {t:'knob', id:'env2Curve'},
-        {t:'envctrls', which:2},
       ]},
       {t:'cluster', id:'lfo2', label:'LFO2', items:[
         {t:'knob', id:'lfo2Speed'}, {t:'knob', id:'lfo2Wave'},
@@ -882,7 +913,9 @@
     const dial = document.getElementById('d-'+c.id);
     if(!dial) return;
     dial.style.transform = `rotate(${pct*270-135}deg)`;
-    dial.closest('.dialbox').querySelector('.ring').style.setProperty('--pct', pct);
+    const dialbox = dial.closest('.dialbox');
+    dialbox.querySelector('.ring').style.setProperty('--pct', pct);
+    dialbox.classList.toggle('zero-rest', min < 0 && max > 0);
     updateModRing(c.id);
   }
   function makeJack(kind, id, label, opts){
@@ -909,7 +942,9 @@
     el._t = setTimeout(() => el.classList.remove('lit'), 90);
   }
   const stepPopupEl = document.getElementById('stepPopup');
+  const freqPopupEl = document.getElementById('freqPopup');
   function showStepPopup(dial, names, val){
+    hideFreqPopup();
     const r = dial.getBoundingClientRect(), p = faceplateEl.getBoundingClientRect();
     const size = Math.max(100, Math.min(150, 36 + names.length * 12));
     stepPopupEl.style.width = size + 'px';
@@ -921,9 +956,70 @@
     stepPopupEl.classList.add('open');
     stepPopupEl.style.display = 'flex';
   }
-  function hideStepPopup(){
+  function isFreqKnob(c){
+    return c.id === 'fbShift' || c.id === 'pitch' || c.id === 'pitchB'
+      || c.id === 'absorb' || c.id === 'flCutoff'
+      || c.id === 'lfo1Speed' || c.id === 'lfo2Speed';
+  }
+  function knobResetsToZero(c){
+    const { min, max } = knobMinMax(c);
+    return min < 0 && max > 0;
+  }
+  function freqReadout(c){
+    if(c.id === 'fbShift'){
+      const v = params.fbShift || 0;
+      const s = (v >= 0 ? '+' : '') + (Math.abs(v) >= 10 ? v.toFixed(0) : v.toFixed(1));
+      return { main: s + ' Hz', zero: true, at0: Math.abs(v) < 0.5, sub: 'shift' };
+    }
+    if(c.id === 'pitch' || c.id === 'pitchB'){
+      if(isPitchSemi(c)){
+        const v = knobValue(c);
+        const hz = c.id === 'pitch' ? effectivePitchA() : effectivePitchB();
+        return {
+          main: (v >= 0 ? '+' : '') + Math.round(v) + ' st',
+          zero: true, at0: Math.abs(v) < 0.25,
+          sub: Math.round(hz) + ' Hz'
+        };
+      }
+      const hz = knobValue(c);
+      return { main: (hz >= 100 ? Math.round(hz) : hz.toFixed(1)) + ' Hz', zero: false, at0: false };
+    }
+    if(c.hzLo != null){
+      const hz = filterCutoffHz(c.id);
+      return { main: (hz >= 100 ? Math.round(hz) : hz.toFixed(1)) + ' Hz', zero: false, at0: false, sub: c.label };
+    }
+    if(c.id === 'lfo1Speed' || c.id === 'lfo2Speed'){
+      const hz = knobValue(c);
+      return { main: hz.toFixed(2) + ' Hz', zero: false, at0: false, sub: 'LFO' };
+    }
+    return null;
+  }
+  function showFreqPopup(dial, c){
+    const info = freqReadout(c);
+    if(!info || !freqPopupEl) return;
+    hideStepPopup(true);
+    const r = dial.getBoundingClientRect(), p = faceplateEl.getBoundingClientRect();
+    const size = 84;
+    const cx = r.left - p.left + r.width / 2;
+    // Above the knob — same circular amber window as the cable mini-scope
+    freqPopupEl.style.left = (cx - size / 2) + 'px';
+    freqPopupEl.style.top = (r.top - p.top - size - 8) + 'px';
+    let html = `<div class="freq-main">${info.main}</div>`;
+    if(info.zero) html += `<div class="freq-zero${info.at0?' at0':''}">0</div>`;
+    if(info.sub) html += `<div class="freq-sub">${info.sub}</div>`;
+    freqPopupEl.innerHTML = html;
+    freqPopupEl.classList.add('open');
+    freqPopupEl.style.display = 'flex';
+  }
+  function hideFreqPopup(){
+    if(!freqPopupEl) return;
+    freqPopupEl.classList.remove('open');
+    freqPopupEl.style.display = 'none';
+  }
+  function hideStepPopup(keepFreq){
     stepPopupEl.classList.remove('open');
     stepPopupEl.style.display = 'none';
+    if(!keepFreq) hideFreqPopup();
   }
 
   function buildKnob(c, opts){
@@ -978,12 +1074,13 @@
     }
     wrap.appendChild(dialbox);
 
-    // Filter mode button at ~1 o'clock, tight against the dial rim
+    // Filter mode button at 12 o'clock, clear of the dial rim
     if(c.id === 'flCutoff' || c.id === 'absorb'){
-      const dock = buildFilterModeDock(c.id === 'flCutoff' ? 'fl2' : 'absorb');
-      dock.style.right = '-6px';
-      dock.style.top = '-6px';
-      dialbox.appendChild(dock);
+      dialbox.appendChild(buildFilterModeDock(c.id === 'flCutoff' ? 'fl2' : 'absorb'));
+    }
+    // Env TRIG / LOOP — horizontal row above the curve knob
+    if(c.id === 'envCurve' || c.id === 'env2Curve'){
+      dialbox.appendChild(buildEnvCtrls(c.id === 'envCurve' ? 1 : 2));
     }
 
     // Label sits under the dial at the same offset as the jacks (inlet distance)
@@ -1004,6 +1101,7 @@
       dial.setPointerCapture(e.pointerId); dragging = true; didDrag = false; sy = e.clientY; sx = e.clientX; sv = knobValue(c);
       if(c.id === 'time') timeKnobDragging = true;
       if(stepNames) showStepPopup(dial, stepNames, params[c.id]);
+      else if(isFreqKnob(c)) showFreqPopup(dial, c);
     });
     dial.addEventListener('pointermove', e => {
       if(!dragging) return;
@@ -1018,10 +1116,13 @@
       didDrag = true;
       updateKnobVisual(c); sync(); recordIfEditing();
       if(stepNames) showStepPopup(dial, stepNames, params[c.id]);
+      else if(isFreqKnob(c)) showFreqPopup(dial, c);
     });
     function logVal(v){
       if(stepNames) return stepNames[Math.round(clampv(v,0,stepNames.length-1))];
       if(isPitchSemi(c)){ const n = Math.round(v); return (n>=0?'+':'') + n + ' st'; }
+      if(c.id === 'fbShift'){ const n = v; return (n>=0?'+':'') + n.toFixed(1) + ' Hz'; }
+      if(c.hzLo != null) return Math.round(filterCutoffHz(c.id)) + ' Hz';
       return v.toFixed(2);
     }
     function endTimeDrag(){ if(c.id === 'time') timeKnobDragging = false; }
@@ -1029,7 +1130,7 @@
     dial.addEventListener('pointercancel', () => { dragging = false; endTimeDrag(); hideStepPopup(); });
     dial.addEventListener('pointerleave', () => { if(!dragging) hideStepPopup(); });
     dial.addEventListener('dblclick', () => {
-      if(isPitchSemi(c)) setKnobValue(c, 0);
+      if(knobResetsToZero(c)) setKnobValue(c, 0);
       else setKnobValue(c, c.def);
       updateKnobVisual(c); sync(); recordIfEditing();
       termLog(`> ${c.label} reset: ${logVal(knobValue(c))}`);
@@ -1049,9 +1150,9 @@
     return outer;
   }
   function buildEnvCtrls(which){
-    const wrap = document.createElement('div'); wrap.className = 'envctrls';
+    const dock = document.createElement('div'); dock.className = 'envdock';
     const trig = document.createElement('button');
-    trig.type = 'button'; trig.className = 'envbtn'; trig.textContent = 'TRIG';
+    trig.type = 'button'; trig.className = 'envbtn'; trig.textContent = 'T';
     trig.title = 'Trigger envelope ' + which;
     trig.addEventListener('pointerdown', e => {
       e.stopPropagation();
@@ -1060,15 +1161,15 @@
     });
     const loop = document.createElement('button');
     loop.type = 'button'; loop.className = 'envbtn'; loop.id = 'envloop-' + which;
-    loop.textContent = 'LOOP';
+    loop.textContent = 'L';
     loop.title = 'Toggle envelope ' + which + ' looping';
     if((which === 1 && env1Looping) || (which === 2 && env2Looping)) loop.classList.add('on');
     loop.addEventListener('pointerdown', e => {
       e.stopPropagation();
       toggleEnvLoop(which);
     });
-    wrap.appendChild(trig); wrap.appendChild(loop);
-    return wrap;
+    dock.appendChild(trig); dock.appendChild(loop);
+    return dock;
   }
   function buildJackItem(kind, id, label, opts){
     opts = opts || {};
@@ -1137,7 +1238,7 @@
     scatter(wrap, 'randgen'+idx);
     return wrap;
   }
-  // Filter mode button — cycles LP/HP/BP/NT/off; docked at ~1 o'clock on the cutoff knob
+  // Filter mode button — cycles LP/HP/BP/NT/off; docked at 12 o'clock on the cutoff knob
   function buildFilterModeDock(which){
     const dock = document.createElement('div'); dock.className = 'filterdock';
     const btn = document.createElement('div');
@@ -1164,31 +1265,17 @@
   applyLabelMode();
   updateSeqOutVisibility();
 
-  // Mobile section tabs: filter the dense faceplate down to one row of controls
+  // Mobile section tabs removed — keep faceplate unfiltered
   const sectTabsEl = document.getElementById('sectTabs');
   let activeSect = 'all';
-  function applySectionFilter(sect){
-    activeSect = sect || 'all';
-    sectTabsEl.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.sect === activeSect));
-    itemsHost.querySelectorAll('[data-section]').forEach(el => {
-      const show = activeSect === 'all' || el.dataset.section === activeSect;
-      el.classList.toggle('sect-hide', !show);
-    });
+  function applySectionFilter(){
+    itemsHost.querySelectorAll('[data-section]').forEach(el => el.classList.remove('sect-hide'));
     requestAnimationFrame(() => { updateCables(); updateNormalizedPaths(); });
   }
-  sectTabsEl.addEventListener('click', e => {
-    const btn = e.target.closest('button[data-sect]');
-    if(!btn) return;
-    applySectionFilter(btn.dataset.sect);
-  });
-  // On resize past the mobile breakpoint, show everything again
+  if(sectTabsEl) sectTabsEl.style.display = 'none';
   const narrowMq = window.matchMedia('(max-width: 720px)');
   function onNarrowChange(){
-    if(!narrowMq.matches){
-      itemsHost.querySelectorAll('[data-section]').forEach(el => el.classList.remove('sect-hide'));
-      sectTabsEl.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.sect === 'all'));
-      activeSect = 'all';
-    } else applySectionFilter(activeSect);
+    applySectionFilter();
     updateCables();
   }
   if(narrowMq.addEventListener) narrowMq.addEventListener('change', onNarrowChange);
@@ -1241,12 +1328,16 @@
         wave: params.lfo2Wave
       });
     }
-    if(fbFreqShift && fbFreqShift.parameters && fbFreqShift.parameters.get('hz') && ctx){
-      fbFreqShift.parameters.get('hz').setTargetAtTime(params.fbShift || 0, ctx.currentTime, 0.05);
+    if(fbFreqShift){
+      const hz = params.fbShift || 0;
+      if(fbFreqShift.parameters && fbFreqShift.parameters.get('hz') && ctx){
+        fbFreqShift.parameters.get('hz').setTargetAtTime(hz, ctx.currentTime, 0.03);
+      }
+      if(fbFreqShift.port) fbFreqShift.port.postMessage({ type:'hz', value: hz });
     }
   }
   async function loadOmchsWorklets(audioCtx){
-    const url = 'omchs-worklets.js?v=freqshift1';
+    const url = 'omchs-worklets.js?v=freqshift2';
     try {
       await audioCtx.audioWorklet.addModule(url);
       return;
@@ -1541,6 +1632,27 @@
       delayTaps.push({ node:d, gain:g, isL, idx:i });
     }
 
+    // FB freq shift before Absorb so each recirculation is shifted then filtered
+    const preShiftMerge = ctx.createChannelMerger(2);
+    tapSumL.connect(preShiftMerge, 0, 0); tapSumR.connect(preShiftMerge, 0, 1);
+    const postShiftSplit = ctx.createChannelSplitter(2);
+    fbFreqShift = null;
+    try {
+      fbFreqShift = new AudioWorkletNode(ctx, 'omchs-freqshift', {
+        numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2],
+        channelCount: 2, channelCountMode: 'explicit'
+      });
+      const hz0 = params.fbShift || 0;
+      try { fbFreqShift.parameters.get('hz').value = hz0; } catch(_){}
+      try { fbFreqShift.port.postMessage({ type:'hz', value: hz0 }); } catch(_){}
+      preShiftMerge.connect(fbFreqShift);
+      fbFreqShift.connect(postShiftSplit);
+    } catch(err){
+      fbFreqShift = null;
+      preShiftMerge.connect(postShiftSplit);
+      termLog('> FB freq shift unavailable (hard-refresh)');
+    }
+
     // Dual Absorb filters — a single Biquad after a merger collapses L/R to mono
     // and makes Stereo Width almost inaudible.
     filterL = ctx.createBiquadFilter();
@@ -1549,7 +1661,8 @@
       f.type = 'lowpass'; f.Q.value = 1.1; f.frequency.value = filterCutoffHz('absorb');
     });
     filter = filterL; // legacy alias (mode / CV helpers)
-    tapSumL.connect(filterL); tapSumR.connect(filterR);
+    postShiftSplit.connect(filterL, 0);
+    postShiftSplit.connect(filterR, 1);
 
     // Wet mid/side-style width: 0 = mono sum, 1 = full L/R
     const w0 = clampv(params.width, 0, 1);
@@ -1575,32 +1688,14 @@
     filterL.connect(dcBlockL).connect(fbClipL);
     filterR.connect(dcBlockR).connect(fbClipR);
 
-    const fbMerge = ctx.createChannelMerger(2);
-    fbClipL.connect(fbMerge, 0, 0); fbClipR.connect(fbMerge, 0, 1);
-    fbSplit = ctx.createChannelSplitter(2);
-    fbFreqShift = null;
-    try {
-      fbFreqShift = new AudioWorkletNode(ctx, 'omchs-freqshift', {
-        numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2],
-        channelCount: 2, channelCountMode: 'explicit'
-      });
-      try { fbFreqShift.parameters.get('hz').value = params.fbShift || 0; } catch(_){}
-      fbMerge.connect(fbFreqShift);
-      fbFreqShift.connect(fbSplit);
-    } catch(err){
-      // Older cached worklet bundle without omchs-freqshift — keep audio alive
-      fbFreqShift = null;
-      fbMerge.connect(fbSplit);
-      termLog('> FB freq shift unavailable (reload worklets)');
-    }
     feedGainL = ctx.createGain(); feedGainL.gain.value = params.decay;
     feedGainR = ctx.createGain(); feedGainR.gain.value = params.decay;
     // Width 1 = independent L/R feedback; width 0 = strong cross-feed (narrow)
     const cross0 = params.decay * (1 - params.width) * 0.9;
     crossGainL = ctx.createGain(); crossGainL.gain.value = cross0;
     crossGainR = ctx.createGain(); crossGainR.gain.value = cross0;
-    fbSplit.connect(feedGainL, 0); fbSplit.connect(crossGainR, 0);
-    fbSplit.connect(feedGainR, 1); fbSplit.connect(crossGainL, 1);
+    fbClipL.connect(feedGainL); fbClipL.connect(crossGainR);
+    fbClipR.connect(feedGainR); fbClipR.connect(crossGainL);
     feedGainL.connect(groupLIn); crossGainL.connect(groupLIn);
     feedGainR.connect(groupRIn); crossGainR.connect(groupRIn);
 
@@ -1910,8 +2005,6 @@
     document.querySelectorAll('.cluster[data-cluster="seq"], .groupbreak[data-section="seq"]').forEach(el => {
       el.classList.toggle('seq-outs-hidden', !show);
     });
-    const seqTab = document.querySelector('#sectTabs button[data-sect="seq"]');
-    if(seqTab) seqTab.style.display = show ? '' : 'none';
     requestAnimationFrame(() => { updateCables(); updateNormalizedPaths(); });
   }
   function setupMidi(){
@@ -2012,8 +2105,12 @@
     outPan.pan.setTargetAtTime(baseOf('pan','pan'), now, 0.02);
     setDriveCurve(clampv(baseOf('drive','sat') + (cvLive.sat||0), 1, 30));
     mainG.gain.setTargetAtTime(baseOf('activation','vca') * midiVelScale, now, 0.02);
-    if(fbFreqShift && fbFreqShift.parameters && fbFreqShift.parameters.get('hz')){
-      fbFreqShift.parameters.get('hz').setTargetAtTime(params.fbShift, now, 0.05);
+    if(fbFreqShift){
+      const hz = params.fbShift || 0;
+      if(fbFreqShift.parameters && fbFreqShift.parameters.get('hz')){
+        fbFreqShift.parameters.get('hz').setTargetAtTime(hz, now, 0.03);
+      }
+      if(fbFreqShift.port) fbFreqShift.port.postMessage({ type:'hz', value: hz });
     }
 
     // VCA/LPG baseline (whatever's patched into the CV input swings around this)
