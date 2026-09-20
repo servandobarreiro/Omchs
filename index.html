@@ -282,8 +282,26 @@
   .cluster[data-cluster="seq"] .jackitem{ width:64px; }
   .cluster[data-cluster="seq"].seq-outs-hidden,
   .groupbreak[data-section="seq"].seq-outs-hidden{ display:none !important; }
-  .cluster[data-cluster="modmult"]{ padding:14px 10px 10px; }
-  .cluster[data-cluster="modmult"] .jackitem{ width:56px; }
+  .delay-block{
+    position:relative; display:flex; flex-wrap:wrap; align-items:flex-end;
+    gap:8px 10px; pointer-events:none; flex-basis:100%;
+  }
+  .delay-block > .knob-wrap{ pointer-events:auto; }
+  .modmult-row{
+    flex-basis:100%;
+    display:flex; flex-wrap:wrap; align-items:flex-end; gap:8px 14px;
+    border:none; background:none; padding:0; margin:0 0 4px;
+    pointer-events:none; z-index:4;
+  }
+  .modmult-row .jackitem{ width:56px; pointer-events:none; }
+  .modmult-row .jack{ pointer-events:auto; }
+  .modmult-row .jacklabel{
+    font-size:1.28rem; color:var(--text); margin-top:5px; opacity:0.9;
+    max-width:56px; line-height:1; overflow:visible; text-overflow:clip;
+  }
+  body.labels-text .modmult-row .jacklabel{
+    font-size:0.55rem; max-width:72px; white-space:normal; line-height:1.15;
+  }
   .jack{
     width:21px; height:21px; border-radius:50%;
     border:4px solid var(--jcolor, var(--cyan));
@@ -360,7 +378,7 @@
       <p>Cyan jacks are outputs, violet jacks are inputs. Patch <b>from output → input</b> (inputs stay dim until you drag from an output). On phones: tap an output, then tap an input — or drag a cable onto a knob (hits its primary inlet) or jack. Each cable has attenuverter dots near both ends; click for depth/polarity, double-click (or click the cable) to remove.</p>
       <p>Osc B is independent of Osc A. Set Osc B→A Mode to <b>Mix</b> and use <b>Amt / Xfade</b> to crossfade A↔B in the main path; other modes (FM / AM / Ring / Fold / Sync) are modulation, not a blend. While a MIDI note is held, Pitch and Osc B Pitch become ±semitone offsets (0 = unison with the MIDI note); otherwise they are absolute Hz.</p>
       <p>Commands (type into the field by the scope, or use the keyboard on desktop): <b>0-9</b> latch a preset (pad 0 is the default), <b>ed3</b> arm/exit edit mode on preset 3, <b>xy</b> toggle the Lissajous scope, <b>rd</b> randomize, <b>xprt</b> start/stop recording (16-bit wav, or 24-bit in hq), <b>hq</b> toggle high-quality audio, <b>mic</b> toggle microphone input, <b>n3name</b> name preset 3, <b>psave/pload/pxprt/pimprt</b> persist or export/import presets, <b>fllp/flhp/flbp/flnt/floff</b> set Filter2's mode, <b>icons</b> toggle icon/text labels.</p>
-      <p>Envelopes loop by default. <b>TRIG</b> fires one, <b>LOOP</b> turns looping off or on. SEQ outlets (Pitch / CV / Gate / Clock) appear at the top when a MIDI device is connected or the sequencer has a pattern / is playing — patch Seq Pitch to Pitch, Fold, Osc B, or Filter as you like. A second row of LFO / Env / Random outs sits above the delay section. <b>sq</b> status, <b>sqplay/sqstop</b>, <b>sqmode pitch|trig</b>, <b>bpm120</b>, <b>sq n c4 e4 . g4</b> notes, <b>sq d 8 8 4</b> durations, <b>sq p 0 0 3</b> presets (values only), <b>sq e 5 8</b> Euclidean, <b>sqdiv16 sqlen16 sqclear sqshow</b>. Saved with presets.</p>
+      <p>Envelopes loop by default. <b>TRIG</b> fires one, <b>LOOP</b> turns looping off or on. SEQ outlets (Pitch / CV / Gate / Clock) appear at the top when a MIDI device is connected or the sequencer has a pattern / is playing — patch Seq Pitch to Pitch, Fold, Osc B, or Filter as you like. A second row of LFO / Env / Random outs sits above the delay section. Delay <b>Stereo Width</b> keeps L/R through Absorb (0=mono, 1=wide); <b>FB Freq Shift</b> Bode-shifts the feedback loop (±Hz). <b>sq</b> status, <b>sqplay/sqstop</b>, <b>sqmode pitch|trig</b>, <b>bpm120</b>, <b>sq n c4 e4 . g4</b> notes, <b>sq d 8 8 4</b> durations, <b>sq p 0 0 3</b> presets (values only), <b>sq e 5 8</b> Euclidean, <b>sqdiv16 sqlen16 sqclear sqshow</b>. Saved with presets.</p>
       <p>MIC arms a low-latency external input (echo cancel / AGC off). Patch the Mic out jack anywhere, or feed Ext In to run the mic through the filter / fold / delay / FX path.</p>
       <p>Serve this folder over HTTP (e.g. <code>python3 -m http.server</code>) so AudioWorklets can load from <code>omchs-worklets.js</code>. Mic also needs HTTPS or localhost.</p>
       <p><!-- more notes to come --></p>
@@ -435,9 +453,11 @@
   let oscBTri, oscBSqr, oscBSine, oscBTriGain, oscBSqrGain, oscBSineGain, oscBSum;
   let fmInteractGain, amInteractGain, syncShape, syncInteractGain, oscAAmStage, oscBFoldGain;
   let oscMixAGain, oscMixBGain;
-  let groupLIn, groupRIn, delayTaps = [], tapSumL, tapSumR, merger, filter, dcBlock;
+  let groupLIn, groupRIn, delayTaps = [], tapSumL, tapSumR, merger, filter, filterL, filterR, dcBlock, dcBlockL, dcBlockR;
   let filter2, fl2Mode = 'lowpass', absorbMode = 'lowpass';
-  let fbCompressor, fbClip, fbSplit, feedGainL, feedGainR, crossGainL, crossGainR;
+  let fbCompressor, fbClip, fbClipL, fbClipR, fbSplit, feedGainL, feedGainR, crossGainL, crossGainR;
+  let widthSameL, widthCrossL, widthSameR, widthCrossR, wetSumL, wetSumR, wetMerge;
+  let fbFreqShift;
   let dryGain, wetGain, outPan, driveN, crushN, masterLimiter, mainG, muteGate;
   let splitAnalyser, analyserL, analyserR;
   let envLoopSrc, envLoopSrc2, env1GateSrc, env2GateSrc;
@@ -468,6 +488,7 @@
   let midiVelScale = 1;
   let midiSemiA = 0, midiSemiB = 0; // ±semitone offsets while a MIDI note is held
   let midiDevicePresent = false;
+  let timeKnobDragging = false;
   let seqBpm = 120;
   let seqMode = 'trig';
   let seqDiv = 16;
@@ -512,6 +533,7 @@
     { id:'smear',         label:'Head Smear',   min:0,    max:0.3,  def:0.02, size:'sm', section:'delay' },
     { id:'decay',         label:'Feedback',     min:0,    max:0.99, def:0.6,  size:'lg', section:'delay' },
     { id:'width',         label:'Stereo Width', min:0,    max:1,    def:0.6,  size:'md', section:'delay' },
+    { id:'fbShift',       label:'FB Freq Shift', min:-400, max:400, def:0,    size:'sm', section:'delay' },
 
     { id:'envAttack',     label:'Env1 Attack',  min:0.01, max:2,    def:0.08, size:'sm', section:'mod' },
     { id:'envDecay',      label:'Env1 Decay',   min:0.01, max:3,    def:0.35, size:'md', section:'mod' },
@@ -544,7 +566,7 @@
   const knobIcon = {
     pitch:'♪', instability:'≈', sub:'♭', tones:'❋', oscWaveMorph:'∿',
     pitchB:'♫', oscBWaveMorph:'∿', oscMode:'⇄', oscModAmt:'⋈',
-    mix:'⚖', time:'◷', spread:'⇔', smear:'↝', decay:'↺', width:'↔',
+    mix:'⚖', time:'◷', spread:'⇔', smear:'↝', decay:'↺', width:'↔', fbShift:'ƒ',
     envAttack:'↗', envDecay:'↘', envCurve:'⌒',
     env2Attack:'↗', env2Decay:'↘', env2Curve:'⌒',
     lfo1Speed:'◠', lfo1Wave:'⌇', lfo2Speed:'◠', lfo2Wave:'⌇',
@@ -552,7 +574,7 @@
     activation:'◉', envVcaDepth:'▽', lpgAmount:'◐', drive:'⌁', bitcrush:'▦', pan:'⇔',
     micLevel:'↧',
   };
-  const clusterIcon = { env1:'⌃₁', env2:'⌃₂', lfo1:'∿₁', lfo2:'∿₂', oscA:'Α', oscB:'Β', seq:'SEQ', modmult:'MOD' };
+  const clusterIcon = { env1:'⌃₁', env2:'⌃₂', lfo1:'∿₁', lfo2:'∿₂', oscA:'Α', oscB:'Β', seq:'SEQ' };
   const jackIcon = {
     extin:'↧', mic:'↥',
     loopenv:'⌃', loopenv2:'⌃', env1gate:'▮', env2gate:'▮',
@@ -755,14 +777,8 @@
       {t:'knob', id:'flCutoff'}, {t:'knob', id:'flReso'}, {t:'dst', id:'extin'},
     ]},
     { key:'delay', items:[
-      {t:'cluster', id:'modmult', label:'MOD', items:[
-        {t:'srcalias', id:'lfo1'}, {t:'srcalias', id:'lfo2'},
-        {t:'srcalias', id:'loopenv'}, {t:'srcalias', id:'loopenv2'},
-        {t:'srcalias', id:'env1gate'}, {t:'srcalias', id:'env2gate'},
-        {t:'srcalias', id:'randgen1'}, {t:'srcalias', id:'randgen2'},
-      ]},
-      {t:'knob', id:'mix'}, {t:'knob', id:'time'}, {t:'knob', id:'spread'},
-      {t:'knob', id:'smear'}, {t:'knob', id:'decay'}, {t:'knob', id:'width'},
+      {t:'delayblock', outlets:['lfo1','lfo2','loopenv','loopenv2','env1gate','env2gate','randgen1','randgen2'],
+        knobs:['mix','time','spread','smear','decay','width','fbShift']},
     ]},
     { key:'fx', items:[
       {t:'knob', id:'absorb'}, {t:'knob', id:'absorbReso'},
@@ -986,6 +1002,7 @@
     const coarsePtr = () => window.matchMedia && window.matchMedia('(pointer:coarse)').matches;
     dial.addEventListener('pointerdown', e => {
       dial.setPointerCapture(e.pointerId); dragging = true; didDrag = false; sy = e.clientY; sx = e.clientX; sv = knobValue(c);
+      if(c.id === 'time') timeKnobDragging = true;
       if(stepNames) showStepPopup(dial, stepNames, params[c.id]);
     });
     dial.addEventListener('pointermove', e => {
@@ -1007,7 +1024,9 @@
       if(isPitchSemi(c)){ const n = Math.round(v); return (n>=0?'+':'') + n + ' st'; }
       return v.toFixed(2);
     }
-    dial.addEventListener('pointerup', () => { dragging = false; hideStepPopup(); if(didDrag) termLog(`> ${c.label}: ${logVal(knobValue(c))}`); });
+    function endTimeDrag(){ if(c.id === 'time') timeKnobDragging = false; }
+    dial.addEventListener('pointerup', () => { dragging = false; endTimeDrag(); hideStepPopup(); if(didDrag) termLog(`> ${c.label}: ${logVal(knobValue(c))}`); });
+    dial.addEventListener('pointercancel', () => { dragging = false; endTimeDrag(); hideStepPopup(); });
     dial.addEventListener('pointerleave', () => { if(!dragging) hideStepPopup(); });
     dial.addEventListener('dblclick', () => {
       if(isPitchSemi(c)) setKnobValue(c, 0);
@@ -1070,7 +1089,15 @@
   }
   function appendGroupItem(item, section, host){
     let el = null;
-    if(item.t === 'cluster'){
+    if(item.t === 'delayblock'){
+      el = document.createElement('div');
+      el.className = 'delay-block';
+      const row = document.createElement('div');
+      row.className = 'modmult-row';
+      (item.outlets || []).forEach(id => row.appendChild(buildSrcAlias(id)));
+      el.appendChild(row);
+      (item.knobs || []).forEach(id => el.appendChild(buildKnob(configById[id])));
+    } else if(item.t === 'cluster'){
       el = document.createElement('div');
       el.className = 'cluster';
       el.dataset.cluster = item.id;
@@ -1214,14 +1241,18 @@
         wave: params.lfo2Wave
       });
     }
+    if(fbFreqShift && fbFreqShift.parameters && fbFreqShift.parameters.get('hz') && ctx){
+      fbFreqShift.parameters.get('hz').setTargetAtTime(params.fbShift || 0, ctx.currentTime, 0.05);
+    }
   }
   async function loadOmchsWorklets(audioCtx){
+    const url = 'omchs-worklets.js?v=freqshift1';
     try {
-      await audioCtx.audioWorklet.addModule('omchs-worklets.js');
+      await audioCtx.audioWorklet.addModule(url);
       return;
     } catch(_){}
     try {
-      const res = await fetch('omchs-worklets.js');
+      const res = await fetch(url);
       const text = await res.text();
       const blobUrl = URL.createObjectURL(new Blob([text], { type:'application/javascript' }));
       await audioCtx.audioWorklet.addModule(blobUrl);
@@ -1274,10 +1305,12 @@
     oscBTri = oscBSqr = oscBSine = oscBTriGain = oscBSqrGain = oscBSineGain = oscBSum = null;
     fmInteractGain = amInteractGain = syncShape = syncInteractGain = oscAAmStage = oscBFoldGain = null;
     oscMixAGain = oscMixBGain = null;
-    groupLIn = groupRIn = tapSumL = tapSumR = merger = filter = dcBlock = null;
+    groupLIn = groupRIn = tapSumL = tapSumR = merger = filter = filterL = filterR = dcBlock = dcBlockL = dcBlockR = null;
     delayTaps = [];
     filter2 = null;
-    fbCompressor = fbClip = fbSplit = feedGainL = feedGainR = crossGainL = crossGainR = null;
+    fbCompressor = fbClip = fbClipL = fbClipR = fbSplit = feedGainL = feedGainR = crossGainL = crossGainR = null;
+    widthSameL = widthCrossL = widthSameR = widthCrossR = wetSumL = wetSumR = wetMerge = null;
+    fbFreqShift = null;
     dryGain = wetGain = outPan = driveN = crushN = masterLimiter = mainG = muteGate = null;
     splitAnalyser = analyserL = analyserR = null;
     envLoopSrc = envLoopSrc2 = env1GateSrc = env2GateSrc = null;
@@ -1369,6 +1402,8 @@
       ctx = null;
       return;
     }
+
+    try {
 
     // --- Osc A: sine / triangle / square morph ---
     oscTri = ctx.createOscillator(); oscTri.type = 'triangle'; oscTri.frequency.value = params.pitch;
@@ -1506,30 +1541,64 @@
       delayTaps.push({ node:d, gain:g, isL, idx:i });
     }
 
-    merger = ctx.createChannelMerger(2);
-    tapSumL.connect(merger, 0, 0); tapSumR.connect(merger, 0, 1);
+    // Dual Absorb filters — a single Biquad after a merger collapses L/R to mono
+    // and makes Stereo Width almost inaudible.
+    filterL = ctx.createBiquadFilter();
+    filterR = ctx.createBiquadFilter();
+    [filterL, filterR].forEach(f => {
+      f.type = 'lowpass'; f.Q.value = 1.1; f.frequency.value = filterCutoffHz('absorb');
+    });
+    filter = filterL; // legacy alias (mode / CV helpers)
+    tapSumL.connect(filterL); tapSumR.connect(filterR);
 
-    filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.Q.value = 1.1;
-    filter.frequency.value = filterCutoffHz('absorb');
-    merger.connect(filter);
+    // Wet mid/side-style width: 0 = mono sum, 1 = full L/R
+    const w0 = clampv(params.width, 0, 1);
+    widthSameL = ctx.createGain(); widthSameL.gain.value = 0.5 + 0.5 * w0;
+    widthCrossL = ctx.createGain(); widthCrossL.gain.value = 0.5 - 0.5 * w0;
+    widthSameR = ctx.createGain(); widthSameR.gain.value = 0.5 + 0.5 * w0;
+    widthCrossR = ctx.createGain(); widthCrossR.gain.value = 0.5 - 0.5 * w0;
+    wetSumL = ctx.createGain(); wetSumR = ctx.createGain();
+    filterL.connect(widthSameL); widthSameL.connect(wetSumL);
+    filterR.connect(widthCrossL); widthCrossL.connect(wetSumL);
+    filterR.connect(widthSameR); widthSameR.connect(wetSumR);
+    filterL.connect(widthCrossR); widthCrossR.connect(wetSumR);
+    wetMerge = ctx.createChannelMerger(2);
+    wetSumL.connect(wetMerge, 0, 0); wetSumR.connect(wetMerge, 0, 1);
 
-    // Safety net only — high threshold/gentle ratio so it stays out of the way
-    // at normal levels and only steps in to prevent true runaway/NaN.
-    dcBlock = ctx.createBiquadFilter(); dcBlock.type = 'highpass'; dcBlock.frequency.value = 12;
-    fbCompressor = ctx.createDynamicsCompressor();
-    fbCompressor.threshold.value = -1; fbCompressor.knee.value = 4; fbCompressor.ratio.value = 4;
-    fbCompressor.attack.value = 0.003; fbCompressor.release.value = 0.15;
-    fbClip = ctx.createWaveShaper(); fbClip.oversample = hqMode ? '4x' : '2x'; setSoftClip(fbClip, 1.15);
-    filter.connect(dcBlock).connect(fbCompressor).connect(fbClip);
+    // Per-channel FB safety (keeps stereo through the loop)
+    dcBlockL = ctx.createBiquadFilter(); dcBlockL.type = 'highpass'; dcBlockL.frequency.value = 12;
+    dcBlockR = ctx.createBiquadFilter(); dcBlockR.type = 'highpass'; dcBlockR.frequency.value = 12;
+    dcBlock = dcBlockL;
+    fbClipL = ctx.createWaveShaper(); fbClipL.oversample = hqMode ? '4x' : '2x'; setSoftClip(fbClipL, 1.15);
+    fbClipR = ctx.createWaveShaper(); fbClipR.oversample = hqMode ? '4x' : '2x'; setSoftClip(fbClipR, 1.15);
+    fbClip = fbClipL;
+    filterL.connect(dcBlockL).connect(fbClipL);
+    filterR.connect(dcBlockR).connect(fbClipR);
 
+    const fbMerge = ctx.createChannelMerger(2);
+    fbClipL.connect(fbMerge, 0, 0); fbClipR.connect(fbMerge, 0, 1);
     fbSplit = ctx.createChannelSplitter(2);
-    fbClip.connect(fbSplit);
+    fbFreqShift = null;
+    try {
+      fbFreqShift = new AudioWorkletNode(ctx, 'omchs-freqshift', {
+        numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2],
+        channelCount: 2, channelCountMode: 'explicit'
+      });
+      try { fbFreqShift.parameters.get('hz').value = params.fbShift || 0; } catch(_){}
+      fbMerge.connect(fbFreqShift);
+      fbFreqShift.connect(fbSplit);
+    } catch(err){
+      // Older cached worklet bundle without omchs-freqshift — keep audio alive
+      fbFreqShift = null;
+      fbMerge.connect(fbSplit);
+      termLog('> FB freq shift unavailable (reload worklets)');
+    }
     feedGainL = ctx.createGain(); feedGainL.gain.value = params.decay;
     feedGainR = ctx.createGain(); feedGainR.gain.value = params.decay;
-    crossGainL = ctx.createGain(); crossGainL.gain.value = (1-params.width)*0.6;
-    crossGainR = ctx.createGain(); crossGainR.gain.value = (1-params.width)*0.6;
+    // Width 1 = independent L/R feedback; width 0 = strong cross-feed (narrow)
+    const cross0 = params.decay * (1 - params.width) * 0.9;
+    crossGainL = ctx.createGain(); crossGainL.gain.value = cross0;
+    crossGainR = ctx.createGain(); crossGainR.gain.value = cross0;
     fbSplit.connect(feedGainL, 0); fbSplit.connect(crossGainR, 0);
     fbSplit.connect(feedGainR, 1); fbSplit.connect(crossGainL, 1);
     feedGainL.connect(groupLIn); crossGainL.connect(groupLIn);
@@ -1538,7 +1607,11 @@
     // --- Output chain ---
     outPan = ctx.createStereoPanner(); outPan.pan.value = params.pan;
     wetGain = ctx.createGain(); wetGain.gain.value = params.mix;
-    filter.connect(wetGain);
+    try {
+      wetGain.channelCount = 2;
+      wetGain.channelCountMode = 'explicit';
+    } catch(_){}
+    wetMerge.connect(wetGain);
     wetGain.connect(outPan); dryGain.connect(outPan);
     driveN = ctx.createWaveShaper(); driveN.oversample = hqMode ? '4x' : '2x'; setDriveCurve(params.drive);
     outPan.connect(driveN);
@@ -1639,12 +1712,12 @@
       oscBTri.frequency.setTargetAtTime(pitchBBase + driftB, ctx.currentTime, 0.03);
       oscBSqr.frequency.setTargetAtTime(pitchBBase + driftB, ctx.currentTime, 0.03);
       oscBSine.frequency.setTargetAtTime(pitchBBase + driftB, ctx.currentTime, 0.03);
-      if(effSmear > 0){
+      if(effSmear > 0 && !timeKnobDragging){
         const timeBase = baseOf('time','delay');
         delayTaps.forEach(t => {
           const base = timeBase * tapRatio(t.idx, effSpread);
           const wobble = base * (1 + (Math.random()-0.5) * effSmear * 4);
-          t.node.delayTime.setTargetAtTime(Math.max(0.001, Math.min(4.9, wobble)), ctx.currentTime, 0.03);
+          t.node.delayTime.setTargetAtTime(Math.max(0.001, Math.min(4.9, wobble)), ctx.currentTime, 0.22);
         });
       }
       pushWorkletParams();
@@ -1687,7 +1760,7 @@
       { id:'fm', targets:[{ getParam:()=>oscTri.frequency, sens:700 }, { getParam:()=>oscSqr.frequency, sens:700 }, { getParam:()=>oscSine.frequency, sens:700 }] },
       { id:'fmb', targets:[{ getParam:()=>oscBTri.frequency, sens:500 }, { getParam:()=>oscBSqr.frequency, sens:500 }, { getParam:()=>oscBSine.frequency, sens:500 }] },
       { id:'fold', targets:[{ getParam:()=>foldDrive.gain, sens:4 }] },
-      { id:'absorb', targets:[{ getParam:()=>filter.frequency, sens:3200 }] },
+      { id:'absorb', targets:[{ getParam:()=>filterL.frequency, sens:3200 }, { getParam:()=>filterR.frequency, sens:3200 }] },
       { id:'feedback', targets:[{ getParam:()=>feedGainL.gain, sens:0.45 }, { getParam:()=>feedGainR.gain, sens:0.45 }] },
       { id:'delay', targets: delayTaps.map(t => ({ getParam:()=>t.node.delayTime, sens:0.12 })) },
       { id:'vca', targets:[{ getParam:()=>mainG.gain, sens:0.5 }] },
@@ -1715,7 +1788,7 @@
       { id:'lfo2ping', targets:[{ getNode:()=>cvSum.lfo2ping, sens:1 }] },
       { id:'randgen1ping', targets:[{ getNode:()=>cvSum.randgen1ping, sens:1 }] },
       { id:'randgen2ping', targets:[{ getNode:()=>cvSum.randgen2ping, sens:1 }] },
-      { id:'absres', targets:[{ getParam:()=>filter.Q, sens:8 }] },
+      { id:'absres', targets:[{ getParam:()=>filterL.Q, sens:8 }, { getParam:()=>filterR.Q, sens:8 }] },
       { id:'fl2co', targets:[{ getParam:()=>filter2.frequency, sens:3200 }] },
       { id:'fl2res', targets:[{ getParam:()=>filter2.Q, sens:8 }] },
       { id:'envvcamod', targets:[
@@ -1739,6 +1812,16 @@
     setupMidi();
     audioReady = true;
     updateMicButton();
+    } catch(err){
+      const msg = (err && err.message) ? err.message : 'audio graph failed';
+      termLog('> audio init failed: ' + msg);
+      alert('Audio init failed: ' + msg);
+      try { await ctx.close(); } catch(_){}
+      ctx = null;
+      resetAudioNodeRefs();
+      workletsReady = false;
+      audioReady = false;
+    }
   }
 
   // ---------- MIDI input: note-on sets Pitch, velocity scales VCA, and
@@ -1899,25 +1982,39 @@
     wetGain.gain.setTargetAtTime(mixBase, now, 0.02);
 
     const timeBase = baseOf('time','delay'), spreadBase = baseOf('spread','spread');
+    // Long τ so DelayNode read-pointer slews → audible tape / Doppler pitch shift
+    const delayTau = timeKnobDragging ? 0.28 : 0.22;
     delayTaps.forEach(t => {
       const base = timeBase * tapRatio(t.idx, spreadBase);
-      t.node.delayTime.setTargetAtTime(Math.max(0.001, Math.min(4.9, base)), now, 0.03);
+      t.node.delayTime.setTargetAtTime(Math.max(0.001, Math.min(4.9, base)), now, delayTau);
     });
     const decayBase = baseOf('decay','feedback');
     feedGainL.gain.setTargetAtTime(decayBase, now, 0.02);
     feedGainR.gain.setTargetAtTime(decayBase, now, 0.02);
-    // Cross-feed is itself a feedback path — it must scale WITH the Feedback
-    // knob (not just Width), or Feedback=0 still doesn't give a clean single pass.
-    const cross = decayBase * (1-params.width) * 0.6;
+    // Width 1 = independent L/R feedback; width 0 = strong cross-feed (narrow)
+    const cross = decayBase * (1 - clampv(params.width, 0, 1)) * 0.9;
     crossGainL.gain.setTargetAtTime(cross, now, 0.05);
     crossGainR.gain.setTargetAtTime(cross, now, 0.05);
-    filter.frequency.setTargetAtTime(filterCutoffHz('absorb'), now, 0.01);
-    filter.Q.setTargetAtTime(baseOf('absorbReso','absres'), now, 0.01);
+    const wAmt = clampv(params.width, 0, 1);
+    const same = 0.5 + 0.5 * wAmt, opp = 0.5 - 0.5 * wAmt;
+    if(widthSameL){
+      widthSameL.gain.setTargetAtTime(same, now, 0.05);
+      widthSameR.gain.setTargetAtTime(same, now, 0.05);
+      widthCrossL.gain.setTargetAtTime(opp, now, 0.05);
+      widthCrossR.gain.setTargetAtTime(opp, now, 0.05);
+    }
+    const absHz = filterCutoffHz('absorb');
+    const absQ = baseOf('absorbReso','absres');
+    if(filterL){ filterL.frequency.setTargetAtTime(absHz, now, 0.01); filterL.Q.setTargetAtTime(absQ, now, 0.01); }
+    if(filterR){ filterR.frequency.setTargetAtTime(absHz, now, 0.01); filterR.Q.setTargetAtTime(absQ, now, 0.01); }
     filter2.frequency.setTargetAtTime(filterCutoffHz('flCutoff'), now, 0.01);
     filter2.Q.setTargetAtTime(baseOf('flReso','fl2res'), now, 0.01);
     outPan.pan.setTargetAtTime(baseOf('pan','pan'), now, 0.02);
     setDriveCurve(clampv(baseOf('drive','sat') + (cvLive.sat||0), 1, 30));
     mainG.gain.setTargetAtTime(baseOf('activation','vca') * midiVelScale, now, 0.02);
+    if(fbFreqShift && fbFreqShift.parameters && fbFreqShift.parameters.get('hz')){
+      fbFreqShift.parameters.get('hz').setTargetAtTime(params.fbShift, now, 0.05);
+    }
 
     // VCA/LPG baseline (whatever's patched into the CV input swings around this)
     const vcaDepth = baseOf('envVcaDepth','envvcamod'), lpg = params.lpgAmount;
@@ -2044,9 +2141,13 @@
   // ---------- Filter modes (Filter2 + Absorb): lowpass/highpass/bandpass/notch/off(allpass) ----------
   function applyFilterMode(which){
     if(!ctx) return;
-    const node = which === 'fl2' ? filter2 : filter;
+    if(which === 'fl2'){
+      if(filter2) filter2.type = fl2Mode;
+    } else {
+      if(filterL) filterL.type = absorbMode;
+      if(filterR) filterR.type = absorbMode;
+    }
     const mode = which === 'fl2' ? fl2Mode : absorbMode;
-    node.type = mode;
     const btn = document.getElementById('modebtn-'+which);
     if(btn) btn.innerText = filterModeAbbr[mode];
   }

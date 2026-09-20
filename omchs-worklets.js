@@ -300,3 +300,75 @@ registerProcessor('omchs-crush', OmchsCrushProcessor);
 registerProcessor('omchs-lfo', OmchsLfoProcessor);
 registerProcessor('omchs-cv-monitor', OmchsCvMonitorProcessor);
 registerProcessor('omchs-rec', OmchsRecProcessor);
+
+/* Bode-style frequency shifter (Hilbert allpass + quadrature carrier).
+   Stereo; hz≈0 is a near-bypass to avoid unnecessary coloration. */
+class OmchsFreqShiftProcessor extends AudioWorkletProcessor {
+  static get parameterDescriptors(){
+    return [{ name:'hz', defaultValue:0, minValue:-2000, maxValue:2000, automationRate:'k-rate' }];
+  }
+  constructor(){
+    super();
+    // Parallel 1st-order allpass banks approximating a Hilbert transformer
+    this.coefA = [0.6923878, 0.9360654322959, 0.9882022124679];
+    this.coefB = [0.4021921160506, 0.8561710882420, 0.9722909545651];
+    this.stA = [this.zeroState(3), this.zeroState(3)];
+    this.stB = [this.zeroState(3), this.zeroState(3)];
+    this.delayRe = [0, 0];
+    this.phase = 0;
+  }
+  zeroState(n){
+    const s = new Float32Array(n);
+    return s;
+  }
+  allpassBank(x, coefs, state){
+    let y = x;
+    for(let i = 0; i < coefs.length; i++){
+      const c = coefs[i];
+      const z = state[i];
+      const out = c * y + z;
+      state[i] = y - c * out;
+      y = out;
+    }
+    return y;
+  }
+  process(inputs, outputs, parameters){
+    const input = inputs[0];
+    const output = outputs[0];
+    if(!output || !output[0]) return true;
+    const hzArr = parameters.hz;
+    const hz = hzArr.length > 1 ? hzArr[0] : (hzArr[0] || 0);
+    const n = output[0].length;
+    const chans = Math.min(2, Math.max(1, output.length));
+    const twin = Math.abs(hz) < 0.05;
+    const w = 2 * Math.PI * hz / sampleRate;
+    for(let i = 0; i < n; i++){
+      let c = 1, s = 0;
+      if(!twin){
+        this.phase += w;
+        if(this.phase > Math.PI * 2e3) this.phase -= Math.PI * 2e3;
+        else if(this.phase < -Math.PI * 2e3) this.phase += Math.PI * 2e3;
+        c = Math.cos(this.phase);
+        s = Math.sin(this.phase);
+      }
+      for(let ch = 0; ch < chans; ch++){
+        const inn = (input && input[ch]) || (input && input[0]);
+        const x = inn ? inn[i] : 0;
+        const outCh = output[ch] || output[0];
+        if(twin){
+          outCh[i] = x;
+          continue;
+        }
+        const re = this.allpassBank(x, this.coefA, this.stA[ch]);
+        const im = this.allpassBank(x, this.coefB, this.stB[ch]);
+        // 1-sample delay on real path to align Hilbert approx
+        const reD = this.delayRe[ch];
+        this.delayRe[ch] = re;
+        outCh[i] = reD * c - im * s;
+      }
+    }
+    return true;
+  }
+}
+registerProcessor('omchs-freqshift', OmchsFreqShiftProcessor);
+
