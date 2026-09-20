@@ -352,7 +352,7 @@
   <div class="aboutpopup" id="aboutPopup">
     <div class="aboutpopup-close" id="aboutClose">&times;</div>
     <div class="aboutpopup-body">
-      <p>Cyan jacks are outputs, violet jacks are inputs. Patch <b>from output → input</b> (inputs stay dim until you drag from an output). On phones: tap an output, then tap an input. Click the dot on a cable for its attenuator, double-click the dot (or click the cable itself) to remove it.</p>
+      <p>Cyan jacks are outputs, violet jacks are inputs. Patch <b>from output → input</b> (inputs stay dim until you drag from an output). On phones: tap an output, then tap an input. Click the dot on a cable for its attenuverter, double-click the dot (or click the cable itself) to remove it.</p>
       <p>Osc B is independent of Osc A. Set Osc B→A Mode to <b>Mix</b> and use <b>Amt / Xfade</b> to crossfade A↔B in the main path; other modes (FM / AM / Ring / Fold / Sync) are modulation, not a blend.</p>
       <p>Commands (type into the field by the scope, or use the keyboard on desktop): <b>0-9</b> latch a preset (pad 0 is the default), <b>ed3</b> arm/exit edit mode on preset 3, <b>xy</b> toggle the Lissajous scope, <b>rd</b> randomize, <b>xprt</b> start/stop recording (16-bit wav, or 24-bit in hq), <b>hq</b> toggle high-quality audio, <b>mic</b> toggle microphone input, <b>n3name</b> name preset 3, <b>psave/pload/pxprt/pimprt</b> persist or export/import presets, <b>fllp/flhp/flbp/flnt/floff</b> set Filter2's mode, <b>icons</b> toggle icon/text labels.</p>
       <p>Envelopes loop by default. <b>TRIG</b> fires one, <b>LOOP</b> turns looping off or on. Sequencer lives on its own SEQ outlets (Pitch / CV / Gate / Clock) — patch Seq Pitch to Pitch, Fold, Osc B, or Filter as you like. <b>sq</b> status, <b>sqplay/sqstop</b>, <b>sqmode pitch|trig</b>, <b>bpm120</b>, <b>sq n c4 e4 . g4</b> notes, <b>sq d 8 8 4</b> durations, <b>sq p 0 0 3</b> presets (values only), <b>sq e 5 8</b> Euclidean, <b>sqdiv16 sqlen16 sqclear sqshow</b>. Saved with presets.</p>
@@ -366,9 +366,9 @@
     <canvas id="scope" width="900" height="500"></canvas>
     <svg id="cableLayer"></svg>
     <div class="cablemenu" id="cableMenu">
-      <div class="cablemenu-label">Attenuator</div>
-      <input type="range" id="cableMenuRange" min="0" max="100" value="50">
-      <div class="cablemenu-val" id="cableMenuVal">50%</div>
+      <div class="cablemenu-label">Attenuverter</div>
+      <input type="range" id="cableMenuRange" min="-100" max="100" value="50">
+      <div class="cablemenu-val" id="cableMenuVal">+50%</div>
       <button class="cablemenu-del" id="cableMenuDel">Delete cable</button>
     </div>
     <div class="minijack-scope" id="miniScope"><canvas id="miniScopeCanvas" width="84" height="84"></canvas></div>
@@ -655,7 +655,7 @@
     const b = (m-0.5)*2; return { sine:0, tri:1-b, sqr:b };
   }
   function clone(obj){ return JSON.parse(JSON.stringify(obj)); }
-  // Knob stays the baseline; CV from cables oscillates around it (attenuator-scaled).
+  // Knob stays the baseline; CV from cables oscillates around it (attenuverter-scaled).
   function baseOf(knobId, destId){ return params[knobId]; }
 
   const knobIO = {
@@ -1704,9 +1704,20 @@
     params.pitch = clampv(freq, configById.pitch.min, configById.pitch.max);
     updateKnobVisual(configById.pitch);
     midiVelScale = clampv(vel/127, 0.05, 1);
-    sync();
-    fireAndMaybeLoop(1); fireAndMaybeLoop(2);
-    termLog(`> MIDI note ${note} (${freq.toFixed(1)}Hz)`);
+    // Fast path: set pitch/VCA immediately instead of full sync() smoothing,
+    // and fire envelopes at now (no +20ms look-ahead).
+    if(ctx && oscTri){
+      const now = ctx.currentTime;
+      const pitchBase = baseOf('pitch','pitch');
+      oscTri.frequency.setValueAtTime(pitchBase, now);
+      oscSqr.frequency.setValueAtTime(pitchBase, now);
+      oscSine.frequency.setValueAtTime(pitchBase, now);
+      subTri.frequency.setValueAtTime(pitchBase/2, now);
+      subSqr.frequency.setValueAtTime(pitchBase/2, now);
+      subSine.frequency.setValueAtTime(pitchBase/2, now);
+      if(mainG) mainG.gain.setValueAtTime(baseOf('activation','vca') * midiVelScale, now);
+      fireAndMaybeLoop(1, now); fireAndMaybeLoop(2, now);
+    }
   }
   function midiNoteOn(note, vel){
     if(!midiNoteStack.includes(note)) midiNoteStack.push(note);
@@ -1864,9 +1875,9 @@
       d: clampv(baseOf('envDecay','envDcy') + (cvLive.envDcy||0), 0.01, 3)
     };
   }
-  function fireAndMaybeLoop(which){
+  function fireAndMaybeLoop(which, when){
     if(!ctx) return;
-    fireEnvOneShot(which, ctx.currentTime + 0.02);
+    fireEnvOneShot(which, when != null ? when : ctx.currentTime + 0.02);
     const looping = which === 2 ? env2Looping : env1Looping;
     const { a, d } = envTimes(which);
     const wait = Math.max(20, (a + d) * 1000 - 15);
@@ -2897,10 +2908,12 @@
 
   function applyDepth(cable){
     cable.depthGain.gain.setTargetAtTime(cable.depth, ctx.currentTime, 0.01);
-    cable.pathEl.setAttribute('stroke-width', 2 + cable.depth*5);
-    cable.pathEl.setAttribute('opacity', 0.4 + cable.depth*0.6);
-    cable.handleEl.setAttribute('r', 5 + cable.depth*4);
-    cable.handleEl.setAttribute('fill-opacity', 0.5 + cable.depth*0.5);
+    const abs = Math.abs(cable.depth);
+    cable.pathEl.setAttribute('stroke-width', 2 + abs*5);
+    cable.pathEl.setAttribute('opacity', 0.4 + abs*0.6);
+    cable.handleEl.setAttribute('r', 5 + abs*4);
+    cable.handleEl.setAttribute('fill-opacity', 0.5 + abs*0.5);
+    cable.handleEl.setAttribute('stroke', cable.depth < 0 ? '#ff5d5d' : '#ffffff');
     updateModRing(destOwner[cable.dstId]);
   }
   function addPatch(srcId, dstId){
@@ -2922,7 +2935,7 @@
     pathEl.setAttribute('stroke', color); pathEl.setAttribute('fill', 'none'); pathEl.setAttribute('stroke-width', 4);
     pathEl.style.cursor = 'pointer';
     cableLayer.appendChild(pathEl);
-    // Attenuator handle: a dot at the cable's midpoint. Click it to open the
+    // Attenuverter handle: a dot at the cable's midpoint. Click it to open the
     // depth/polarity popup; double-click it (or click the wire itself) to delete.
     const handleEl = document.createElementNS(svgNS, 'circle');
     const coarse = window.matchMedia && window.matchMedia('(pointer:coarse)').matches;
@@ -2995,7 +3008,7 @@
     });
   }
 
-  // ---------- Cable contextual menu: click the dot for the attenuator,
+  // ---------- Cable contextual menu: click the dot for the attenuverter,
   // double-click the dot (or click the wire) to delete ----------
   let menuCable = null;
   const cableMenuEl = document.getElementById('cableMenu');
@@ -3003,7 +3016,8 @@
   const cableMenuVal = document.getElementById('cableMenuVal');
   const cableMenuDel = document.getElementById('cableMenuDel');
   function refreshCableMenuVal(){
-    cableMenuVal.innerText = Math.round(menuCable.depth*100) + '%';
+    const pct = Math.round(menuCable.depth*100);
+    cableMenuVal.innerText = (pct>=0?'+':'') + pct + '%';
   }
   function openCableMenu(cable, evt){
     menuCable = cable;
@@ -3017,7 +3031,7 @@
   function closeCableMenu(){ cableMenuEl.style.display = 'none'; menuCable = null; }
   cableMenuRange.addEventListener('input', () => {
     if(!menuCable) return;
-    menuCable.depth = clampv(parseInt(cableMenuRange.value,10)/100, 0, 1);
+    menuCable.depth = clampv(parseInt(cableMenuRange.value,10)/100, -1, 1);
     applyDepth(menuCable);
     refreshCableMenuVal();
   });
