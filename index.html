@@ -280,6 +280,10 @@
   .envbtn.on{ background:var(--amber); color:#111111; border-color:var(--amber); }
   .cluster[data-cluster="seq"]{ padding:18px 14px 12px; }
   .cluster[data-cluster="seq"] .jackitem{ width:64px; }
+  .cluster[data-cluster="seq"].seq-outs-hidden,
+  .groupbreak[data-section="seq"].seq-outs-hidden{ display:none !important; }
+  .cluster[data-cluster="modmult"]{ padding:14px 10px 10px; }
+  .cluster[data-cluster="modmult"] .jackitem{ width:56px; }
   .jack{
     width:21px; height:21px; border-radius:50%;
     border:4px solid var(--jcolor, var(--cyan));
@@ -288,6 +292,7 @@
     cursor:crosshair; flex-shrink:0; touch-action:none; z-index:3; pointer-events:auto;
   }
   .jack.dragfrom{ box-shadow:0 0 0 4px rgba(255,255,255,0.35), 0 0 14px var(--jcolor, #fff); }
+  .jack.drophover{ box-shadow:0 0 0 3px rgba(255,255,255,0.45), 0 0 12px var(--jcolor, #fff); }
   .jack.dst{ border-color:var(--jcolor, var(--violet)); }
   .jack:hover{ box-shadow:0 0 10px var(--jcolor, currentColor), inset 0 0 3px rgba(0,0,0,0.9); }
   .jack.gate{ width:14px; height:14px; border-width:3px; }
@@ -352,10 +357,10 @@
   <div class="aboutpopup" id="aboutPopup">
     <div class="aboutpopup-close" id="aboutClose">&times;</div>
     <div class="aboutpopup-body">
-      <p>Cyan jacks are outputs, violet jacks are inputs. Patch <b>from output → input</b> (inputs stay dim until you drag from an output). On phones: tap an output, then tap an input. Click the dot on a cable for its attenuverter, double-click the dot (or click the cable itself) to remove it.</p>
-      <p>Osc B is independent of Osc A. Set Osc B→A Mode to <b>Mix</b> and use <b>Amt / Xfade</b> to crossfade A↔B in the main path; other modes (FM / AM / Ring / Fold / Sync) are modulation, not a blend.</p>
+      <p>Cyan jacks are outputs, violet jacks are inputs. Patch <b>from output → input</b> (inputs stay dim until you drag from an output). On phones: tap an output, then tap an input — or drag a cable onto a knob (hits its primary inlet) or jack. Each cable has attenuverter dots near both ends; click for depth/polarity, double-click (or click the cable) to remove.</p>
+      <p>Osc B is independent of Osc A. Set Osc B→A Mode to <b>Mix</b> and use <b>Amt / Xfade</b> to crossfade A↔B in the main path; other modes (FM / AM / Ring / Fold / Sync) are modulation, not a blend. While a MIDI note is held, Pitch and Osc B Pitch become ±semitone offsets (0 = unison with the MIDI note); otherwise they are absolute Hz.</p>
       <p>Commands (type into the field by the scope, or use the keyboard on desktop): <b>0-9</b> latch a preset (pad 0 is the default), <b>ed3</b> arm/exit edit mode on preset 3, <b>xy</b> toggle the Lissajous scope, <b>rd</b> randomize, <b>xprt</b> start/stop recording (16-bit wav, or 24-bit in hq), <b>hq</b> toggle high-quality audio, <b>mic</b> toggle microphone input, <b>n3name</b> name preset 3, <b>psave/pload/pxprt/pimprt</b> persist or export/import presets, <b>fllp/flhp/flbp/flnt/floff</b> set Filter2's mode, <b>icons</b> toggle icon/text labels.</p>
-      <p>Envelopes loop by default. <b>TRIG</b> fires one, <b>LOOP</b> turns looping off or on. Sequencer lives on its own SEQ outlets (Pitch / CV / Gate / Clock) — patch Seq Pitch to Pitch, Fold, Osc B, or Filter as you like. <b>sq</b> status, <b>sqplay/sqstop</b>, <b>sqmode pitch|trig</b>, <b>bpm120</b>, <b>sq n c4 e4 . g4</b> notes, <b>sq d 8 8 4</b> durations, <b>sq p 0 0 3</b> presets (values only), <b>sq e 5 8</b> Euclidean, <b>sqdiv16 sqlen16 sqclear sqshow</b>. Saved with presets.</p>
+      <p>Envelopes loop by default. <b>TRIG</b> fires one, <b>LOOP</b> turns looping off or on. SEQ outlets (Pitch / CV / Gate / Clock) appear at the top when a MIDI device is connected or the sequencer has a pattern / is playing — patch Seq Pitch to Pitch, Fold, Osc B, or Filter as you like. A second row of LFO / Env / Random outs sits above the delay section. <b>sq</b> status, <b>sqplay/sqstop</b>, <b>sqmode pitch|trig</b>, <b>bpm120</b>, <b>sq n c4 e4 . g4</b> notes, <b>sq d 8 8 4</b> durations, <b>sq p 0 0 3</b> presets (values only), <b>sq e 5 8</b> Euclidean, <b>sqdiv16 sqlen16 sqclear sqshow</b>. Saved with presets.</p>
       <p>MIC arms a low-latency external input (echo cancel / AGC off). Patch the Mic out jack anywhere, or feed Ext In to run the mic through the filter / fold / delay / FX path.</p>
       <p>Serve this folder over HTTP (e.g. <code>python3 -m http.server</code>) so AudioWorklets can load from <code>omchs-worklets.js</code>. Mic also needs HTTPS or localhost.</p>
       <p><!-- more notes to come --></p>
@@ -461,6 +466,8 @@
   let lastDriveCurve = null;
   let midiNoteStack = [];
   let midiVelScale = 1;
+  let midiSemiA = 0, midiSemiB = 0; // ±semitone offsets while a MIDI note is held
+  let midiDevicePresent = false;
   let seqBpm = 120;
   let seqMode = 'trig';
   let seqDiv = 16;
@@ -545,7 +552,7 @@
     activation:'◉', envVcaDepth:'▽', lpgAmount:'◐', drive:'⌁', bitcrush:'▦', pan:'⇔',
     micLevel:'↧',
   };
-  const clusterIcon = { env1:'⌃₁', env2:'⌃₂', lfo1:'∿₁', lfo2:'∿₂', oscA:'Α', oscB:'Β', seq:'SEQ' };
+  const clusterIcon = { env1:'⌃₁', env2:'⌃₂', lfo1:'∿₁', lfo2:'∿₂', oscA:'Α', oscB:'Β', seq:'SEQ', modmult:'MOD' };
   const jackIcon = {
     extin:'↧', mic:'↥',
     loopenv:'⌃', loopenv2:'⌃', env1gate:'▮', env2gate:'▮',
@@ -714,6 +721,11 @@
 
   // ---------- Knobs clustered by module (env1 / env2 / osc A / osc B / lfo…) ----------
   const groups = [
+    { key:'seq', items:[
+      {t:'cluster', id:'seq', label:'SEQ', items:[
+        {t:'src', id:'seqpitch'}, {t:'src', id:'seqcv'}, {t:'src', id:'seqgate'}, {t:'src', id:'seqclk'},
+      ]},
+    ]},
     { key:'mod', items:[
       {t:'cluster', id:'env1', label:'ENV1', items:[
         {t:'knob', id:'envAttack'}, {t:'knob', id:'envDecay'}, {t:'knob', id:'envCurve'},
@@ -743,6 +755,12 @@
       {t:'knob', id:'flCutoff'}, {t:'knob', id:'flReso'}, {t:'dst', id:'extin'},
     ]},
     { key:'delay', items:[
+      {t:'cluster', id:'modmult', label:'MOD', items:[
+        {t:'srcalias', id:'lfo1'}, {t:'srcalias', id:'lfo2'},
+        {t:'srcalias', id:'loopenv'}, {t:'srcalias', id:'loopenv2'},
+        {t:'srcalias', id:'env1gate'}, {t:'srcalias', id:'env2gate'},
+        {t:'srcalias', id:'randgen1'}, {t:'srcalias', id:'randgen2'},
+      ]},
       {t:'knob', id:'mix'}, {t:'knob', id:'time'}, {t:'knob', id:'spread'},
       {t:'knob', id:'smear'}, {t:'knob', id:'decay'}, {t:'knob', id:'width'},
     ]},
@@ -750,11 +768,6 @@
       {t:'knob', id:'absorb'}, {t:'knob', id:'absorbReso'},
       {t:'knob', id:'envVcaDepth'}, {t:'knob', id:'lpgAmount'}, {t:'knob', id:'drive'},
       {t:'knob', id:'bitcrush'}, {t:'knob', id:'pan'}, {t:'knob', id:'activation'},
-    ]},
-    { key:'seq', items:[
-      {t:'cluster', id:'seq', label:'SEQ', items:[
-        {t:'src', id:'seqpitch'}, {t:'src', id:'seqcv'}, {t:'src', id:'seqgate'}, {t:'src', id:'seqclk'},
-      ]},
     ]},
   ];
   const plateOrder = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
@@ -815,19 +828,53 @@
   }
 
   function pctOf(c, v){ return (v - c.min) / (c.max - c.min); }
+  function isPitchSemi(c){
+    return (c.id === 'pitch' || c.id === 'pitchB') && midiNoteStack.length > 0;
+  }
+  function knobMinMax(c){
+    if(isPitchSemi(c)) return { min:-24, max:24 };
+    return { min:c.min, max:c.max };
+  }
+  function knobValue(c){
+    if(isPitchSemi(c)) return c.id === 'pitch' ? midiSemiA : midiSemiB;
+    return params[c.id];
+  }
+  function setKnobValue(c, v){
+    if(isPitchSemi(c)){
+      if(c.id === 'pitch') midiSemiA = v; else midiSemiB = v;
+    } else params[c.id] = v;
+  }
+  function midiNoteHz(note){ return 440 * Math.pow(2, (note-69)/12); }
+  function midiBaseHz(){
+    if(!midiNoteStack.length) return null;
+    return midiNoteHz(midiNoteStack[midiNoteStack.length - 1]);
+  }
+  function effectivePitchA(){
+    const base = midiBaseHz();
+    if(base != null) return Math.max(20, base * Math.pow(2, midiSemiA/12));
+    return baseOf('pitch','pitch');
+  }
+  function effectivePitchB(){
+    const base = midiBaseHz();
+    if(base != null) return Math.max(5, base * Math.pow(2, midiSemiB/12));
+    return baseOf('pitchB','fmb');
+  }
   function updateKnobVisual(c){
-    const v = params[c.id];
-    const pct = pctOf(c, v);
+    const { min, max } = knobMinMax(c);
+    const v = knobValue(c);
+    const pct = (v - min) / (max - min);
     const dial = document.getElementById('d-'+c.id);
+    if(!dial) return;
     dial.style.transform = `rotate(${pct*270-135}deg)`;
     dial.closest('.dialbox').querySelector('.ring').style.setProperty('--pct', pct);
     updateModRing(c.id);
   }
-  function makeJack(kind, id, label){
+  function makeJack(kind, id, label, opts){
+    opts = opts || {};
     const j = document.createElement('div');
     j.className = 'jack' + (kind==='dst' ? ' dst' : '') + (gateJackIds.has(id) ? ' gate' : '');
     j.dataset.kind = kind; j.dataset.id = id;
-    j.id = `jack-${kind==='dst'?'dst':'src'}-${id}`;
+    j.id = opts.domId || `jack-${kind==='dst'?'dst':'src'}-${id}`;
     j.title = label || id;
     const col = jackColorFor(id);
     if(col) j.style.setProperty('--jcolor', col);
@@ -868,6 +915,7 @@
     const io = knobIO[c.id] || {};
     const wrap = document.createElement('div');
     wrap.className = `knob-wrap size-${c.size}`;
+    wrap.dataset.knobId = c.id;
     // Envelopes and LFOs get their own similar-but-distinct blue shades so
     // they're easy to tell apart from each other at a glance
     let accent = accentBySection[c.section];
@@ -937,26 +985,36 @@
     const baseRange = c.size === 'lg' ? 190 : c.size === 'md' ? 150 : 115;
     const coarsePtr = () => window.matchMedia && window.matchMedia('(pointer:coarse)').matches;
     dial.addEventListener('pointerdown', e => {
-      dial.setPointerCapture(e.pointerId); dragging = true; didDrag = false; sy = e.clientY; sx = e.clientX; sv = params[c.id];
+      dial.setPointerCapture(e.pointerId); dragging = true; didDrag = false; sy = e.clientY; sx = e.clientX; sv = knobValue(c);
       if(stepNames) showStepPopup(dial, stepNames, params[c.id]);
     });
     dial.addEventListener('pointermove', e => {
       if(!dragging) return;
-      const range = c.max - c.min;
+      const { min, max } = knobMinMax(c);
+      const range = max - min;
       const div = (coarsePtr() ? baseRange * 0.72 : baseRange) * (e.shiftKey ? 5 : 1);
       // Vertical drag (desktop feel) plus horizontal on touch so thumbs aren't stuck to one axis
       const dy = sy - e.clientY;
       const dx = e.clientX - sx;
       const delta = coarsePtr() ? (dy + dx * 0.85) : dy;
-      params[c.id] = Math.max(c.min, Math.min(c.max, sv + (delta * (range/div))));
+      setKnobValue(c, Math.max(min, Math.min(max, sv + (delta * (range/div)))));
       didDrag = true;
       updateKnobVisual(c); sync(); recordIfEditing();
       if(stepNames) showStepPopup(dial, stepNames, params[c.id]);
     });
-    function logVal(v){ return stepNames ? stepNames[Math.round(clampv(v,0,stepNames.length-1))] : v.toFixed(2); }
-    dial.addEventListener('pointerup', () => { dragging = false; hideStepPopup(); if(didDrag) termLog(`> ${c.label}: ${logVal(params[c.id])}`); });
+    function logVal(v){
+      if(stepNames) return stepNames[Math.round(clampv(v,0,stepNames.length-1))];
+      if(isPitchSemi(c)){ const n = Math.round(v); return (n>=0?'+':'') + n + ' st'; }
+      return v.toFixed(2);
+    }
+    dial.addEventListener('pointerup', () => { dragging = false; hideStepPopup(); if(didDrag) termLog(`> ${c.label}: ${logVal(knobValue(c))}`); });
     dial.addEventListener('pointerleave', () => { if(!dragging) hideStepPopup(); });
-    dial.addEventListener('dblclick', () => { params[c.id] = c.def; updateKnobVisual(c); sync(); recordIfEditing(); termLog(`> ${c.label} reset: ${logVal(c.def)}`); });
+    dial.addEventListener('dblclick', () => {
+      if(isPitchSemi(c)) setKnobValue(c, 0);
+      else setKnobValue(c, c.def);
+      updateKnobVisual(c); sync(); recordIfEditing();
+      termLog(`> ${c.label} reset: ${logVal(knobValue(c))}`);
+    });
     return wrap;
   }
   function buildPlate(idx){
@@ -993,14 +1051,18 @@
     wrap.appendChild(trig); wrap.appendChild(loop);
     return wrap;
   }
-  function buildJackItem(kind, id, label){
+  function buildJackItem(kind, id, label, opts){
+    opts = opts || {};
     const wrap = document.createElement('div'); wrap.className = 'jackitem';
-    const jack = makeJack(kind, id, label);
+    const jack = makeJack(kind, id, label, opts);
     const lab = document.createElement('div'); lab.className = 'jacklabel';
     setLabelText(lab, jackIcon[id] || label, label);
     lab.title = label;
     wrap.appendChild(jack); wrap.appendChild(lab);
     return wrap;
+  }
+  function buildSrcAlias(id){
+    return buildJackItem('src', id, srcLabel[id] || id, { domId: `jack-src-${id}-delay` });
   }
   function tagSection(el, section){
     if(section) el.dataset.section = section;
@@ -1012,6 +1074,7 @@
       el = document.createElement('div');
       el.className = 'cluster';
       el.dataset.cluster = item.id;
+      if(item.id === 'seq') el.classList.add('seq-outs-hidden');
       const title = document.createElement('div');
       title.className = 'cluster-title';
       const cText = item.label || item.id.toUpperCase();
@@ -1021,11 +1084,13 @@
       (item.items || []).forEach(sub => {
         if(sub.t === 'knob') el.appendChild(buildKnob(configById[sub.id], { noScatter: true }));
         else if(sub.t === 'src') el.appendChild(buildJackItem('src', sub.id, srcLabel[sub.id] || sub.id));
+        else if(sub.t === 'srcalias') el.appendChild(buildSrcAlias(sub.id));
         else if(sub.t === 'dst') el.appendChild(buildJackItem('dst', sub.id, destLabel[sub.id] || sub.id));
         else if(sub.t === 'envctrls') el.appendChild(buildEnvCtrls(sub.which));
       });
     } else if(item.t === 'knob') el = buildKnob(configById[item.id]);
     else if(item.t === 'src') el = buildJackItem('src', item.id, srcLabel[item.id] || item.id);
+    else if(item.t === 'srcalias') el = buildSrcAlias(item.id);
     else if(item.t === 'dst') el = buildJackItem('dst', item.id, destLabel[item.id] || item.id);
     else if(item.t === 'randgen') el = buildRandGen(item.id);
     if(el){ tagSection(el, section); host.appendChild(el); }
@@ -1060,6 +1125,7 @@
   groups.forEach(g => {
     const brk = document.createElement('div'); brk.className = 'groupbreak';
     tagSection(brk, g.key);
+    if(g.key === 'seq') brk.classList.add('seq-outs-hidden');
     itemsHost.appendChild(brk);
     g.items.forEach(item => appendGroupItem(item, g.key, itemsHost));
   });
@@ -1069,6 +1135,7 @@
   itemsHost.appendChild(platesRow);
   config.forEach(updateKnobVisual);
   applyLabelMode();
+  updateSeqOutVisibility();
 
   // Mobile section tabs: filter the dense faceplate down to one row of controls
   const sectTabsEl = document.getElementById('sectTabs');
@@ -1559,7 +1626,7 @@
       const effSpread = clampv(baseOf('spread','spread') + (cvLive.spread||0), 0, 1);
       const effSmear = clampv(baseOf('smear','smear') + (cvLive.smear||0), 0, 0.3);
       const drift = (Math.random()-0.5) * effInstability * 6;
-      const pitchBase = baseOf('pitch','pitch');
+      const pitchBase = effectivePitchA();
       oscTri.frequency.setTargetAtTime(pitchBase + drift, ctx.currentTime, 0.03);
       oscSqr.frequency.setTargetAtTime(pitchBase + drift, ctx.currentTime, 0.03);
       oscSine.frequency.setTargetAtTime(pitchBase + drift, ctx.currentTime, 0.03);
@@ -1568,7 +1635,7 @@
       subSine.frequency.setTargetAtTime((pitchBase + drift)/2, ctx.currentTime, 0.03);
       // Osc B drifts independently but by the same amount — true twins, not clones
       const driftB = (Math.random()-0.5) * effInstability * 6;
-      const pitchBBase = baseOf('pitchB','fmb');
+      const pitchBBase = effectivePitchB();
       oscBTri.frequency.setTargetAtTime(pitchBBase + driftB, ctx.currentTime, 0.03);
       oscBSqr.frequency.setTargetAtTime(pitchBBase + driftB, ctx.currentTime, 0.03);
       oscBSine.frequency.setTargetAtTime(pitchBBase + driftB, ctx.currentTime, 0.03);
@@ -1700,46 +1767,81 @@
     stopEnvLoop(1); stopEnvLoop(2);
   }
   function midiApplyNote(note, vel){
-    const freq = 440 * Math.pow(2, (note-69)/12);
-    params.pitch = clampv(freq, configById.pitch.min, configById.pitch.max);
-    updateKnobVisual(configById.pitch);
     midiVelScale = clampv(vel/127, 0.05, 1);
     // Fast path: set pitch/VCA immediately instead of full sync() smoothing,
     // and fire envelopes at now (no +20ms look-ahead).
     if(ctx && oscTri){
       const now = ctx.currentTime;
-      const pitchBase = baseOf('pitch','pitch');
+      const pitchBase = effectivePitchA();
+      const pitchBBase = effectivePitchB();
       oscTri.frequency.setValueAtTime(pitchBase, now);
       oscSqr.frequency.setValueAtTime(pitchBase, now);
       oscSine.frequency.setValueAtTime(pitchBase, now);
       subTri.frequency.setValueAtTime(pitchBase/2, now);
       subSqr.frequency.setValueAtTime(pitchBase/2, now);
       subSine.frequency.setValueAtTime(pitchBase/2, now);
+      if(oscBTri){
+        oscBTri.frequency.setValueAtTime(pitchBBase, now);
+        oscBSqr.frequency.setValueAtTime(pitchBBase, now);
+        oscBSine.frequency.setValueAtTime(pitchBBase, now);
+      }
       if(mainG) mainG.gain.setValueAtTime(baseOf('activation','vca') * midiVelScale, now);
       fireAndMaybeLoop(1, now); fireAndMaybeLoop(2, now);
     }
   }
   function midiNoteOn(note, vel){
+    const entering = midiNoteStack.length === 0;
     if(!midiNoteStack.includes(note)) midiNoteStack.push(note);
+    if(entering){
+      midiSemiA = 0; midiSemiB = 0;
+      updateKnobVisual(configById.pitch);
+      updateKnobVisual(configById.pitchB);
+    }
     midiApplyNote(note, vel);
   }
   function midiNoteOff(note){
+    const leaving = midiNoteStack.length === 1 && midiNoteStack[0] === note;
+    const releaseNote = note;
     midiNoteStack = midiNoteStack.filter(n => n !== note);
     if(midiNoteStack.length === 0){
+      if(leaving){
+        const base = midiNoteHz(releaseNote);
+        params.pitch = clampv(base * Math.pow(2, midiSemiA/12), configById.pitch.min, configById.pitch.max);
+        params.pitchB = clampv(base * Math.pow(2, midiSemiB/12), configById.pitchB.min, configById.pitchB.max);
+        midiSemiA = 0; midiSemiB = 0;
+        updateKnobVisual(configById.pitch);
+        updateKnobVisual(configById.pitchB);
+      }
       if(!env1Looping) stopEnvLoop(1);
       if(!env2Looping) stopEnvLoop(2);
       midiVelScale = 1;
       if(mainG) mainG.gain.setTargetAtTime(baseOf('activation','vca'), ctx.currentTime, 0.02);
+      if(ctx) sync();
       return;
     }
     const last = midiNoteStack[midiNoteStack.length - 1];
     midiApplyNote(last, 100);
   }
+  function updateSeqOutVisibility(){
+    const show = midiDevicePresent || seqPlaying || (seqEvents && seqEvents.length > 0);
+    document.querySelectorAll('.cluster[data-cluster="seq"], .groupbreak[data-section="seq"]').forEach(el => {
+      el.classList.toggle('seq-outs-hidden', !show);
+    });
+    const seqTab = document.querySelector('#sectTabs button[data-sect="seq"]');
+    if(seqTab) seqTab.style.display = show ? '' : 'none';
+    requestAnimationFrame(() => { updateCables(); updateNormalizedPaths(); });
+  }
   function setupMidi(){
     if(midiReady) return;
     midiReady = true;
-    if(!navigator.requestMIDIAccess){ termLog('> MIDI not supported in this browser.'); return; }
+    if(!navigator.requestMIDIAccess){ termLog('> MIDI not supported in this browser.'); updateSeqOutVisibility(); return; }
     navigator.requestMIDIAccess().then(access => {
+      const refreshMidiPresence = () => {
+        midiDevicePresent = Array.from(access.inputs.values()).length > 0;
+        updateSeqOutVisibility();
+      };
+      refreshMidiPresence();
+      access.onstatechange = refreshMidiPresence;
       const inputs = Array.from(access.inputs.values());
       if(!inputs.length){ termLog('> MIDI: no input devices found.'); return; }
       inputs.forEach(input => {
@@ -1752,7 +1854,7 @@
         };
         termLog(`> MIDI: connected to ${input.name || 'input device'}`);
       });
-    }).catch(() => termLog('> MIDI access denied or unavailable.'));
+    }).catch(() => { termLog('> MIDI access denied or unavailable.'); updateSeqOutVisibility(); });
   }
 
   function applyWaveMorphs(){
@@ -1774,7 +1876,7 @@
   function sync(){
     if(!ctx) return;
     const now = ctx.currentTime;
-    const pitchBase = baseOf('pitch','pitch');
+    const pitchBase = effectivePitchA();
     oscTri.frequency.setTargetAtTime(pitchBase, now, 0.01);
     oscSqr.frequency.setTargetAtTime(pitchBase, now, 0.01);
     oscSine.frequency.setTargetAtTime(pitchBase, now, 0.01);
@@ -1785,7 +1887,7 @@
     subG.gain.setTargetAtTime(baseOf('sub','subton'), now, 0.02);
     applyWaveMorphs();
 
-    const pitchBBase = baseOf('pitchB','fmb');
+    const pitchBBase = effectivePitchB();
     oscBTri.frequency.setTargetAtTime(pitchBBase, now, 0.01);
     oscBSqr.frequency.setTargetAtTime(pitchBBase, now, 0.01);
     oscBSine.frequency.setTargetAtTime(pitchBBase, now, 0.01);
@@ -2215,9 +2317,10 @@
         patchCables.filter(cb => cb.dstId === destId).forEach(cb => { modUnits += Math.abs(cb.depth) * sens; });
       });
     }
-    const range = c.max - c.min;
+    const range = (() => { const mm = knobMinMax(c); return mm.max - mm.min; })();
     const modPct = range > 0 ? Math.min(0.5, modUnits / range) : 0;
-    const pct = pctOf(c, params[knobId]);
+    const { min, max } = knobMinMax(c);
+    const pct = (knobValue(c) - min) / (max - min);
     const lo = Math.max(0, pct - modPct), hi = Math.min(1, pct + modPct);
     modring.style.setProperty('--modA', (lo*270)+'deg');
     modring.style.setProperty('--modB', (hi*270)+'deg');
@@ -2421,6 +2524,7 @@
     if(Array.isArray(s.events)){
       seqEvents = s.events.map(e => seqNormalizeEvent(e));
     }
+    updateSeqOutVisibility();
   }
   function seqNormalizeEvent(e){
     e = e || {};
@@ -2568,6 +2672,7 @@
     seqClearTimer();
     seqTimer = setInterval(seqScheduleAhead, 25);
     seqScheduleAhead();
+    updateSeqOutVisibility();
     if(!quiet) termLog('> ' + seqStatusLine());
   }
   function seqStop(quiet){
@@ -2578,6 +2683,7 @@
       try { seqGateSrc.offset.setTargetAtTime(0, ctx.currentTime, 0.01); } catch(_){}
     }
     refreshPadLeds();
+    updateSeqOutVisibility();
     if(!quiet) termLog('> ' + seqStatusLine());
   }
   function seqSetNotes(tokens){
@@ -2594,6 +2700,7 @@
       seqEvents[i].note = n.note;
       seqEvents[i].hz = n.hz;
     });
+    updateSeqOutVisibility();
     termLog(`> sq n ${parsed.length} · ` + seqStatusLine());
   }
   function seqSetDurs(tokens){
@@ -2606,6 +2713,7 @@
     }
     seqGrow(beats.length);
     beats.forEach((b, i) => { seqEvents[i].beats = b; });
+    updateSeqOutVisibility();
     termLog(`> sq d ${beats.map(formatBeats).join(' ')}`);
   }
   function seqSetPresets(tokens){
@@ -2618,6 +2726,7 @@
     }
     seqGrow(vals.length);
     vals.forEach((slot, i) => { seqEvents[i].preset = slot; });
+    updateSeqOutVisibility();
     termLog(`> sq p ${vals.length} steps`);
   }
   function seqSetEuclid(tokens){
@@ -2633,6 +2742,7 @@
       const prev = old[i] || seqDefaultEvent();
       return seqNormalizeEvent({ ...prev, beats, rest: !hit });
     });
+    updateSeqOutVisibility();
     termLog(`> sq e ${hits}/${seqEvents.length}` + (rot ? ` r${rot}` : '') + ` · /${seqDiv}`);
   }
   function seqShow(){
@@ -2653,6 +2763,7 @@
     if(compact === 'sqstop' || (parts[0]==='sq' && parts[1]==='stop')){ seqStop(); return; }
     if(compact === 'sqclear' || (parts[0]==='sq' && parts[1]==='clear')){
       seqStop(true); seqEvents = []; seqIndex = 0;
+      updateSeqOutVisibility();
       termLog('> sq cleared'); return;
     }
     if(compact === 'sqshow' || (parts[0]==='sq' && parts[1]==='show')){ seqShow(); return; }
@@ -2672,6 +2783,7 @@
     if(lenM && lenM[1] != null && /^\d+$/.test(String(lenM[1]))){
       const n = clampv(parseInt(lenM[1], 10), 1, 64);
       seqGrow(n); if(seqEvents.length > n) seqEvents.length = n;
+      updateSeqOutVisibility();
       termLog(`> sq len ${seqEvents.length}`); return;
     }
     const divM = compact.match(/^sqdiv(\d+)$/) || (parts[0]==='sq' && parts[1]==='div' ? ['', parts[2]] : null);
@@ -2802,12 +2914,56 @@
       j.classList.toggle('tapdest', j.dataset.kind !== fromJack.dataset.kind);
     });
   }
+  function clearDragHover(){
+    document.querySelectorAll('.jack.drophover').forEach(j => j.classList.remove('drophover'));
+  }
+  function setDragHover(jack){
+    document.querySelectorAll('.jack.drophover').forEach(j => {
+      if(j !== jack) j.classList.remove('drophover');
+    });
+    if(jack) jack.classList.add('drophover');
+  }
+  function jackFromKnobAtPoint(x, y, wantKind){
+    const stack = document.elementsFromPoint(x, y);
+    for(const el of stack){
+      const wrap = el.closest && el.closest('.knob-wrap');
+      if(!wrap || !wrap.dataset.knobId) continue;
+      const io = knobIO[wrap.dataset.knobId];
+      if(!io) continue;
+      if(wantKind === 'dst' && io.in && io.in.length){
+        return document.getElementById('jack-dst-' + io.in[0]);
+      }
+      if(wantKind === 'src' && io.out){
+        return document.getElementById('jack-src-' + io.out);
+      }
+    }
+    return null;
+  }
+  function findPatchDropTarget(x, y, origin){
+    if(!origin) return null;
+    const wantKind = origin.dataset.kind === 'src' ? 'dst' : 'src';
+    const stack = (document.elementsFromPoint && document.elementsFromPoint(x, y)) || [];
+    for(const el of stack){
+      const jack = el.classList && el.classList.contains('jack') ? el : (el.closest && el.closest('.jack'));
+      if(jack && jack !== origin && jack.dataset.kind === wantKind) return jack;
+    }
+    const radius = isCoarsePointer() ? 48 : 36;
+    let best = null, bestDist = radius;
+    document.querySelectorAll('.jack').forEach(j => {
+      if(j === origin || j.dataset.kind !== wantKind) return;
+      const r = j.getBoundingClientRect();
+      const d = Math.hypot(x - (r.left + r.width/2), y - (r.top + r.height/2));
+      if(d < bestDist){ bestDist = d; best = j; }
+    });
+    if(best) return best;
+    return jackFromKnobAtPoint(x, y, wantKind);
+  }
   function tryCompletePatch(a, b){
     if(!a || !b || a === b) return false;
     if(a.dataset.kind === b.dataset.kind) return false;
-    const srcId = a.dataset.kind === 'src' ? a.dataset.id : b.dataset.id;
-    const dstId = a.dataset.kind === 'dst' ? a.dataset.id : b.dataset.id;
-    addPatch(srcId, dstId);
+    const srcEl = a.dataset.kind === 'src' ? a : b;
+    const dstEl = a.dataset.kind === 'dst' ? a : b;
+    addPatch(srcEl.dataset.id, dstEl.dataset.id, { srcElId: srcEl.id, dstElId: dstEl.id });
     return true;
   }
 
@@ -2816,11 +2972,16 @@
     const r = el.getBoundingClientRect(), p = faceRect();
     return { x: r.left + r.width/2 - p.left, y: r.top + r.height/2 - p.top };
   }
-  function bezierMid(p1, p2){
+  function bezierPoint(p1, p2, t){
     const dx = Math.max(40, Math.abs(p2.x-p1.x)*0.5);
     const c1 = { x:p1.x+dx, y:p1.y }, c2 = { x:p2.x-dx, y:p2.y };
-    return { x: 0.125*p1.x+0.375*c1.x+0.375*c2.x+0.125*p2.x, y: 0.125*p1.y+0.375*c1.y+0.375*c2.y+0.125*p2.y };
+    const u = 1 - t;
+    return {
+      x: u*u*u*p1.x + 3*u*u*t*c1.x + 3*u*t*t*c2.x + t*t*t*p2.x,
+      y: u*u*u*p1.y + 3*u*u*t*c1.y + 3*u*t*t*c2.y + t*t*t*p2.y
+    };
   }
+  function bezierMid(p1, p2){ return bezierPoint(p1, p2, 0.5); }
   function bezier(p1, p2){
     const dx = Math.max(40, Math.abs(p2.x-p1.x)*0.5);
     return `M ${p1.x} ${p1.y} C ${p1.x+dx} ${p1.y}, ${p2.x-dx} ${p2.y}, ${p2.x} ${p2.y}`;
@@ -2848,12 +3009,13 @@
         const moved = jackDragMeta
           ? Math.hypot(e.clientX - jackDragMeta.x, e.clientY - jackDragMeta.y)
           : 99;
-        const target = document.elementFromPoint(e.clientX, e.clientY);
+        const x = e.clientX, y = e.clientY;
         dragTemp.remove(); dragTemp = null;
         dragOrigin.classList.remove('dragfrom');
         const origin = dragOrigin;
         dragOrigin = null;
         jackDragMeta = null;
+        clearDragHover();
 
         // Touch: short tap = two-step patch (source, then destination)
         if(isCoarsePointer() && moved < 14){
@@ -2884,14 +3046,14 @@
 
         clearTapPatch();
         setPatchHighlight(null);
-        if(target && target.classList.contains('jack') && target.dataset.kind !== origin.dataset.kind){
-          tryCompletePatch(origin, target);
-        }
+        const target = findPatchDropTarget(x, y, origin);
+        if(target) tryCompletePatch(origin, target);
       });
       j.addEventListener('pointercancel', () => {
         if(dragTemp){ dragTemp.remove(); dragTemp = null; }
         if(dragOrigin){ dragOrigin.classList.remove('dragfrom'); dragOrigin = null; }
         jackDragMeta = null;
+        clearDragHover();
         if(!tapPatchJack) setPatchHighlight(null);
       });
     });
@@ -2904,6 +3066,8 @@
     }
     const p = faceRect();
     dragTemp.setAttribute('d', bezier(jackCenter(dragOrigin), { x: e.clientX - p.left, y: e.clientY - p.top }));
+    const hover = findPatchDropTarget(e.clientX, e.clientY, dragOrigin);
+    setDragHover(hover);
   });
 
   function applyDepth(cable){
@@ -2911,12 +3075,16 @@
     const abs = Math.abs(cable.depth);
     cable.pathEl.setAttribute('stroke-width', 2 + abs*5);
     cable.pathEl.setAttribute('opacity', 0.4 + abs*0.6);
-    cable.handleEl.setAttribute('r', 5 + abs*4);
-    cable.handleEl.setAttribute('fill-opacity', 0.5 + abs*0.5);
-    cable.handleEl.setAttribute('stroke', cable.depth < 0 ? '#ff5d5d' : '#ffffff');
+    [cable.handleSrc, cable.handleDst].forEach(h => {
+      if(!h) return;
+      h.setAttribute('r', 5 + abs*4);
+      h.setAttribute('fill-opacity', 0.5 + abs*0.5);
+      h.setAttribute('stroke', cable.depth < 0 ? '#ff5d5d' : '#ffffff');
+    });
     updateModRing(destOwner[cable.dstId]);
   }
-  function addPatch(srcId, dstId){
+  function addPatch(srcId, dstId, opts){
+    opts = opts || {};
     if(!ctx) return;
     if(patchCables.some(c => c.srcId === srcId && c.dstId === dstId)) return;
     const srcNode = getSourceNode(srcId);
@@ -2935,18 +3103,28 @@
     pathEl.setAttribute('stroke', color); pathEl.setAttribute('fill', 'none'); pathEl.setAttribute('stroke-width', 4);
     pathEl.style.cursor = 'pointer';
     cableLayer.appendChild(pathEl);
-    // Attenuverter handle: a dot at the cable's midpoint. Click it to open the
-    // depth/polarity popup; double-click it (or click the wire itself) to delete.
-    const handleEl = document.createElementNS(svgNS, 'circle');
+    // Attenuverter handles near both ends so knobs can't bury the only hit target
     const coarse = window.matchMedia && window.matchMedia('(pointer:coarse)').matches;
-    handleEl.setAttribute('r', coarse ? 11 : 8); handleEl.setAttribute('fill', color); handleEl.setAttribute('stroke', '#fff');
-    handleEl.setAttribute('stroke-width', 1.5); handleEl.style.cursor = 'pointer';
-    cableLayer.appendChild(handleEl);
-    const cable = { srcId, dstId, depthGain, sensGains, pathEl, handleEl, depth: 0.5 };
+    function makeHandle(){
+      const h = document.createElementNS(svgNS, 'circle');
+      h.setAttribute('r', coarse ? 11 : 8); h.setAttribute('fill', color); h.setAttribute('stroke', '#fff');
+      h.setAttribute('stroke-width', 1.5); h.style.cursor = 'pointer';
+      cableLayer.appendChild(h);
+      return h;
+    }
+    const handleSrc = makeHandle();
+    const handleDst = makeHandle();
+    const cable = {
+      srcId, dstId, depthGain, sensGains, pathEl, handleSrc, handleDst, depth: 0.5,
+      srcElId: opts.srcElId || ('jack-src-' + srcId),
+      dstElId: opts.dstElId || ('jack-dst-' + dstId)
+    };
     pathEl.addEventListener('click', () => removePatch(cable));
-    handleEl.addEventListener('pointerdown', e => e.stopPropagation());
-    handleEl.addEventListener('click', e => { e.stopPropagation(); openCableMenu(cable, e); });
-    handleEl.addEventListener('dblclick', e => { e.stopPropagation(); closeCableMenu(); removePatch(cable); });
+    [handleSrc, handleDst].forEach(h => {
+      h.addEventListener('pointerdown', e => e.stopPropagation());
+      h.addEventListener('click', e => { e.stopPropagation(); openCableMenu(cable, e); });
+      h.addEventListener('dblclick', e => { e.stopPropagation(); closeCableMenu(); removePatch(cable); });
+    });
     patchCables.push(cable);
     applyDepth(cable);
     buzz(10);
@@ -2959,7 +3137,9 @@
     cable.depthGain.disconnect();
     cable.sensGains.forEach(g => g.disconnect());
     cable.pathEl.remove();
-    cable.handleEl.remove();
+    if(cable.handleSrc) cable.handleSrc.remove();
+    if(cable.handleDst) cable.handleDst.remove();
+    if(cable.handleEl) cable.handleEl.remove();
     patchCables = patchCables.filter(c => c !== cable);
     updateModRing(destOwner[cable.dstId]);
     if(menuCable === cable) closeCableMenu();
@@ -2967,12 +3147,15 @@
   }
   function updateCables(){
     patchCables.forEach(c => {
-      const s = document.getElementById('jack-src-'+c.srcId), d = document.getElementById('jack-dst-'+c.dstId);
+      const s = document.getElementById(c.srcElId || ('jack-src-'+c.srcId));
+      const d = document.getElementById(c.dstElId || ('jack-dst-'+c.dstId));
       if(!s || !d) return;
       const p1 = jackCenter(s), p2 = jackCenter(d);
       c.pathEl.setAttribute('d', bezier(p1, p2));
-      const mid = bezierMid(p1, p2);
-      c.handleEl.setAttribute('cx', mid.x); c.handleEl.setAttribute('cy', mid.y);
+      const nearSrc = bezierPoint(p1, p2, 0.18);
+      const nearDst = bezierPoint(p1, p2, 0.82);
+      if(c.handleSrc){ c.handleSrc.setAttribute('cx', nearSrc.x); c.handleSrc.setAttribute('cy', nearSrc.y); }
+      if(c.handleDst){ c.handleDst.setAttribute('cx', nearDst.x); c.handleDst.setAttribute('cy', nearDst.y); }
     });
     updateNormalizedPaths();
   }
