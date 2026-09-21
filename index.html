@@ -232,7 +232,16 @@
   }
   .cluster .knob-wrap{ width:70px; }
   .cluster .dialbox{ margin: 22px 14px 16px; }
-  /* Room above curve knobs for T/L without clipping the cluster frame */
+  /* Envs / LFOs / Oscs: no cluster frame — keep grouping + titles only */
+  .cluster[data-cluster="env1"],
+  .cluster[data-cluster="env2"],
+  .cluster[data-cluster="lfo1"],
+  .cluster[data-cluster="lfo2"],
+  .cluster[data-cluster="oscA"],
+  .cluster[data-cluster="oscB"]{
+    border:none; background:none; padding:8px 4px 4px; margin:2px 2px;
+  }
+  /* Room above curve knobs for T/L */
   .cluster[data-cluster="env1"],
   .cluster[data-cluster="env2"]{
     padding-top:14px;
@@ -746,6 +755,8 @@
     mix:          { in:['mix'] },
     spread:       { in:['spread'] },
     smear:        { in:['smear'] },
+    width:        { in:['width'] },
+    fbShift:      { in:['fbshift'] },
     drive:        { in:['sat'] },
     bitcrush:     { in:['crush'] },
     absorbReso:   { in:['absres'] },
@@ -764,6 +775,7 @@
     trig1:'Env1 Trigger', trig2:'Env2 Trigger', lfo1cv:'LFO1 Speed CV', lfo1ping:'LFO1 Ping (sync)',
     lfo2cv:'LFO2 Speed CV', lfo2ping:'LFO2 Ping (sync)', randgen1ping:'Random1 Ping', randgen2ping:'Random2 Ping',
     absres:'Absorb Reso CV', fl2co:'Filter2 Cutoff CV', fl2res:'Filter2 Reso CV', envvcamod:'Env\u2192VCA CV',
+    width:'Stereo Width CV', fbshift:'FB Freq Shift CV',
     extin:'Ext In (audio)' };
   const srcLabel = { loopenv:'Env1 out', loopenv2:'Env2 out', env1gate:'Env1 Gate out', env2gate:'Env2 Gate out',
     oscA:'Osc A out', oscB:'Osc B out', lfo1:'LFO1 out', lfo2:'LFO2 out', randgen1:'Random 1 out', randgen2:'Random 2 out',
@@ -848,6 +860,7 @@
     randgen1ping:'#e01b24', randgen2ping:'#e01b24', env1gate:'#e01b24', env2gate:'#e01b24', seqgate:'#e01b24',
     // utility / everything else: green
     pan:'#33d17a', mix:'#33d17a', delay:'#33d17a', spread:'#33d17a', smear:'#33d17a', sat:'#33d17a', crush:'#33d17a', subton:'#33d17a',
+    width:'#33d17a', fbshift:'#33d17a',
   };
   const gateJackIds = new Set(['trig1','trig2','lfo1ping','lfo2ping','randgen1ping','randgen2ping','env1gate','env2gate','seqgate']);
   function jackColorFor(id){
@@ -1429,6 +1442,7 @@
     bulkOp = true;
     [...patchCables].forEach(removePatch);
     bulkOp = false;
+    Object.keys(normAudioByDst).forEach(disconnectNormAudio);
     if(ctx){
       try { await ctx.close(); } catch(_){}
     }
@@ -1890,6 +1904,13 @@
         { getParam:()=>vca1Stage.gain, sens:0.5 }, { getParam:()=>vca2Stage.gain, sens:0.5 },
         { getParam:()=>lpg1Filter.frequency, sens:3000 }, { getParam:()=>lpg2Filter.frequency, sens:3000 },
       ] },
+      { id:'width', targets:[
+        { getParam:()=>widthSameL.gain, sens:0.5 }, { getParam:()=>widthSameR.gain, sens:0.5 },
+        { getParam:()=>widthCrossL.gain, sens:-0.5 }, { getParam:()=>widthCrossR.gain, sens:-0.5 },
+      ] },
+      { id:'fbshift', targets:[{ getParam:()=> {
+        try { return fbFreqShift && fbFreqShift.parameters.get('hz'); } catch(_){ return null; }
+      }, sens:200 }] },
       { id:'extin', targets:[{ getNode:()=>extInBus, sens:1 }] },
     ];
 
@@ -1901,11 +1922,13 @@
     if(activePresetSlot != null && presets[activePresetSlot]){
       applyPreset(presets[activePresetSlot], true);
     }
+    audioReady = true;
+    syncNormAudio();
+    updateNormalizedPaths();
     if(env1Looping) fireAndMaybeLoop(1);
     if(env2Looping) fireAndMaybeLoop(2);
     drawScope();
     setupMidi();
-    audioReady = true;
     updateMicButton();
     } catch(err){
       const msg = (err && err.message) ? err.message : 'audio graph failed';
@@ -2596,6 +2619,8 @@
         if(added){ added.depth = c.depth; applyDepth(added); }
       });
       bulkOp = false;
+      syncNormAudio();
+      updateCables();
       if(!quiet) termLog(`> ${(state.cables||[]).length} cable(s) restored`);
     }
   }
@@ -3293,7 +3318,10 @@
     const sensGains = dest.targets.map(t => {
       const g = ctx.createGain(); g.gain.value = t.sens;
       depthGain.connect(g);
-      if(t.getParam) g.connect(t.getParam()); else if(t.getNode) g.connect(t.getNode());
+      if(t.getParam){
+        const p = t.getParam();
+        if(p) g.connect(p);
+      } else if(t.getNode) g.connect(t.getNode());
       return g;
     });
     const color = cableColors[patchCables.length % cableColors.length];
@@ -3326,6 +3354,7 @@
     patchCables.push(cable);
     applyDepth(cable);
     buzz(10);
+    syncNormAudio();
     updateCables();
     if(!bulkOp) termLog(`> patched ${srcId} \u2192 ${dstId}`);
   }
@@ -3341,6 +3370,8 @@
     patchCables = patchCables.filter(c => c !== cable);
     updateModRing(destOwner[cable.dstId]);
     if(menuCable === cable) closeCableMenu();
+    syncNormAudio();
+    updateNormalizedPaths();
     if(!bulkOp) termLog(`> removed ${cable.srcId} \u2192 ${cable.dstId}`);
   }
   function updateCables(){
@@ -3358,36 +3389,99 @@
     updateNormalizedPaths();
   }
 
-  // ---------- Normalized connections: faint pale wires for the internal
-  // default routing (currently: Osc B -> A's FM jack, active whenever the
-  // Osc B->A interaction mode isn't Off) — a real cable in that jack still
-  // just adds on top, since the interaction path is separate from patching. ----------
+  // ---------- Normalized connections ----------
+  // - Osc B → FM: dashed bezier when interaction mode is on (audio is separate).
+  // - Env1/2 gate → Rnd1/2 ping, Env1 out → Env→VCA: thin white maze lines + hardwired
+  //   audio that drop out as soon as any user cable lands on that input.
   const normalizedPaths = [
-    { srcId:'oscB', dstId:'fm', active: () => { const m = Math.round(clampv(params.oscMode,0,6)); return m !== 0 && m !== 6; } },
+    { srcId:'oscB', dstId:'fm', style:'dash',
+      active: () => { const m = Math.round(clampv(params.oscMode,0,6)); return m !== 0 && m !== 6; } },
+    { srcId:'env1gate', dstId:'randgen1ping', style:'maze', exclusive:true, depth:1 },
+    { srcId:'env2gate', dstId:'randgen2ping', style:'maze', exclusive:true, depth:1 },
+    { srcId:'loopenv', dstId:'envvcamod', style:'maze', exclusive:true, depth:1 },
   ];
+  const normAudioByDst = {};
+  function mazePath(p1, p2){
+    const midX = Math.round((p1.x + p2.x) / 2);
+    return `M ${p1.x} ${p1.y} H ${midX} V ${p2.y} H ${p2.x}`;
+  }
+  function dstHasUserPatch(dstId){
+    return patchCables.some(c => c.dstId === dstId);
+  }
+  function disconnectNormAudio(dstId){
+    const na = normAudioByDst[dstId];
+    if(!na) return;
+    const srcNode = getSourceNode(na.srcId);
+    try{ if(srcNode) srcNode.disconnect(na.depthGain); }catch(e){}
+    try{ na.depthGain.disconnect(); }catch(e){}
+    (na.sensGains || []).forEach(g => { try{ g.disconnect(); }catch(e){} });
+    delete normAudioByDst[dstId];
+  }
+  function connectNormAudio(np){
+    if(!ctx || !np.exclusive) return;
+    disconnectNormAudio(np.dstId);
+    if(dstHasUserPatch(np.dstId)) return;
+    const srcNode = getSourceNode(np.srcId);
+    const dest = destDefs.find(d => d.id === np.dstId);
+    if(!srcNode || !dest) return;
+    const depthGain = ctx.createGain();
+    depthGain.gain.value = np.depth != null ? np.depth : 1;
+    srcNode.connect(depthGain);
+    const sensGains = dest.targets.map(t => {
+      const g = ctx.createGain(); g.gain.value = t.sens;
+      depthGain.connect(g);
+      if(t.getParam){
+        const p = t.getParam();
+        if(p) g.connect(p);
+      } else if(t.getNode) g.connect(t.getNode());
+      return g;
+    });
+    normAudioByDst[np.dstId] = { srcId:np.srcId, depthGain, sensGains };
+  }
+  function syncNormAudio(){
+    if(!ctx || !audioReady) return;
+    normalizedPaths.forEach(np => {
+      if(!np.exclusive) return;
+      if(dstHasUserPatch(np.dstId)) disconnectNormAudio(np.dstId);
+      else if(!normAudioByDst[np.dstId]) connectNormAudio(np);
+    });
+  }
   normalizedPaths.forEach(np => {
     const el = document.createElementNS(svgNS, 'path');
-    el.setAttribute('stroke', 'rgba(255,255,255,0.28)');
     el.setAttribute('fill', 'none');
-    el.setAttribute('stroke-width', 1);
-    el.setAttribute('stroke-dasharray', '2 3');
     el.style.pointerEvents = 'none';
     el.style.display = 'none';
+    if(np.style === 'maze'){
+      el.setAttribute('stroke', 'rgba(255,255,255,0.7)');
+      el.setAttribute('stroke-width', '0.85');
+      el.setAttribute('stroke-linecap', 'square');
+      el.setAttribute('stroke-linejoin', 'miter');
+    } else {
+      el.setAttribute('stroke', 'rgba(255,255,255,0.28)');
+      el.setAttribute('stroke-width', 1);
+      el.setAttribute('stroke-dasharray', '2 3');
+    }
     cableLayer.insertBefore(el, cableLayer.firstChild);
     np.el = el;
   });
   function updateNormalizedPaths(){
     normalizedPaths.forEach(np => {
-      const s = document.getElementById('jack-src-'+np.srcId), d = document.getElementById('jack-dst-'+np.dstId);
+      const s = document.getElementById('jack-src-'+np.srcId);
+      const d = document.getElementById('jack-dst-'+np.dstId);
       if(!s || !d || !np.el) return;
-      if(np.active()){
-        np.el.setAttribute('d', bezier(jackCenter(s), jackCenter(d)));
+      const on = np.exclusive
+        ? !dstHasUserPatch(np.dstId)
+        : (np.active ? np.active() : true);
+      if(on){
+        const p1 = jackCenter(s), p2 = jackCenter(d);
+        np.el.setAttribute('d', np.style === 'maze' ? mazePath(p1, p2) : bezier(p1, p2));
         np.el.style.display = '';
       } else {
         np.el.style.display = 'none';
       }
     });
   }
+  requestAnimationFrame(() => updateNormalizedPaths());
 
   // ---------- Cable contextual menu: click the dot for the attenuverter,
   // double-click the dot (or click the wire) to delete ----------
