@@ -311,8 +311,13 @@
   .envbtn.on{ background:linear-gradient(180deg,#fff,#ffe9a8); box-shadow:0 0 8px rgba(255,226,122,0.7); }
   .cluster[data-cluster="seq"]{ padding:18px 14px 12px; }
   .cluster[data-cluster="seq"] .jackitem{ width:64px; }
-  .cluster[data-cluster="seq"].seq-outs-hidden,
-  .groupbreak[data-section="seq"].seq-outs-hidden{ display:none !important; }
+  .seq-status{
+    flex-basis:100%; margin:4px 0 0; padding:0 2px;
+    font-size:0.58rem; letter-spacing:0.4px; color:var(--text-dim);
+    line-height:1.35; white-space:pre-wrap; word-break:break-word;
+    pointer-events:none; min-height:1.35em;
+  }
+  .seq-status .ph{ color:var(--amber); font-weight:bold; }
   .delay-block{
     position:relative; display:flex; flex-wrap:wrap; align-items:flex-end;
     gap:8px 10px; pointer-events:none; flex-basis:100%;
@@ -427,9 +432,9 @@
     <div class="aboutpopup-close" id="aboutClose">&times;</div>
     <div class="aboutpopup-body">
       <p>Cyan jacks are outputs, violet jacks are inputs. Patch <b>from output → input</b> (inputs stay dim until you drag from an output). On phones: tap an output, then tap an input — or drag a cable onto a knob (hits its primary inlet) or jack. Each cable has attenuverter dots near both ends; click for depth/polarity, double-click (or click the cable) to remove.</p>
-      <p>Osc B is independent of Osc A. Set Osc B→A Mode to <b>Mix</b> and use <b>Amt / Xfade</b> to crossfade A↔B in the main path; other modes (FM / AM / Ring / Fold / Sync) are modulation, not a blend. While a MIDI note is held, Pitch and Osc B Pitch become ±semitone offsets (0 = unison with the MIDI note); otherwise they are absolute Hz.</p>
+      <p>Osc B is independent of Osc A. Set Osc B→A Mode to <b>Mix</b> and use <b>Amt / Xfade</b> to crossfade A↔B in the main path; other modes (FM / AM / Ring / Fold / Sync) are modulation, not a blend. MIDI is 4-voice polyphonic on Osc A (shared Osc B + FX). While any MIDI note is held, Pitch and Osc B Pitch become ±semitone offsets (0 = unison); otherwise they are absolute Hz.</p>
       <p>Commands (type into the field by the scope, or use the keyboard on desktop): <b>0-9</b> latch a preset (pad 0 is the default), <b>ed3</b> arm/exit edit mode on preset 3, <b>xy</b> toggle the Lissajous scope, <b>rd</b> randomize, <b>xprt</b> start/stop recording (16-bit wav, or 24-bit in hq), <b>hq</b> toggle high-quality audio, <b>mic</b> toggle microphone input, <b>n3name</b> name preset 3, <b>psave/pload/pxprt/pimprt</b> persist or export/import presets, <b>fllp/flhp/flbp/flnt/floff</b> set Filter2's mode, <b>icons</b> toggle icon/text labels.</p>
-      <p>Envelopes loop by default. <b>TRIG</b> fires one, <b>LOOP</b> turns looping off or on. SEQ outlets (Pitch / CV / Gate / Clock) appear at the top when a MIDI device is connected or the sequencer has a pattern / is playing — patch Seq Pitch to Pitch, Fold, Osc B, or Filter as you like. A second row of LFO / Env / Random outs sits above the delay section. Delay <b>Stereo Width</b> keeps L/R through Absorb (0=mono, 1=wide); <b>FB Freq Shift</b> Bode-shifts the feedback loop (±Hz). <b>sq</b> status, <b>sqplay/sqstop</b>, <b>sqmode pitch|trig</b>, <b>bpm120</b>, <b>sq n c4 e4 . g4</b> notes, <b>sq d 8 8 4</b> durations, <b>sq p 0 0 3</b> presets (values only), <b>sq e 5 8</b> Euclidean, <b>sqdiv16 sqlen16 sqclear sqshow</b>. Saved with presets.</p>
+      <p>Envelopes loop by default. <b>TRIG</b> fires one, <b>LOOP</b> turns looping off or on. SEQ outlets (Pitch / CV / Gate / Clock) stay visible at the top — patch Seq Pitch to Pitch, Fold, Osc B, or Filter as you like. A status line under SEQ shows playhead and pattern. Default seq mode is <b>pitch</b>. A second row of LFO / Env / Random outs sits above the delay section. Delay <b>Stereo Width</b> keeps L/R through Absorb (0=mono, 1=wide); <b>FB Freq Shift</b> Bode-shifts the feedback loop (±Hz). <b>sq</b> status, <b>sqplay/sqstop</b>, <b>sqmode pitch|trig</b>, <b>bpm120</b>, <b>sq n c4 e4 . g4</b> notes, <b>sq d 8 8 4</b> durations, <b>sq p 0 0 3</b> presets (values only), <b>sq e 5 8</b> Euclidean, <b>sqdiv16 sqlen16 sqclear sqshow</b>. Saved with presets.</p>
       <p>MIC arms a low-latency external input (echo cancel / AGC off). Patch the Mic out jack anywhere, or feed Ext In to run the mic through the filter / fold / delay / FX path.</p>
       <p>Serve this folder over HTTP (e.g. <code>python3 -m http.server</code>) so AudioWorklets can load from <code>omchs-worklets.js</code>. Mic also needs HTTPS or localhost.</p>
       <p><!-- more notes to come --></p>
@@ -489,12 +494,15 @@
   // ---------- Shared state (declared up-front so UI-building code below never
   // touches these while they're still in the temporal dead zone) ----------
   let ctx;
-  let oscTri, oscSqr, oscSine, triGain, sqrGain, sineGain, oscASum;
+  const POLY_VOICES = 4;
+  let voices = []; // Osc A (+sub) voice pool for MIDI polyphony
+  let oscTri, oscSqr, oscSine, triGain, sqrGain, sineGain, oscASum; // aliases → voices[0]
   let subTri, subSqr, subSine, subTriGain, subSqrGain, subSineGain, subSum, subG, oscMix;
   let foldDrive, foldNode;
   let oscBTri, oscBSqr, oscBSine, oscBTriGain, oscBSqrGain, oscBSineGain, oscBSum;
   let fmInteractGain, amInteractGain, syncShape, syncInteractGain, oscAAmStage, oscBFoldGain;
   let oscMixAGain, oscMixBGain;
+  let oscABus; // summed Osc A tap for patch jack
   let groupLIn, groupRIn, delayTaps = [], tapSumL, tapSumR, merger, filter, filterL, filterR, dcBlock, dcBlockL, dcBlockR;
   let filter2, fl2Mode = 'lowpass', absorbMode = 'lowpass';
   let fbCompressor, fbClip, fbClipL, fbClipR, fbSplit, feedGainL, feedGainR, crossGainL, crossGainR;
@@ -526,13 +534,14 @@
   let useIcons = false;
   let bulkOp = false;
   let lastDriveCurve = null;
-  let midiNoteStack = [];
-  let midiVelScale = 1;
-  let midiSemiA = 0, midiSemiB = 0; // ±semitone offsets while a MIDI note is held
+  let midiSlots = []; // per-voice { note, vel, age } or null
+  let midiAge = 0;
+  let midiLastNote = null; // most recent note-on (Osc B pitch reference)
+  let midiSemiA = 0, midiSemiB = 0; // ±semitone offsets while any MIDI note is held
   let midiDevicePresent = false;
   let timeKnobDragging = false;
   let seqBpm = 120;
-  let seqMode = 'trig';
+  let seqMode = 'pitch';
   let seqDiv = 16;
   let seqEvents = [];
   let seqPlaying = false;
@@ -540,6 +549,7 @@
   let seqNextTime = 0;
   let seqTimer = null;
   let seqPadOn = null;
+  let seqPlayhead = -1;
   let workletsReady = false;
   let recNode = null, recSilent = null, recChunks = [], recSampleRate = 48000, recBits = 16;
   let recAccept = false;
@@ -888,8 +898,13 @@
   }
 
   function pctOf(c, v){ return (v - c.min) / (c.max - c.min); }
+  function midiNoteCount(){
+    let n = 0;
+    for(let i=0;i<midiSlots.length;i++) if(midiSlots[i]) n++;
+    return n;
+  }
   function isPitchSemi(c){
-    return (c.id === 'pitch' || c.id === 'pitchB') && midiNoteStack.length > 0;
+    return (c.id === 'pitch' || c.id === 'pitchB') && midiNoteCount() > 0;
   }
   function knobMinMax(c){
     if(isPitchSemi(c)) return { min:-24, max:24 };
@@ -904,10 +919,13 @@
       if(c.id === 'pitch') midiSemiA = v; else midiSemiB = v;
     } else params[c.id] = v;
   }
-  function midiNoteHz(note){ return 440 * Math.pow(2, (note-69)/12); }
+  function midiNoteHz(note){ return 440 * Math.pow(2, (note - 69) / 12); }
   function midiBaseHz(){
-    if(!midiNoteStack.length) return null;
-    return midiNoteHz(midiNoteStack[midiNoteStack.length - 1]);
+    if(midiLastNote == null || midiNoteCount() === 0) return null;
+    return midiNoteHz(midiLastNote);
+  }
+  function voicePitchHz(note){
+    return Math.max(20, midiNoteHz(note) * Math.pow(2, midiSemiA / 12));
   }
   function effectivePitchA(){
     const base = midiBaseHz();
@@ -1215,7 +1233,6 @@
       el = document.createElement('div');
       el.className = 'cluster';
       el.dataset.cluster = item.id;
-      if(item.id === 'seq') el.classList.add('seq-outs-hidden');
       const title = document.createElement('div');
       title.className = 'cluster-title';
       const cText = item.label || item.id.toUpperCase();
@@ -1229,6 +1246,13 @@
         else if(sub.t === 'dst') el.appendChild(buildJackItem('dst', sub.id, destLabel[sub.id] || sub.id));
         else if(sub.t === 'envctrls') el.appendChild(buildEnvCtrls(sub.which));
       });
+      if(item.id === 'seq'){
+        const st = document.createElement('div');
+        st.className = 'seq-status';
+        st.id = 'seqStatus';
+        st.textContent = 'sq stop · pitch · 120bpm';
+        el.appendChild(st);
+      }
     } else if(item.t === 'knob') el = buildKnob(configById[item.id]);
     else if(item.t === 'src') el = buildJackItem('src', item.id, srcLabel[item.id] || item.id);
     else if(item.t === 'srcalias') el = buildSrcAlias(item.id);
@@ -1266,7 +1290,6 @@
   groups.forEach(g => {
     const brk = document.createElement('div'); brk.className = 'groupbreak';
     tagSection(brk, g.key);
-    if(g.key === 'seq') brk.classList.add('seq-outs-hidden');
     itemsHost.appendChild(brk);
     g.items.forEach(item => appendGroupItem(item, g.key, itemsHost));
   });
@@ -1276,14 +1299,14 @@
   itemsHost.appendChild(platesRow);
   config.forEach(updateKnobVisual);
   applyLabelMode();
-  updateSeqOutVisibility();
+  updateSeqStatus();
 
   // Mobile section tabs removed — keep faceplate unfiltered
   const sectTabsEl = document.getElementById('sectTabs');
   let activeSect = 'all';
   function applySectionFilter(){
     itemsHost.querySelectorAll('[data-section]').forEach(el => el.classList.remove('sect-hide'));
-    requestAnimationFrame(() => { updateCables(); updateNormalizedPaths(); });
+    requestAnimationFrame(() => { updateCables(); });
   }
   if(sectTabsEl) sectTabsEl.style.display = 'none';
   const narrowMq = window.matchMedia('(max-width: 720px)');
@@ -1403,12 +1426,16 @@
     return null;
   }
   function resetAudioNodeRefs(){
+    voices = [];
+    midiSlots = [];
+    midiAge = 0;
+    midiLastNote = null;
     oscTri = oscSqr = oscSine = triGain = sqrGain = sineGain = oscASum = null;
     subTri = subSqr = subSine = subTriGain = subSqrGain = subSineGain = subSum = subG = oscMix = null;
     foldDrive = foldNode = null;
     oscBTri = oscBSqr = oscBSine = oscBTriGain = oscBSqrGain = oscBSineGain = oscBSum = null;
     fmInteractGain = amInteractGain = syncShape = syncInteractGain = oscAAmStage = oscBFoldGain = null;
-    oscMixAGain = oscMixBGain = null;
+    oscMixAGain = oscMixBGain = oscABus = null;
     groupLIn = groupRIn = tapSumL = tapSumR = merger = filter = filterL = filterR = dcBlock = dcBlockL = dcBlockR = null;
     delayTaps = [];
     filter2 = null;
@@ -1510,41 +1537,80 @@
 
     try {
 
-    // --- Osc A: sine / triangle / square morph ---
-    oscTri = ctx.createOscillator(); oscTri.type = 'triangle'; oscTri.frequency.value = params.pitch;
-    oscSqr = ctx.createOscillator(); oscSqr.type = 'square'; oscSqr.frequency.value = params.pitch;
-    oscSine = ctx.createOscillator(); oscSine.type = 'sine'; oscSine.frequency.value = params.pitch;
-    { const g = waveGains(params.oscWaveMorph);
-      triGain = ctx.createGain(); triGain.gain.value = g.tri;
-      sqrGain = ctx.createGain(); sqrGain.gain.value = g.sqr;
-      sineGain = ctx.createGain(); sineGain.gain.value = g.sine; }
-    oscASum = ctx.createGain();
-    oscTri.connect(triGain).connect(oscASum);
-    oscSqr.connect(sqrGain).connect(oscASum);
-    oscSine.connect(sineGain).connect(oscASum);
-
-    // --- Sub oscillator: same sine/triangle/square morph (shares the Osc A wave knob) ---
-    subTri = ctx.createOscillator(); subTri.type = 'triangle'; subTri.frequency.value = params.pitch/2;
-    subSqr = ctx.createOscillator(); subSqr.type = 'square'; subSqr.frequency.value = params.pitch/2;
-    subSine = ctx.createOscillator(); subSine.type = 'sine'; subSine.frequency.value = params.pitch/2;
-    { const g = waveGains(params.oscWaveMorph);
-      subTriGain = ctx.createGain(); subTriGain.gain.value = g.tri;
-      subSqrGain = ctx.createGain(); subSqrGain.gain.value = g.sqr;
-      subSineGain = ctx.createGain(); subSineGain.gain.value = g.sine; }
-    subSum = ctx.createGain();
-    subTri.connect(subTriGain).connect(subSum);
-    subSqr.connect(subSqrGain).connect(subSum);
-    subSine.connect(subSineGain).connect(subSum);
-    subG = ctx.createGain(); subG.gain.value = params.sub;
-    subSum.connect(subG);
+    // --- Osc A voice pool (4): sine / triangle / square morph + sub ---
+    function createOscAVoice(pitchHz){
+      const g0 = waveGains(params.oscWaveMorph);
+      const v = {
+        oscTri: ctx.createOscillator(),
+        oscSqr: ctx.createOscillator(),
+        oscSine: ctx.createOscillator(),
+        triGain: ctx.createGain(),
+        sqrGain: ctx.createGain(),
+        sineGain: ctx.createGain(),
+        oscASum: ctx.createGain(),
+        subTri: ctx.createOscillator(),
+        subSqr: ctx.createOscillator(),
+        subSine: ctx.createOscillator(),
+        subTriGain: ctx.createGain(),
+        subSqrGain: ctx.createGain(),
+        subSineGain: ctx.createGain(),
+        subSum: ctx.createGain(),
+        subG: ctx.createGain(),
+        oscAAmStage: ctx.createGain(),
+        oscMixAGain: ctx.createGain(),
+        voiceGain: ctx.createGain(),
+      };
+      v.oscTri.type = 'triangle'; v.oscTri.frequency.value = pitchHz;
+      v.oscSqr.type = 'square'; v.oscSqr.frequency.value = pitchHz;
+      v.oscSine.type = 'sine'; v.oscSine.frequency.value = pitchHz;
+      v.triGain.gain.value = g0.tri; v.sqrGain.gain.value = g0.sqr; v.sineGain.gain.value = g0.sine;
+      v.oscTri.connect(v.triGain).connect(v.oscASum);
+      v.oscSqr.connect(v.sqrGain).connect(v.oscASum);
+      v.oscSine.connect(v.sineGain).connect(v.oscASum);
+      v.subTri.type = 'triangle'; v.subTri.frequency.value = pitchHz / 2;
+      v.subSqr.type = 'square'; v.subSqr.frequency.value = pitchHz / 2;
+      v.subSine.type = 'sine'; v.subSine.frequency.value = pitchHz / 2;
+      v.subTriGain.gain.value = g0.tri; v.subSqrGain.gain.value = g0.sqr; v.subSineGain.gain.value = g0.sine;
+      v.subTri.connect(v.subTriGain).connect(v.subSum);
+      v.subSqr.connect(v.subSqrGain).connect(v.subSum);
+      v.subSine.connect(v.subSineGain).connect(v.subSum);
+      v.subG.gain.value = params.sub;
+      v.subSum.connect(v.subG);
+      v.oscAAmStage.gain.value = 1;
+      v.oscMixAGain.gain.value = 1;
+      v.voiceGain.gain.value = 0;
+      v.oscASum.connect(v.oscAAmStage);
+      v.oscAAmStage.connect(v.oscMixAGain);
+      v.oscMixAGain.connect(v.voiceGain);
+      v.subG.connect(v.voiceGain);
+      return v;
+    }
+    function bindVoice0Aliases(){
+      const v = voices[0];
+      if(!v) return;
+      oscTri = v.oscTri; oscSqr = v.oscSqr; oscSine = v.oscSine;
+      triGain = v.triGain; sqrGain = v.sqrGain; sineGain = v.sineGain;
+      oscASum = v.oscASum;
+      subTri = v.subTri; subSqr = v.subSqr; subSine = v.subSine;
+      subTriGain = v.subTriGain; subSqrGain = v.subSqrGain; subSineGain = v.subSineGain;
+      subSum = v.subSum; subG = v.subG;
+      oscAAmStage = v.oscAAmStage; oscMixAGain = v.oscMixAGain;
+    }
 
     oscMix = ctx.createGain(); oscMix.gain.value = 0.9;
-    // Osc A's own contribution is routed through a stage whose gain can be
-    // modulated by Osc B (AM / Ring Mod / Sync) before joining the mix.
-    oscAAmStage = ctx.createGain(); oscAAmStage.gain.value = 1;
-    oscMixAGain = ctx.createGain(); oscMixAGain.gain.value = 1;
-    oscASum.connect(oscAAmStage); oscAAmStage.connect(oscMixAGain); oscMixAGain.connect(oscMix);
-    subG.connect(oscMix);
+    oscABus = ctx.createGain(); oscABus.gain.value = 1;
+    voices = [];
+    midiSlots = new Array(POLY_VOICES).fill(null);
+    midiAge = 0;
+    midiLastNote = null;
+    for(let i = 0; i < POLY_VOICES; i++){
+      const v = createOscAVoice(params.pitch);
+      voices.push(v);
+      v.voiceGain.connect(oscMix);
+      v.voiceGain.connect(oscABus);
+    }
+    bindVoice0Aliases();
+    voices[0].voiceGain.gain.value = 1;
 
     // External / mic audio bus — patch anything into Ext In to run it through
     // Filter2 → fold → VCA/LPG → delay/FX (same path as the oscillators).
@@ -1573,25 +1639,28 @@
     oscMixBGain = ctx.createGain(); oscMixBGain.gain.value = 0;
     oscBSum.connect(oscMixBGain); oscMixBGain.connect(oscMix);
 
-    // FM: Osc B's raw output added to Osc A's frequency (always wired, gated to 0 unless mode=FM)
+    // FM: Osc B's raw output added to all Osc A voice frequencies
     fmInteractGain = ctx.createGain(); fmInteractGain.gain.value = 0;
     oscBSum.connect(fmInteractGain);
-    fmInteractGain.connect(oscTri.frequency); fmInteractGain.connect(oscSqr.frequency); fmInteractGain.connect(oscSine.frequency);
-    fmInteractGain.connect(subTri.frequency); fmInteractGain.connect(subSqr.frequency); fmInteractGain.connect(subSine.frequency);
-    // AM / Ring Mod: Osc B modulates Osc A's own gain stage (baseline set per-mode in applyOscMode)
+    voices.forEach(v => {
+      fmInteractGain.connect(v.oscTri.frequency);
+      fmInteractGain.connect(v.oscSqr.frequency);
+      fmInteractGain.connect(v.oscSine.frequency);
+      fmInteractGain.connect(v.subTri.frequency);
+      fmInteractGain.connect(v.subSqr.frequency);
+      fmInteractGain.connect(v.subSine.frequency);
+    });
+    // AM / Ring Mod: Osc B modulates each voice's Osc A gain stage
     amInteractGain = ctx.createGain(); amInteractGain.gain.value = 0;
     oscBSum.connect(amInteractGain);
-    amInteractGain.connect(oscAAmStage.gain);
-    // Sync (approximation): Osc B run through a steep shaper to make a hard gate,
-    // which then also drives the same Osc A gain stage — a rhythmic, sync-like
-    // gating rather than a true sample-accurate phase reset (not possible with
-    // stock oscillator nodes without a fully custom DSP oscillator).
+    voices.forEach(v => amInteractGain.connect(v.oscAAmStage.gain));
+    // Sync (approximation): Osc B run through a steep shaper to make a hard gate
     syncShape = ctx.createWaveShaper();
     syncShape.oversample = hqMode ? '4x' : 'none';
     { const n=1024, c=new Float32Array(n); for(let i=0;i<n;i++){ const x=(i*2)/n-1; c[i]=(Math.tanh(x*40)+1)/2; } syncShape.curve = c; }
     syncInteractGain = ctx.createGain(); syncInteractGain.gain.value = 0;
     oscBSum.connect(syncShape).connect(syncInteractGain);
-    syncInteractGain.connect(oscAAmStage.gain);
+    voices.forEach(v => syncInteractGain.connect(v.oscAAmStage.gain));
     // Wavefolder: Osc B joins the pre-fold mix, so it folds together with Osc A
     oscBFoldGain = ctx.createGain(); oscBFoldGain.gain.value = 0;
     oscBSum.connect(oscBFoldGain); oscBFoldGain.connect(oscMix);
@@ -1799,7 +1868,10 @@
     lfo2Node.connect(lfo2Silent); lfo2Silent.connect(ctx.destination);
     pushWorkletParams();
 
-    oscTri.start(); oscSqr.start(); oscSine.start(); subTri.start(); subSqr.start(); subSine.start();
+    voices.forEach(v => {
+      v.oscTri.start(); v.oscSqr.start(); v.oscSine.start();
+      v.subTri.start(); v.subSqr.start(); v.subSine.start();
+    });
 
     if(driftTimer) clearInterval(driftTimer);
     driftTimer = setInterval(() => {
@@ -1807,26 +1879,36 @@
       const effInstability = clampv(baseOf('instability','instab') + (cvLive.instab||0), 0, 1);
       const effSpread = clampv(baseOf('spread','spread') + (cvLive.spread||0), 0, 1);
       const effSmear = clampv(baseOf('smear','smear') + (cvLive.smear||0), 0, 0.3);
-      const drift = (Math.random()-0.5) * effInstability * 6;
-      const pitchBase = effectivePitchA();
-      oscTri.frequency.setTargetAtTime(pitchBase + drift, ctx.currentTime, 0.03);
-      oscSqr.frequency.setTargetAtTime(pitchBase + drift, ctx.currentTime, 0.03);
-      oscSine.frequency.setTargetAtTime(pitchBase + drift, ctx.currentTime, 0.03);
-      subTri.frequency.setTargetAtTime((pitchBase + drift)/2, ctx.currentTime, 0.03);
-      subSqr.frequency.setTargetAtTime((pitchBase + drift)/2, ctx.currentTime, 0.03);
-      subSine.frequency.setTargetAtTime((pitchBase + drift)/2, ctx.currentTime, 0.03);
+      const now = ctx.currentTime;
+      const polyOn = midiNoteCount() > 0;
+      if(effInstability > 0.0001 || polyOn){
+        if(polyOn){
+          for(let i = 0; i < voices.length; i++){
+            const slot = midiSlots[i];
+            if(!slot || !voices[i]) continue;
+            const drift = (Math.random()-0.5) * effInstability * 6;
+            const hz = voicePitchHz(slot.note) + drift;
+            setVoiceFreq(voices[i], hz, now, true);
+          }
+        } else if(voices[0]){
+          const drift = (Math.random()-0.5) * effInstability * 6;
+          setVoiceFreq(voices[0], effectivePitchA() + drift, now, true);
+        }
+      }
       // Osc B drifts independently but by the same amount — true twins, not clones
-      const driftB = (Math.random()-0.5) * effInstability * 6;
-      const pitchBBase = effectivePitchB();
-      oscBTri.frequency.setTargetAtTime(pitchBBase + driftB, ctx.currentTime, 0.03);
-      oscBSqr.frequency.setTargetAtTime(pitchBBase + driftB, ctx.currentTime, 0.03);
-      oscBSine.frequency.setTargetAtTime(pitchBBase + driftB, ctx.currentTime, 0.03);
+      if(oscBTri && (effInstability > 0.0001 || polyOn)){
+        const driftB = (Math.random()-0.5) * effInstability * 6;
+        const pitchBBase = effectivePitchB();
+        oscBTri.frequency.setTargetAtTime(pitchBBase + driftB, now, 0.03);
+        oscBSqr.frequency.setTargetAtTime(pitchBBase + driftB, now, 0.03);
+        oscBSine.frequency.setTargetAtTime(pitchBBase + driftB, now, 0.03);
+      }
       if(effSmear > 0 && !timeKnobDragging){
         const timeBase = baseOf('time','delay');
         delayTaps.forEach(t => {
           const base = timeBase * tapRatio(t.idx, effSpread);
           const wobble = base * (1 + (Math.random()-0.5) * effSmear * 4);
-          t.node.delayTime.setTargetAtTime(Math.max(0.001, Math.min(4.9, wobble)), ctx.currentTime, 0.22);
+          t.node.delayTime.setTargetAtTime(Math.max(0.001, Math.min(4.9, wobble)), now, 0.22);
         });
       }
       pushWorkletParams();
@@ -1865,8 +1947,13 @@
     cvMonitorNode.connect(cvMonitorSilent); cvMonitorSilent.connect(ctx.destination);
 
     destDefs = [
-      { id:'pitch', targets:[{ getParam:()=>oscTri.frequency, sens:250 }, { getParam:()=>oscSqr.frequency, sens:250 }, { getParam:()=>oscSine.frequency, sens:250 }, { getParam:()=>subTri.frequency, sens:125 }, { getParam:()=>subSqr.frequency, sens:125 }, { getParam:()=>subSine.frequency, sens:125 }] },
-      { id:'fm', targets:[{ getParam:()=>oscTri.frequency, sens:700 }, { getParam:()=>oscSqr.frequency, sens:700 }, { getParam:()=>oscSine.frequency, sens:700 }] },
+      { id:'pitch', targets: voices.flatMap(v => [
+        { getParam:()=>v.oscTri.frequency, sens:250 }, { getParam:()=>v.oscSqr.frequency, sens:250 }, { getParam:()=>v.oscSine.frequency, sens:250 },
+        { getParam:()=>v.subTri.frequency, sens:125 }, { getParam:()=>v.subSqr.frequency, sens:125 }, { getParam:()=>v.subSine.frequency, sens:125 },
+      ]) },
+      { id:'fm', targets: voices.flatMap(v => [
+        { getParam:()=>v.oscTri.frequency, sens:700 }, { getParam:()=>v.oscSqr.frequency, sens:700 }, { getParam:()=>v.oscSine.frequency, sens:700 },
+      ]) },
       { id:'fmb', targets:[{ getParam:()=>oscBTri.frequency, sens:500 }, { getParam:()=>oscBSqr.frequency, sens:500 }, { getParam:()=>oscBSine.frequency, sens:500 }] },
       { id:'fold', targets:[{ getParam:()=>foldDrive.gain, sens:4 }] },
       { id:'absorb', targets:[{ getParam:()=>filterL.frequency, sens:3200 }, { getParam:()=>filterR.frequency, sens:3200 }] },
@@ -1876,7 +1963,7 @@
       { id:'pan', targets:[{ getParam:()=>outPan.pan, sens:1 }] },
       { id:'wave', targets:[{ getNode:()=>cvSum.wave, sens:0.5 }] },
       { id:'waveB', targets:[{ getNode:()=>cvSum.waveB, sens:0.5 }] },
-      { id:'subton', targets:[{ getParam:()=>subG.gain, sens:0.4 }] },
+      { id:'subton', targets: voices.map(v => ({ getParam:()=>v.subG.gain, sens:0.4 })) },
       { id:'mix', targets:[{ getParam:()=>wetGain.gain, sens:0.4 }, { getParam:()=>dryGain.gain, sens:-0.4 }] },
       { id:'envAtk', targets:[{ getNode:()=>cvSum.envAtk, sens:0.6 }] },
       { id:'envDcy', targets:[{ getNode:()=>cvSum.envDcy, sens:1.0 }] },
@@ -1924,12 +2011,12 @@
     }
     audioReady = true;
     syncNormAudio();
-    updateNormalizedPaths();
     if(env1Looping) fireAndMaybeLoop(1);
     if(env2Looping) fireAndMaybeLoop(2);
     drawScope();
     setupMidi();
     updateMicButton();
+    updateSeqStatus();
     } catch(err){
       const msg = (err && err.message) ? err.message : 'audio graph failed';
       termLog('> audio init failed: ' + msg);
@@ -1942,8 +2029,86 @@
     }
   }
 
-  // ---------- MIDI input: note-on sets Pitch, velocity scales VCA, and
-  // triggers both envelopes; note-off only stops an envelope that is not looping. ----------
+  // ---------- MIDI input: 4-voice poly on Osc A; shared Osc B + FX ----------
+  function setVoiceFreq(v, hz, when, smooth){
+    if(!v) return;
+    const t = when != null ? when : (ctx ? ctx.currentTime : 0);
+    const f = Math.max(20, hz);
+    if(smooth){
+      v.oscTri.frequency.setTargetAtTime(f, t, 0.03);
+      v.oscSqr.frequency.setTargetAtTime(f, t, 0.03);
+      v.oscSine.frequency.setTargetAtTime(f, t, 0.03);
+      v.subTri.frequency.setTargetAtTime(f/2, t, 0.03);
+      v.subSqr.frequency.setTargetAtTime(f/2, t, 0.03);
+      v.subSine.frequency.setTargetAtTime(f/2, t, 0.03);
+    } else {
+      v.oscTri.frequency.setValueAtTime(f, t);
+      v.oscSqr.frequency.setValueAtTime(f, t);
+      v.oscSine.frequency.setValueAtTime(f, t);
+      v.subTri.frequency.setValueAtTime(f/2, t);
+      v.subSqr.frequency.setValueAtTime(f/2, t);
+      v.subSine.frequency.setValueAtTime(f/2, t);
+    }
+  }
+  function voiceAmpRelease(v, when){
+    if(!v || !ctx) return;
+    const t = Math.max(when || ctx.currentTime, ctx.currentTime);
+    const d = clampv(baseOf('envDecay','envDcy') + (cvLive.envDcy||0), 0.01, 3);
+    try {
+      v.voiceGain.gain.cancelScheduledValues(t);
+      v.voiceGain.gain.setValueAtTime(v.voiceGain.gain.value, t);
+      v.voiceGain.gain.setTargetAtTime(0, t, Math.max(0.02, d * 0.25));
+    } catch(_){}
+  }
+  // Keep chord peak near mono: scale each voice by 1/√N so the always-on
+  // fold/drive path doesn't see N× unity and fold into grit.
+  function rebalancePolyGains(when, attackIdx){
+    if(!ctx || !voices.length) return;
+    const t = Math.max(when || ctx.currentTime, ctx.currentTime);
+    let n = 0;
+    for(let i = 0; i < POLY_VOICES; i++) if(midiSlots[i]) n++;
+    if(n === 0) return;
+    const norm = 1 / Math.sqrt(n);
+    for(let i = 0; i < POLY_VOICES; i++){
+      const slot = midiSlots[i];
+      if(!slot || !voices[i]) continue;
+      const peak = clampv(slot.vel / 127, 0.05, 1) * norm;
+      const g = voices[i].voiceGain.gain;
+      if(i === attackIdx){
+        const a = clampv(baseOf('envAttack','envAtk') + (cvLive.envAtk||0), 0.01, 2);
+        try {
+          g.cancelScheduledValues(t);
+          g.setValueAtTime(0, t);
+          g.linearRampToValueAtTime(peak, t + Math.min(a, 0.35));
+        } catch(_){}
+      } else {
+        try {
+          g.cancelScheduledValues(t);
+          g.setValueAtTime(g.value, t);
+          g.setTargetAtTime(peak, t, 0.02);
+        } catch(_){}
+      }
+    }
+  }
+  function enterMonoIdle(now){
+    if(!voices.length) return;
+    const t = now != null ? now : (ctx ? ctx.currentTime : 0);
+    for(let i = 1; i < voices.length; i++){
+      try { voices[i].voiceGain.gain.setTargetAtTime(0, t, 0.02); } catch(_){}
+    }
+    try { voices[0].voiceGain.gain.setTargetAtTime(1, t, 0.02); } catch(_){}
+    setVoiceFreq(voices[0], effectivePitchA(), t, true);
+  }
+  function allocMidiVoice(note){
+    for(let i = 0; i < POLY_VOICES; i++){
+      if(!midiSlots[i]) return i;
+    }
+    let oldest = 0, age = midiSlots[0] ? midiSlots[0].age : 0;
+    for(let i = 1; i < POLY_VOICES; i++){
+      if(midiSlots[i] && midiSlots[i].age < age){ age = midiSlots[i].age; oldest = i; }
+    }
+    return oldest;
+  }
   function stopEnvLoop(which){
     if(!ctx) return;
     const now = ctx.currentTime;
@@ -1967,77 +2132,94 @@
   function stopEnvLoops(){
     stopEnvLoop(1); stopEnvLoop(2);
   }
-  function midiApplyNote(note, vel){
-    midiVelScale = clampv(vel/127, 0.05, 1);
-    // Fast path: set pitch/VCA immediately instead of full sync() smoothing,
-    // and fire envelopes at now (no +20ms look-ahead).
-    if(ctx && oscTri){
-      const now = ctx.currentTime;
-      const pitchBase = effectivePitchA();
-      const pitchBBase = effectivePitchB();
-      oscTri.frequency.setValueAtTime(pitchBase, now);
-      oscSqr.frequency.setValueAtTime(pitchBase, now);
-      oscSine.frequency.setValueAtTime(pitchBase, now);
-      subTri.frequency.setValueAtTime(pitchBase/2, now);
-      subSqr.frequency.setValueAtTime(pitchBase/2, now);
-      subSine.frequency.setValueAtTime(pitchBase/2, now);
-      if(oscBTri){
-        oscBTri.frequency.setValueAtTime(pitchBBase, now);
-        oscBSqr.frequency.setValueAtTime(pitchBBase, now);
-        oscBSine.frequency.setValueAtTime(pitchBBase, now);
-      }
-      if(mainG) mainG.gain.setValueAtTime(baseOf('activation','vca') * midiVelScale, now);
-      fireAndMaybeLoop(1, now); fireAndMaybeLoop(2, now);
-    }
-  }
   function midiNoteOn(note, vel){
-    const entering = midiNoteStack.length === 0;
-    if(!midiNoteStack.includes(note)) midiNoteStack.push(note);
+    if(!ctx || !voices.length) return;
+    const now = ctx.currentTime;
+    const entering = midiNoteCount() === 0;
+    // Retrigger same note on its existing slot if held
+    let idx = -1;
+    for(let i = 0; i < POLY_VOICES; i++){
+      if(midiSlots[i] && midiSlots[i].note === note){ idx = i; break; }
+    }
+    if(idx < 0) idx = allocMidiVoice(note);
+    if(midiSlots[idx] && midiSlots[idx].note !== note){
+      voiceAmpRelease(voices[idx], now);
+    }
     if(entering){
       midiSemiA = 0; midiSemiB = 0;
       updateKnobVisual(configById.pitch);
       updateKnobVisual(configById.pitchB);
+      // Silence idle mono path; voices are driven by slots
+      for(let i = 0; i < voices.length; i++){
+        try { voices[i].voiceGain.gain.setValueAtTime(0, now); } catch(_){}
+      }
     }
-    midiApplyNote(note, vel);
+    midiSlots[idx] = { note, vel, age: ++midiAge };
+    midiLastNote = note;
+    setVoiceFreq(voices[idx], voicePitchHz(note), now, false);
+    rebalancePolyGains(now, idx);
+    if(oscBTri){
+      const pitchBBase = effectivePitchB();
+      oscBTri.frequency.setValueAtTime(pitchBBase, now);
+      oscBSqr.frequency.setValueAtTime(pitchBBase, now);
+      oscBSine.frequency.setValueAtTime(pitchBBase, now);
+    }
+    // Shared Env/VCA path: fire only on the first note of a chord
+    if(entering){ fireAndMaybeLoop(1, now); fireAndMaybeLoop(2, now); }
   }
   function midiNoteOff(note){
-    const leaving = midiNoteStack.length === 1 && midiNoteStack[0] === note;
+    if(!ctx || !voices.length) return;
+    const now = ctx.currentTime;
+    let idx = -1;
+    for(let i = 0; i < POLY_VOICES; i++){
+      if(midiSlots[i] && midiSlots[i].note === note){ idx = i; break; }
+    }
+    if(idx < 0) return;
     const releaseNote = note;
-    midiNoteStack = midiNoteStack.filter(n => n !== note);
-    if(midiNoteStack.length === 0){
-      if(leaving){
-        const base = midiNoteHz(releaseNote);
-        params.pitch = clampv(base * Math.pow(2, midiSemiA/12), configById.pitch.min, configById.pitch.max);
-        params.pitchB = clampv(base * Math.pow(2, midiSemiB/12), configById.pitchB.min, configById.pitchB.max);
-        midiSemiA = 0; midiSemiB = 0;
-        updateKnobVisual(configById.pitch);
-        updateKnobVisual(configById.pitchB);
-      }
+    midiSlots[idx] = null;
+    voiceAmpRelease(voices[idx], now);
+    if(midiNoteCount() === 0){
+      const base = midiNoteHz(releaseNote);
+      params.pitch = clampv(base * Math.pow(2, midiSemiA/12), configById.pitch.min, configById.pitch.max);
+      params.pitchB = clampv(base * Math.pow(2, midiSemiB/12), configById.pitchB.min, configById.pitchB.max);
+      midiSemiA = 0; midiSemiB = 0;
+      midiLastNote = null;
+      updateKnobVisual(configById.pitch);
+      updateKnobVisual(configById.pitchB);
       if(!env1Looping) stopEnvLoop(1);
       if(!env2Looping) stopEnvLoop(2);
-      midiVelScale = 1;
-      if(mainG) mainG.gain.setTargetAtTime(baseOf('activation','vca'), ctx.currentTime, 0.02);
-      if(ctx) sync();
+      enterMonoIdle(now);
+      sync();
       return;
     }
-    const last = midiNoteStack[midiNoteStack.length - 1];
-    midiApplyNote(last, 100);
+    rebalancePolyGains(now, -1);
+    // Keep Osc B on most recent still-held note
+    let latest = null, latestAge = -1;
+    for(let i = 0; i < POLY_VOICES; i++){
+      if(midiSlots[i] && midiSlots[i].age > latestAge){
+        latestAge = midiSlots[i].age;
+        latest = midiSlots[i].note;
+      }
+    }
+    midiLastNote = latest;
+    if(oscBTri){
+      const pitchBBase = effectivePitchB();
+      oscBTri.frequency.setValueAtTime(pitchBBase, now);
+      oscBSqr.frequency.setValueAtTime(pitchBBase, now);
+      oscBSine.frequency.setValueAtTime(pitchBBase, now);
+    }
   }
   function updateSeqOutVisibility(){
-    const show = midiDevicePresent || seqPlaying || (seqEvents && seqEvents.length > 0);
-    document.querySelectorAll('.cluster[data-cluster="seq"], .groupbreak[data-section="seq"]').forEach(el => {
-      el.classList.toggle('seq-outs-hidden', !show);
-    });
-    requestAnimationFrame(() => { updateCables(); updateNormalizedPaths(); });
+    // SEQ jacks always visible; keep helper for callers / cable refresh
+    requestAnimationFrame(() => { updateCables(); });
   }
   function setupMidi(){
     if(midiReady) return;
     midiReady = true;
-    if(!navigator.requestMIDIAccess){ termLog('> MIDI not supported in this browser.'); updateSeqOutVisibility(); return; }
+    if(!navigator.requestMIDIAccess){ termLog('> MIDI not supported in this browser.'); return; }
     navigator.requestMIDIAccess().then(access => {
       const refreshMidiPresence = () => {
         midiDevicePresent = Array.from(access.inputs.values()).length > 0;
-        updateSeqOutVisibility();
       };
       refreshMidiPresence();
       access.onstatechange = refreshMidiPresence;
@@ -2051,45 +2233,56 @@
           if(cmd === 0x90 && vel > 0) midiNoteOn(note, vel);
           else if(cmd === 0x80 || (cmd === 0x90 && vel === 0)) midiNoteOff(note);
         };
-        termLog(`> MIDI: connected to ${input.name || 'input device'}`);
+        termLog(`> MIDI: connected to ${input.name || 'input device'} (4-voice poly)`);
       });
-    }).catch(() => { termLog('> MIDI access denied or unavailable.'); updateSeqOutVisibility(); });
+    }).catch(() => { termLog('> MIDI access denied or unavailable.'); });
   }
 
   function applyWaveMorphs(){
-    if(!ctx || !triGain) return;
+    if(!ctx || !voices.length) return;
     const now = ctx.currentTime;
     const gA = waveGains(clampv(baseOf('oscWaveMorph','wave') + (cvLive.wave||0), 0, 1));
-    triGain.gain.setTargetAtTime(gA.tri, now, 0.02);
-    sqrGain.gain.setTargetAtTime(gA.sqr, now, 0.02);
-    sineGain.gain.setTargetAtTime(gA.sine, now, 0.02);
-    subTriGain.gain.setTargetAtTime(gA.tri, now, 0.02);
-    subSqrGain.gain.setTargetAtTime(gA.sqr, now, 0.02);
-    subSineGain.gain.setTargetAtTime(gA.sine, now, 0.02);
-    const gB = waveGains(clampv(baseOf('oscBWaveMorph','waveB') + (cvLive.waveB||0), 0, 1));
-    oscBTriGain.gain.setTargetAtTime(gB.tri, now, 0.02);
-    oscBSqrGain.gain.setTargetAtTime(gB.sqr, now, 0.02);
-    oscBSineGain.gain.setTargetAtTime(gB.sine, now, 0.02);
+    voices.forEach(v => {
+      v.triGain.gain.setTargetAtTime(gA.tri, now, 0.02);
+      v.sqrGain.gain.setTargetAtTime(gA.sqr, now, 0.02);
+      v.sineGain.gain.setTargetAtTime(gA.sine, now, 0.02);
+      v.subTriGain.gain.setTargetAtTime(gA.tri, now, 0.02);
+      v.subSqrGain.gain.setTargetAtTime(gA.sqr, now, 0.02);
+      v.subSineGain.gain.setTargetAtTime(gA.sine, now, 0.02);
+    });
+    if(oscBTriGain){
+      const gB = waveGains(clampv(baseOf('oscBWaveMorph','waveB') + (cvLive.waveB||0), 0, 1));
+      oscBTriGain.gain.setTargetAtTime(gB.tri, now, 0.02);
+      oscBSqrGain.gain.setTargetAtTime(gB.sqr, now, 0.02);
+      oscBSineGain.gain.setTargetAtTime(gB.sine, now, 0.02);
+    }
   }
 
   function sync(){
     if(!ctx) return;
     const now = ctx.currentTime;
-    const pitchBase = effectivePitchA();
-    oscTri.frequency.setTargetAtTime(pitchBase, now, 0.01);
-    oscSqr.frequency.setTargetAtTime(pitchBase, now, 0.01);
-    oscSine.frequency.setTargetAtTime(pitchBase, now, 0.01);
-
-    subTri.frequency.setTargetAtTime(pitchBase/2, now, 0.01);
-    subSqr.frequency.setTargetAtTime(pitchBase/2, now, 0.01);
-    subSine.frequency.setTargetAtTime(pitchBase/2, now, 0.01);
-    subG.gain.setTargetAtTime(baseOf('sub','subton'), now, 0.02);
+    const subLvl = baseOf('sub','subton');
+    if(midiNoteCount() > 0){
+      for(let i = 0; i < voices.length; i++){
+        const slot = midiSlots[i];
+        if(slot) setVoiceFreq(voices[i], voicePitchHz(slot.note), now, true);
+        if(voices[i]) voices[i].subG.gain.setTargetAtTime(subLvl, now, 0.02);
+      }
+    } else if(voices[0]){
+      setVoiceFreq(voices[0], effectivePitchA(), now, true);
+      voices[0].subG.gain.setTargetAtTime(subLvl, now, 0.02);
+      for(let i = 1; i < voices.length; i++){
+        voices[i].subG.gain.setTargetAtTime(subLvl, now, 0.02);
+      }
+    }
     applyWaveMorphs();
 
     const pitchBBase = effectivePitchB();
-    oscBTri.frequency.setTargetAtTime(pitchBBase, now, 0.01);
-    oscBSqr.frequency.setTargetAtTime(pitchBBase, now, 0.01);
-    oscBSine.frequency.setTargetAtTime(pitchBBase, now, 0.01);
+    if(oscBTri){
+      oscBTri.frequency.setTargetAtTime(pitchBBase, now, 0.01);
+      oscBSqr.frequency.setTargetAtTime(pitchBBase, now, 0.01);
+      oscBSine.frequency.setTargetAtTime(pitchBBase, now, 0.01);
+    }
 
     foldDrive.gain.setTargetAtTime(1 + baseOf('tones','fold')*11, now, 0.02);
     if(micLevelGain) micLevelGain.gain.setTargetAtTime(params.micLevel, now, 0.02);
@@ -2127,7 +2320,7 @@
     filter2.Q.setTargetAtTime(baseOf('flReso','fl2res'), now, 0.01);
     outPan.pan.setTargetAtTime(baseOf('pan','pan'), now, 0.02);
     setDriveCurve(clampv(baseOf('drive','sat') + (cvLive.sat||0), 1, 30));
-    mainG.gain.setTargetAtTime(baseOf('activation','vca') * midiVelScale, now, 0.02);
+    mainG.gain.setTargetAtTime(baseOf('activation','vca'), now, 0.02);
     if(fbFreqShift){
       const hz = params.fbShift || 0;
       if(fbFreqShift.parameters && fbFreqShift.parameters.get('hz')){
@@ -2234,7 +2427,7 @@
 
   // ---------- Osc B -> A interaction / Mix crossfade ----------
   function applyOscMode(){
-    if(!ctx) return;
+    if(!ctx || !voices.length) return;
     const now = ctx.currentTime;
     const mode = Math.round(clampv(baseOf('oscMode','oscmode') + (cvLive.oscmode||0), 0, 6));
     const amt = clampv(baseOf('oscModAmt','oscamt') + (cvLive.oscamt||0), 0, 1);
@@ -2242,20 +2435,20 @@
     amInteractGain.gain.setTargetAtTime((mode===2||mode===3) ? amt : 0, now, 0.02);
     syncInteractGain.gain.setTargetAtTime(mode===5 ? amt : 0, now, 0.02);
     oscBFoldGain.gain.setTargetAtTime(mode===4 ? amt*1.5 : 0, now, 0.02);
-    // Baseline for the shared Osc A gain stage: 1 (passthrough) unless AM/RingMod/Sync claim it
+    // Baseline for each Osc A gain stage: 1 (passthrough) unless AM/RingMod/Sync claim it
     const baseline = (mode===3 || mode===5) ? 0 : 1;
-    oscAAmStage.gain.setTargetAtTime(baseline, now, 0.02);
-    // Mix mode: Amt / Xfade blends independent Osc A ↔ Osc B into the main path
-    if(oscMixAGain && oscMixBGain){
+    voices.forEach(v => {
+      v.oscAAmStage.gain.setTargetAtTime(baseline, now, 0.02);
       if(mode === 6){
-        oscMixAGain.gain.setTargetAtTime(1 - amt, now, 0.02);
-        oscMixBGain.gain.setTargetAtTime(amt, now, 0.02);
+        v.oscMixAGain.gain.setTargetAtTime(1 - amt, now, 0.02);
       } else {
-        oscMixAGain.gain.setTargetAtTime(1, now, 0.02);
-        oscMixBGain.gain.setTargetAtTime(0, now, 0.02);
+        v.oscMixAGain.gain.setTargetAtTime(1, now, 0.02);
       }
+    });
+    if(oscMixBGain){
+      if(mode === 6) oscMixBGain.gain.setTargetAtTime(amt, now, 0.02);
+      else oscMixBGain.gain.setTargetAtTime(0, now, 0.02);
     }
-    updateNormalizedPaths();
   }
 
   // ---------- Filter modes (Filter2 + Absorb): lowpass/highpass/bandpass/notch/off(allpass) ----------
@@ -2510,7 +2703,7 @@
     if(id === 'lfo2') return lfo2Node;
     if(id === 'randgen1') return randGen1Src;
     if(id === 'randgen2') return randGen2Src;
-    if(id === 'oscA') return oscASum;
+    if(id === 'oscA') return oscABus || oscASum;
     if(id === 'oscB') return oscBSum;
     if(id === 'mic') return micOutGain;
     if(id === 'seqpitch') return seqPitchSrc;
@@ -2747,7 +2940,7 @@
     if(Array.isArray(s.events)){
       seqEvents = s.events.map(e => seqNormalizeEvent(e));
     }
-    updateSeqOutVisibility();
+    updateSeqStatus();
   }
   function seqNormalizeEvent(e){
     e = e || {};
@@ -2769,10 +2962,30 @@
     if(seqTimer){ clearInterval(seqTimer); seqTimer = null; }
   }
   function seqStatusLine(){
-    const st = seqPlaying ? `play ${seqEvents.length ? (seqIndex+1) : 0}/${seqEvents.length}` : 'stop';
+    const st = seqPlaying ? `play ${seqEvents.length ? (seqPlayhead >= 0 ? seqPlayhead+1 : seqIndex+1) : 0}/${seqEvents.length}` : 'stop';
     return `sq ${st} · ${seqMode} · ${Math.round(seqBpm)}bpm · ${seqEvents.length} ev · /${seqDiv}`;
   }
-  function midiToHz(n){ return 440 * Math.pow(2, (n - 69) / 12); }
+  function seqEventToken(e){
+    if(!e) return '·';
+    if(e.rest) return '.';
+    return e.note || (e.hz != null ? Math.round(e.hz)+'hz' : '·');
+  }
+  function updateSeqStatus(){
+    const el = document.getElementById('seqStatus');
+    if(!el) return;
+    const line = seqStatusLine();
+    if(!seqEvents.length){
+      el.textContent = line + ' — sq n c4 e4 g4 · patch Seq Pitch → Pitch';
+      return;
+    }
+    const ph = seqPlaying ? (seqPlayhead >= 0 ? seqPlayhead : seqIndex) : -1;
+    const strip = seqEvents.map((e, i) => {
+      const tok = seqEventToken(e);
+      return i === ph ? '[' + tok + ']' : tok;
+    }).join(' ');
+    el.innerHTML = line + '\n' + strip.replace(/\[([^\]]+)\]/g, '<span class="ph">[$1]</span>');
+  }
+  function midiToHz(n){ return midiNoteHz(n); }
   function parseNoteToken(tok){
     tok = String(tok || '').toLowerCase();
     if(tok === '.' || tok === '-' || tok === 'r' || tok === 'rest') return { rest: true, note: null, hz: null };
@@ -2873,15 +3086,23 @@
     const horizon = ctx.currentTime + 0.12;
     let guard = 0;
     while(seqNextTime < horizon && guard++ < 64){
-      const ev = seqEvents[seqIndex];
+      const step = seqIndex;
+      const ev = seqEvents[step];
+      seqPlayhead = step;
       seqTrigger(ev, seqNextTime);
+      updateSeqStatus();
       const beats = Math.max(0.03125, (ev && ev.beats) || (4 / seqDiv));
       seqNextTime += beats * (60 / Math.max(20, seqBpm));
       seqIndex = (seqIndex + 1) % seqEvents.length;
     }
   }
   async function seqPlay(quiet){
-    if(!seqEvents.length){ termLog('> sq empty — sq n c4 e4 g4 / sq e 5 8'); return; }
+    if(!seqEvents.length){
+      termLog('> sq empty — try: sq n c4 e4 . g4  then sqplay');
+      termLog('> tip: patch Seq Pitch → Pitch (mode is pitch by default)');
+      updateSeqStatus();
+      return;
+    }
     if(!ctx){
       await init();
       if(!ctx) return;
@@ -2891,22 +3112,24 @@
     if(ctx.state === 'suspended') ctx.resume().catch(()=>{});
     seqPlaying = true;
     seqIndex = 0;
+    seqPlayhead = 0;
     seqNextTime = ctx.currentTime + 0.06;
     seqClearTimer();
     seqTimer = setInterval(seqScheduleAhead, 25);
     seqScheduleAhead();
-    updateSeqOutVisibility();
+    updateSeqStatus();
     if(!quiet) termLog('> ' + seqStatusLine());
   }
   function seqStop(quiet){
     seqPlaying = false;
     seqClearTimer();
     seqPadOn = null;
+    seqPlayhead = -1;
     if(ctx && seqGateSrc){
       try { seqGateSrc.offset.setTargetAtTime(0, ctx.currentTime, 0.01); } catch(_){}
     }
     refreshPadLeds();
-    updateSeqOutVisibility();
+    updateSeqStatus();
     if(!quiet) termLog('> ' + seqStatusLine());
   }
   function seqSetNotes(tokens){
@@ -2923,7 +3146,7 @@
       seqEvents[i].note = n.note;
       seqEvents[i].hz = n.hz;
     });
-    updateSeqOutVisibility();
+    updateSeqStatus();
     termLog(`> sq n ${parsed.length} · ` + seqStatusLine());
   }
   function seqSetDurs(tokens){
@@ -2936,7 +3159,7 @@
     }
     seqGrow(beats.length);
     beats.forEach((b, i) => { seqEvents[i].beats = b; });
-    updateSeqOutVisibility();
+    updateSeqStatus();
     termLog(`> sq d ${beats.map(formatBeats).join(' ')}`);
   }
   function seqSetPresets(tokens){
@@ -2949,7 +3172,7 @@
     }
     seqGrow(vals.length);
     vals.forEach((slot, i) => { seqEvents[i].preset = slot; });
-    updateSeqOutVisibility();
+    updateSeqStatus();
     termLog(`> sq p ${vals.length} steps`);
   }
   function seqSetEuclid(tokens){
@@ -2965,7 +3188,7 @@
       const prev = old[i] || seqDefaultEvent();
       return seqNormalizeEvent({ ...prev, beats, rest: !hit });
     });
-    updateSeqOutVisibility();
+    updateSeqStatus();
     termLog(`> sq e ${hits}/${seqEvents.length}` + (rot ? ` r${rot}` : '') + ` · /${seqDiv}`);
   }
   function seqShow(){
@@ -2976,17 +3199,18 @@
     termLog('> n ' + notes);
     termLog('> d ' + durs);
     termLog('> p ' + pads);
+    updateSeqStatus();
   }
   function runSeqCommand(raw){
     const lower = raw.trim().toLowerCase();
     const compact = lower.replace(/\s+/g,'');
     const parts = lower.split(/\s+/).filter(Boolean);
-    if(compact === 'sq' || compact === 'sqstat'){ termLog('> ' + seqStatusLine()); return; }
+    if(compact === 'sq' || compact === 'sqstat'){ termLog('> ' + seqStatusLine()); updateSeqStatus(); return; }
     if(compact === 'sqplay' || (parts[0]==='sq' && parts[1]==='play')){ seqPlay(); return; }
     if(compact === 'sqstop' || (parts[0]==='sq' && parts[1]==='stop')){ seqStop(); return; }
     if(compact === 'sqclear' || (parts[0]==='sq' && parts[1]==='clear')){
-      seqStop(true); seqEvents = []; seqIndex = 0;
-      updateSeqOutVisibility();
+      seqStop(true); seqEvents = []; seqIndex = 0; seqPlayhead = -1;
+      updateSeqStatus();
       termLog('> sq cleared'); return;
     }
     if(compact === 'sqshow' || (parts[0]==='sq' && parts[1]==='show')){ seqShow(); return; }
@@ -2994,24 +3218,27 @@
       persistPresets(); termLog('> seq saved with presets'); return;
     }
     const bpmM = compact.match(/^bpm(\d+(?:\.\d+)?)$/);
-    if(bpmM){
-      seqBpm = clampv(parseFloat(bpmM[1]), 20, 400);
+    if(bpmM || (parts[0]==='bpm' && parts[1] != null && /^\d+(\.\d+)?$/.test(parts[1]))){
+      const raw = bpmM ? bpmM[1] : parts[1];
+      seqBpm = clampv(parseFloat(raw), 20, 400);
+      updateSeqStatus();
       termLog(`> bpm ${Math.round(seqBpm)}`); return;
     }
     const modeM = compact.match(/^sqmode(pitch|trig)$/) || (parts[0]==='sqmode' && (parts[1]==='pitch'||parts[1]==='trig') ? [0, parts[1]] : null)
       || (parts[0]==='sq' && parts[1]==='mode' && (parts[2]==='pitch'||parts[2]==='trig') ? [0, parts[2]] : null);
-    if(modeM){ seqMode = modeM[1]; termLog('> ' + seqStatusLine()); return; }
+    if(modeM){ seqMode = modeM[1]; updateSeqStatus(); termLog('> ' + seqStatusLine()); return; }
     const lenM = compact.match(/^sqlen(\d+)$/) || (parts[0]==='sqlen' ? compact.match(/^sqlen(\d+)$/) : null)
       || (parts[0]==='sq' && parts[1]==='len' ? ['', parts[2]] : null);
     if(lenM && lenM[1] != null && /^\d+$/.test(String(lenM[1]))){
       const n = clampv(parseInt(lenM[1], 10), 1, 64);
       seqGrow(n); if(seqEvents.length > n) seqEvents.length = n;
-      updateSeqOutVisibility();
+      updateSeqStatus();
       termLog(`> sq len ${seqEvents.length}`); return;
     }
     const divM = compact.match(/^sqdiv(\d+)$/) || (parts[0]==='sq' && parts[1]==='div' ? ['', parts[2]] : null);
     if(divM && divM[1] != null && /^\d+$/.test(String(divM[1]))){
       seqDiv = clampv(parseInt(divM[1], 10), 1, 32);
+      updateSeqStatus();
       termLog(`> sq div ${seqDiv}`); return;
     }
     if(parts[0] === 'sq' && parts[1] === 'n'){ seqSetNotes(parts.slice(2)); return; }
@@ -3371,7 +3598,7 @@
     updateModRing(destOwner[cable.dstId]);
     if(menuCable === cable) closeCableMenu();
     syncNormAudio();
-    updateNormalizedPaths();
+    updateCables();
     if(!bulkOp) termLog(`> removed ${cable.srcId} \u2192 ${cable.dstId}`);
   }
   function updateCables(){
@@ -3386,25 +3613,17 @@
       if(c.handleSrc){ c.handleSrc.setAttribute('cx', nearSrc.x); c.handleSrc.setAttribute('cy', nearSrc.y); }
       if(c.handleDst){ c.handleDst.setAttribute('cx', nearDst.x); c.handleDst.setAttribute('cy', nearDst.y); }
     });
-    updateNormalizedPaths();
   }
 
-  // ---------- Normalized connections ----------
-  // - Osc B → FM: dashed bezier when interaction mode is on (audio is separate).
-  // - Env1/2 gate → Rnd1/2 ping, Env1 out → Env→VCA: thin white maze lines + hardwired
-  //   audio that drop out as soon as any user cable lands on that input.
+  // ---------- Normalized connections (audio hardwires only; no white SVG lines) ----------
+  // Env1/2 gate → Rnd1/2 ping, Env1 out → Env→VCA: exclusive hardwires that drop
+  // out as soon as any user cable lands on that input. Osc B→FM is mode audio only.
   const normalizedPaths = [
-    { srcId:'oscB', dstId:'fm', style:'dash',
-      active: () => { const m = Math.round(clampv(params.oscMode,0,6)); return m !== 0 && m !== 6; } },
-    { srcId:'env1gate', dstId:'randgen1ping', style:'maze', exclusive:true, depth:1 },
-    { srcId:'env2gate', dstId:'randgen2ping', style:'maze', exclusive:true, depth:1 },
-    { srcId:'loopenv', dstId:'envvcamod', style:'maze', exclusive:true, depth:1 },
+    { srcId:'env1gate', dstId:'randgen1ping', exclusive:true, depth:1 },
+    { srcId:'env2gate', dstId:'randgen2ping', exclusive:true, depth:1 },
+    { srcId:'loopenv', dstId:'envvcamod', exclusive:true, depth:1 },
   ];
   const normAudioByDst = {};
-  function mazePath(p1, p2){
-    const midX = Math.round((p1.x + p2.x) / 2);
-    return `M ${p1.x} ${p1.y} H ${midX} V ${p2.y} H ${p2.x}`;
-  }
   function dstHasUserPatch(dstId){
     return patchCables.some(c => c.dstId === dstId);
   }
@@ -3446,42 +3665,7 @@
       else if(!normAudioByDst[np.dstId]) connectNormAudio(np);
     });
   }
-  normalizedPaths.forEach(np => {
-    const el = document.createElementNS(svgNS, 'path');
-    el.setAttribute('fill', 'none');
-    el.style.pointerEvents = 'none';
-    el.style.display = 'none';
-    if(np.style === 'maze'){
-      el.setAttribute('stroke', 'rgba(255,255,255,0.7)');
-      el.setAttribute('stroke-width', '0.85');
-      el.setAttribute('stroke-linecap', 'square');
-      el.setAttribute('stroke-linejoin', 'miter');
-    } else {
-      el.setAttribute('stroke', 'rgba(255,255,255,0.28)');
-      el.setAttribute('stroke-width', 1);
-      el.setAttribute('stroke-dasharray', '2 3');
-    }
-    cableLayer.insertBefore(el, cableLayer.firstChild);
-    np.el = el;
-  });
-  function updateNormalizedPaths(){
-    normalizedPaths.forEach(np => {
-      const s = document.getElementById('jack-src-'+np.srcId);
-      const d = document.getElementById('jack-dst-'+np.dstId);
-      if(!s || !d || !np.el) return;
-      const on = np.exclusive
-        ? !dstHasUserPatch(np.dstId)
-        : (np.active ? np.active() : true);
-      if(on){
-        const p1 = jackCenter(s), p2 = jackCenter(d);
-        np.el.setAttribute('d', np.style === 'maze' ? mazePath(p1, p2) : bezier(p1, p2));
-        np.el.style.display = '';
-      } else {
-        np.el.style.display = 'none';
-      }
-    });
-  }
-  requestAnimationFrame(() => updateNormalizedPaths());
+  function updateNormalizedPaths(){ /* visuals removed; hardwires via syncNormAudio */ }
 
   // ---------- Cable contextual menu: click the dot for the attenuverter,
   // double-click the dot (or click the wire) to delete ----------

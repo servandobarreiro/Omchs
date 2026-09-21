@@ -59,13 +59,15 @@ icons         Toggle icon vs text labels on knobs and jacks.
 
 Sequencer
 ---------
-Stopped on power-on. SEQ outlets: Seq Pitch, Seq CV, Seq Gate, Seq Clock.
+Stopped on power-on. SEQ outlets (Pitch / CV / Gate / Clock) stay visible.
+Default mode is pitch. Status / playhead live under the SEQ cluster.
 Patch Seq Pitch to Pitch, Fold, Osc B (FM / pitch B), or Filter as you like.
 Envelopes loop by default; LOOP on each env turns that off. TRIG fires a
 cycle. sqplay does not stop looping envelopes.
 sq            Show status (play/stop, mode, bpm, event count, division).
 sqplay        Start (powers the engine if needed). Writes SEQ outlets;
               fires one-shot envs only if that envelope is not looping.
+              Empty pattern tips include a starter example + patch reminder.
 sqstop        Stop the clock (envelopes keep looping if LOOP is on).
 sqmode pitch  Each non-rest writes Seq Pitch / Seq CV from the note.
 sqmode trig   Leaves pitch CV, still pulses Gate / Clock.
@@ -85,6 +87,13 @@ sqlen16       Resize the event list (1–64).
 sqshow        Dump notes, durations, and preset lane.
 sqclear       Stop and empty the sequence.
 sqsave        Save sequencer + pads to localStorage (same as psave).
+
+MIDI
+----
+Note on/off is 4-voice polyphonic on Osc A (shared Osc B, fold, filter, FX).
+Oldest voice is stolen when a fifth note arrives. Velocity scales each
+voice amp. While any note is held, Pitch / Osc B Pitch knobs are ±semitone
+offsets.
 
 Keyboard extras
 ---------------
