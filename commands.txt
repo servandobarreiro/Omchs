@@ -35,6 +35,10 @@ xyoff         Turn the scope off.
 Sound / capture
 ---------------
 rd            Randomize knob values (same as the dice button).
+share         Encode the current sound (knobs + cables + filter modes)
+              into the URL hash (#v1.…), update the address bar, and copy
+              the link. Same as the SHARE button. Opening the link loads
+              that sound after presets boot (power still required to hear).
 mic           Toggle microphone / external input.
 xprt          Start or stop recording. Stop downloads a stereo .wav
               (16-bit normally, 24-bit when hq is on).
