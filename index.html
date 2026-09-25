@@ -86,7 +86,9 @@
      desktop mouse users keep the tighter, denser layout */
   @media (pointer:coarse){
     .jack{ width:28px; height:28px; border-width:5px; }
-    .jack.gate{ width:20px; height:20px; border-width:4px; }
+    .jack.dst:not(.has-cable){ transform:scale(0.32); }
+    .faceplate.patching-from-src .jack.dst{ transform:none; }
+    .faceplate.patching-from-src .jack.src:not(.dragfrom):not(.tapselected){ transform:scale(0.43); opacity:0.55; filter:brightness(0.85); }
     .plate{ width:48px; height:48px; font-size:0.72rem; }
     .modebtn{ width:24px; height:24px; font-size:0.5rem; }
     .envbtn{ width:22px; height:22px; font-size:0.42rem; }
@@ -272,16 +274,10 @@
     .cluster .knob-wrap{ width:52px; }
   }
 
-  /* Patch direction: inputs slightly dim so outs read first; brighten when patching */
-  .jack.dst{ opacity:0.85; filter:brightness(0.8); transition: opacity .15s, filter .15s, box-shadow .15s; }
-  .jack.src{ opacity:1; filter:none; transition: opacity .15s, filter .15s, box-shadow .15s; }
-  .faceplate.patching-from-src .jack.src:not(.dragfrom){ opacity:0.55; filter:brightness(0.85); }
+  /* Patch direction: only out→in. Idle inputs are tip-sized; dragging an out expands inputs and shrinks other outs. */
   .faceplate.patching-from-src .jack.dst{
     opacity:1; filter:none;
-    box-shadow:0 0 0 2px rgba(255,255,255,0.18), inset 0 0 3px rgba(0,0,0,0.9);
   }
-  .faceplate.patching-from-dst .jack.dst:not(.dragfrom){ opacity:0.55; filter:brightness(0.8); }
-  .faceplate.patching-from-dst .jack.src{ opacity:1; filter:none; }
 
   .scopebox.head-term{
     position:relative; z-index:5; width:100%; max-width:100%; height:72px;
@@ -371,12 +367,30 @@
     background: radial-gradient(circle at 38% 35%, #3c3c3c 0%, #0a0a0a 65%);
     box-shadow: inset 0 0 3px rgba(0,0,0,0.9), 0 1px 2px rgba(0,0,0,0.6);
     cursor:crosshair; flex-shrink:0; touch-action:none; z-index:3; pointer-events:auto;
+    transform-origin:center center;
+    transition: opacity .15s, filter .15s, box-shadow .15s;
   }
   .jack.dragfrom{ box-shadow:0 0 0 4px rgba(255,255,255,0.35), 0 0 14px var(--jcolor, #fff); }
   .jack.drophover{ box-shadow:0 0 0 3px rgba(255,255,255,0.45), 0 0 12px var(--jcolor, #fff); }
-  .jack.dst{ border-color:var(--jcolor, var(--violet)); }
+  .jack.dst{ border-color:var(--jcolor, var(--violet)); cursor:pointer; }
   .jack:hover{ box-shadow:0 0 10px var(--jcolor, currentColor), inset 0 0 3px rgba(0,0,0,0.9); }
-  .jack.gate{ width:14px; height:14px; border-width:3px; }
+  /* Idle unconnected inputs: small solid white tips (scale from center so
+     absolutely-positioned knob jacks don't drift when expanding) */
+  .jack.dst:not(.has-cable){
+    transform:scale(0.28);
+    background:#fff;
+    border-color:#fff;
+    box-shadow:none;
+  }
+  .faceplate.patching-from-src .jack.dst{
+    transform:none;
+    background: radial-gradient(circle at 38% 35%, #3c3c3c 0%, #0a0a0a 65%);
+    border-color:var(--jcolor, var(--violet));
+    box-shadow:0 0 0 2px rgba(255,255,255,0.18), inset 0 0 3px rgba(0,0,0,0.9), 0 1px 2px rgba(0,0,0,0.6);
+  }
+  .faceplate.patching-from-src .jack.src:not(.dragfrom):not(.tapselected){
+    transform:scale(0.38); opacity:0.55; filter:brightness(0.85);
+  }
   .jacklabel{ font-size:0.82rem; color:var(--text-dim); margin-top:5px; text-align:center; line-height:1.2; }
   body.labels-text .jacklabel{ font-size:0.55rem; }
 
@@ -384,10 +398,22 @@
   .groupbreak:first-child{ height:0; }
 
   .cablemenu{ position:absolute; z-index:10; background:var(--bg-panel); border:1px solid var(--amber-dim); border-radius:6px;
-    padding:10px 12px; box-shadow:0 6px 18px rgba(0,0,0,0.5); display:none; width:150px; }
+    padding:10px 12px; box-shadow:0 6px 18px rgba(0,0,0,0.5); display:none; width:168px; }
   .cablemenu-label{ font-size:0.6rem; letter-spacing:1px; color:var(--text-dim); text-transform:uppercase; margin-bottom:6px; }
-  .cablemenu input[type=range]{ width:100%; }
-  .cablemenu-val{ font-size:0.7rem; color:var(--amber); text-align:center; margin:2px 0 8px; }
+  .cablemenu-list{ display:flex; flex-direction:column; gap:8px; margin-bottom:8px; max-height:160px; overflow:auto; }
+  .cablemenu-row{ display:flex; flex-direction:column; gap:2px; }
+  .cablemenu-row-h{ display:flex; justify-content:space-between; align-items:center; gap:6px; }
+  .cablemenu-src{ font-size:0.62rem; color:var(--cyan); cursor:pointer; }
+  .cablemenu-src.on{ color:var(--amber); }
+  .cablemenu-row input[type=range]{ width:100%; }
+  .cablemenu-val{ font-size:0.7rem; color:var(--amber); text-align:center; margin:0; }
+  .cablemenu-scope{
+    width:100%; height:48px; margin:4px 0 6px; border:1px solid var(--panel-edge); border-radius:3px;
+    background:#0d0d0d; overflow:hidden;
+  }
+  .cablemenu-scope canvas{ display:block; width:100%; height:100%; }
+  .cablemenu-clip{ font-size:0.55rem; letter-spacing:0.5px; text-align:center; min-height:1em; color:var(--text-dim); margin-bottom:6px; }
+  .cablemenu-clip.hot{ color:var(--red); }
   .cablemenu-del{ width:100%; background:#2a1518; color:var(--red); border:1px solid var(--red); border-radius:3px;
     padding:5px; font-family:inherit; font-size:0.62rem; cursor:pointer; }
   .cablemenu-del:hover{ background:var(--red); color:#111111; }
@@ -458,7 +484,7 @@
   <div class="aboutpopup" id="aboutPopup">
     <div class="aboutpopup-close" id="aboutClose">&times;</div>
     <div class="aboutpopup-body">
-      <p>Cyan jacks are outputs, violet jacks are inputs. Patch <b>from output → input</b> (inputs stay dim until you drag from an output). On phones: tap an output, then tap an input — or drag a cable onto a knob (hits its primary inlet) or jack. Each cable has attenuverter dots near both ends; click for depth/polarity, double-click (or click the cable) to remove.</p>
+      <p>Cyan jacks are outputs, violet jacks are inputs. Patch <b>only from output → input</b> (unconnected inputs stay as small colored tips until you drag from an output — then inputs expand and other outs shrink). Tap or click an input that already has a cable to set attenuverter depth; when several sources share an input, the menu shows each depth plus a combined CV scope. Click a cable to remove it.</p>
       <p>Osc B is independent of Osc A. Set Osc B→A Mode to <b>Mix</b> and use <b>Amt / Xfade</b> to crossfade A↔B in the main path; other modes (FM / AM / Ring / Fold / Sync) are modulation, not a blend. MIDI is 4-voice polyphonic on Osc A (shared Osc B + FX). While any MIDI note is held, Pitch and Osc B Pitch become ±semitone offsets (0 = unison); otherwise they are absolute Hz.</p>
       <p>Commands (type into the field by the scope, or use the keyboard on desktop): <b>0-9</b> latch a preset (pad 0 is the default), <b>ed3</b> arm/exit edit mode on preset 3, <b>xy</b> toggle the Lissajous scope, <b>rd</b> randomize, <b>share</b> copy a hashed URL of the current sound (also the SHARE button), <b>xprt</b> start/stop recording (16-bit wav, or 24-bit in hq), <b>hq</b> toggle high-quality audio, <b>mic</b> toggle microphone input, <b>n3name</b> name preset 3, <b>psave/pload/pxprt/pimprt</b> persist or export/import presets, <b>fllp/flhp/flbp/flnt/floff</b> set Filter2's mode, <b>icons</b> toggle icon/text labels.</p>
       <p>Envelopes loop by default. <b>TRIG</b> fires one, <b>LOOP</b> turns looping off or on. SEQ outlets (Pitch / CV / Gate / Clock) stay visible at the top — patch Seq Pitch to Pitch, Fold, Osc B, or Filter as you like. A status line under SEQ shows playhead and pattern. Default seq mode is <b>pitch</b>. A second row of LFO / Env / Random outs sits above the delay section. Delay <b>Stereo Width</b> keeps L/R through Absorb (0=mono, 1=wide); <b>FB Freq Shift</b> Bode-shifts the feedback loop (±Hz). <b>sq</b> status, <b>sqplay/sqstop</b>, <b>sqmode pitch|trig</b>, <b>bpm120</b>, <b>sq n c4 e4 . g4</b> notes, <b>sq d 8 8 4</b> durations, <b>sq p 0 0 3</b> presets (values only), <b>sq e 5 8</b> Euclidean, <b>sqdiv16 sqlen16 sqclear sqshow</b>. Saved with presets.</p>
@@ -473,8 +499,9 @@
     <svg id="cableLayer"></svg>
     <div class="cablemenu" id="cableMenu">
       <div class="cablemenu-label">Attenuverter</div>
-      <input type="range" id="cableMenuRange" min="-100" max="100" value="50">
-      <div class="cablemenu-val" id="cableMenuVal">+50%</div>
+      <div class="cablemenu-list" id="cableMenuList"></div>
+      <div class="cablemenu-scope"><canvas id="cableMenuScope" width="144" height="48"></canvas></div>
+      <div class="cablemenu-clip" id="cableMenuClip">combined CV</div>
       <button class="cablemenu-del" id="cableMenuDel">Delete cable</button>
     </div>
     <div class="minijack-scope" id="miniScope"><canvas id="miniScopeCanvas" width="84" height="84"></canvas></div>
@@ -935,14 +962,15 @@
     feedback:'#f5c211', envvcamod:'#f5c211',
     // LFO/instability CV inputs: mid blue
     lfo1cv:'#3584e4', lfo2cv:'#3584e4', instab:'#3584e4',
-    // modulation OUTPUTS (LFOs, envelopes, random gens): light blue
-    lfo1:'#99c1f1', lfo2:'#99c1f1', loopenv:'#99c1f1', loopenv2:'#99c1f1', randgen1:'#99c1f1', randgen2:'#99c1f1',
+    // modulation OUTPUTS (LFOs, envelopes): light blue; random gens: purple
+    lfo1:'#99c1f1', lfo2:'#99c1f1', loopenv:'#99c1f1', loopenv2:'#99c1f1',
+    randgen1:'#c061cb', randgen2:'#c061cb',
     seqpitch:'#99c1f1', seqcv:'#99c1f1', seqclk:'#99c1f1',
     // audio OUTPUTS (the oscillators themselves): dark blue
     oscA:'#1a5fb4', oscB:'#1a5fb4', mic:'#1c71d8',
     // external audio input destination
     extin:'#26a269',
-    // gate / trigger patches: reserved red, smaller connectors (see .jack.gate)
+    // gate / trigger patches: reserved red (same size as other jacks)
     trig1:'#e01b24', trig2:'#e01b24', lfo1ping:'#e01b24', lfo2ping:'#e01b24',
     randgen1ping:'#e01b24', randgen2ping:'#e01b24', env1gate:'#e01b24', env2gate:'#e01b24', seqgate:'#e01b24',
     // utility / everything else: green
@@ -970,8 +998,9 @@
   }
   function setPatchHighlight(kind){
     if(!faceplateEl) return;
+    // Only outs start cables — expand inputs / shrink other outs while dragging from src
     faceplateEl.classList.toggle('patching-from-src', kind === 'src');
-    faceplateEl.classList.toggle('patching-from-dst', kind === 'dst');
+    faceplateEl.classList.remove('patching-from-dst');
   }
 
   function pctOf(c, v){ return (v - c.min) / (c.max - c.min); }
@@ -1041,7 +1070,7 @@
   function makeJack(kind, id, label, opts){
     opts = opts || {};
     const j = document.createElement('div');
-    j.className = 'jack' + (kind==='dst' ? ' dst' : '') + (gateJackIds.has(id) ? ' gate' : '');
+    j.className = 'jack ' + (kind === 'dst' ? 'dst' : 'src') + (gateJackIds.has(id) ? ' gate' : '');
     j.dataset.kind = kind; j.dataset.id = id;
     j.id = opts.domId || `jack-${kind==='dst'?'dst':'src'}-${id}`;
     j.title = label || id;
@@ -3712,8 +3741,9 @@
     if(!dragOrigin) setPatchHighlight(null);
   }
   function highlightTapDests(fromJack){
+    // Only out→in: highlight inputs when an output is selected
     document.querySelectorAll('.jack').forEach(j => {
-      j.classList.toggle('tapdest', j.dataset.kind !== fromJack.dataset.kind);
+      j.classList.toggle('tapdest', fromJack.dataset.kind === 'src' && j.dataset.kind === 'dst');
     });
   }
   function clearDragHover(){
@@ -3742,8 +3772,9 @@
     return null;
   }
   function findPatchDropTarget(x, y, origin){
-    if(!origin) return null;
-    const wantKind = origin.dataset.kind === 'src' ? 'dst' : 'src';
+    // Cables only run out → in
+    if(!origin || origin.dataset.kind !== 'src') return null;
+    const wantKind = 'dst';
     const stack = (document.elementsFromPoint && document.elementsFromPoint(x, y)) || [];
     for(const el of stack){
       const jack = el.classList && el.classList.contains('jack') ? el : (el.closest && el.closest('.jack'));
@@ -3762,21 +3793,38 @@
   }
   function tryCompletePatch(a, b){
     if(!a || !b || a === b) return false;
-    if(a.dataset.kind === b.dataset.kind) return false;
-    const srcEl = a.dataset.kind === 'src' ? a : b;
-    const dstEl = a.dataset.kind === 'dst' ? a : b;
-    addPatch(srcEl.dataset.id, dstEl.dataset.id, { srcElId: srcEl.id, dstElId: dstEl.id });
+    if(a.dataset.kind !== 'src' || b.dataset.kind !== 'dst') return false;
+    addPatch(a.dataset.id, b.dataset.id, { srcElId: a.id, dstElId: b.id });
     return true;
   }
 
   function faceRect(){ return document.querySelector('.faceplate').getBoundingClientRect(); }
   function jackCenter(el){
-    const r = el.getBoundingClientRect(), p = faceRect();
+    const r = el.getBoundingClientRect();
+    // SVG user space matches the cable layer box (padding edge), not the faceplate border box
+    const p = cableLayer.getBoundingClientRect();
     return { x: r.left + r.width/2 - p.left, y: r.top + r.height/2 - p.top };
   }
+  // Soft cable curves: forward patches keep a gentle S; reverse (inlet left of outlet)
+  // arcs vertically instead of ballooning sideways.
+  function cableControls(p1, p2){
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const dist = Math.hypot(dx, dy) || 1;
+    if(dx >= 36){
+      const pull = Math.min(88, Math.max(36, dx * 0.38));
+      return { c1:{ x:p1.x + pull, y:p1.y }, c2:{ x:p2.x - pull, y:p2.y } };
+    }
+    const pullX = Math.min(42, Math.max(18, Math.abs(dx) * 0.25 + 16));
+    const pullY = Math.min(72, Math.max(32, Math.abs(dy) * 0.35 + dist * 0.12));
+    const sy = dy >= 0 ? 1 : -1;
+    return {
+      c1: { x: p1.x + pullX, y: p1.y + sy * pullY },
+      c2: { x: p2.x - pullX, y: p2.y - sy * pullY }
+    };
+  }
   function bezierPoint(p1, p2, t){
-    const dx = Math.max(40, Math.abs(p2.x-p1.x)*0.5);
-    const c1 = { x:p1.x+dx, y:p1.y }, c2 = { x:p2.x-dx, y:p2.y };
+    const { c1, c2 } = cableControls(p1, p2);
     const u = 1 - t;
     return {
       x: u*u*u*p1.x + 3*u*u*t*c1.x + 3*u*t*t*c2.x + t*t*t*p2.x,
@@ -3785,8 +3833,8 @@
   }
   function bezierMid(p1, p2){ return bezierPoint(p1, p2, 0.5); }
   function bezier(p1, p2){
-    const dx = Math.max(40, Math.abs(p2.x-p1.x)*0.5);
-    return `M ${p1.x} ${p1.y} C ${p1.x+dx} ${p1.y}, ${p2.x-dx} ${p2.y}, ${p2.x} ${p2.y}`;
+    const { c1, c2 } = cableControls(p1, p2);
+    return `M ${p1.x} ${p1.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${p2.x} ${p2.y}`;
   }
   function wireJacks(){
     document.querySelectorAll('.jack').forEach(j => {
@@ -3796,11 +3844,22 @@
       j.addEventListener('pointerdown', e => {
         if(!ctx) return;
         e.stopPropagation();
+        // Inputs never start a cable — open attenuverter, or complete a tap-selected out
+        if(j.dataset.kind === 'dst'){
+          if(tapPatchJack && tapPatchJack.dataset.kind === 'src'){
+            if(tryCompletePatch(tapPatchJack, j)) clearTapPatch();
+            return;
+          }
+          if(patchCables.some(c => c.dstId === j.dataset.id)){
+            openDstCableMenu(j.dataset.id, e);
+          }
+          return;
+        }
         j.setPointerCapture(e.pointerId);
         dragOrigin = j;
         jackDragMeta = { x: e.clientX, y: e.clientY, moved: false };
         j.classList.add('dragfrom');
-        setPatchHighlight(j.dataset.kind);
+        setPatchHighlight('src');
         dragTemp = document.createElementNS(svgNS, 'path');
         dragTemp.setAttribute('stroke', '#fff6'); dragTemp.setAttribute('fill', 'none'); dragTemp.setAttribute('stroke-width', 2);
         dragTemp.setAttribute('stroke-dasharray', '4 3');
@@ -3813,43 +3872,38 @@
           : 99;
         const x = e.clientX, y = e.clientY;
         dragTemp.remove(); dragTemp = null;
-        dragOrigin.classList.remove('dragfrom');
         const origin = dragOrigin;
-        dragOrigin = null;
         jackDragMeta = null;
         clearDragHover();
 
-        // Touch: short tap = two-step patch (source, then destination)
+        // Touch: short tap on an output = select, then tap an input
         if(isCoarsePointer() && moved < 14){
+          origin.classList.remove('dragfrom');
+          dragOrigin = null;
           if(tapPatchJack === origin){
             clearTapPatch();
             termLog('> patch cancel');
             return;
           }
-          if(tapPatchJack){
-            if(tryCompletePatch(tapPatchJack, origin)){ clearTapPatch(); }
-            else {
-              clearTapPatch();
-              tapPatchJack = origin;
-              origin.classList.add('tapselected');
-              highlightTapDests(origin);
-              setPatchHighlight(origin.dataset.kind);
-              termLog(`> selected ${origin.dataset.id} — tap a ${origin.dataset.kind==='src'?'input':'output'}`);
-            }
-            return;
-          }
+          clearTapPatch();
           tapPatchJack = origin;
           origin.classList.add('tapselected');
           highlightTapDests(origin);
-          setPatchHighlight(origin.dataset.kind);
-          termLog(`> selected ${origin.dataset.id} — tap a ${origin.dataset.kind==='src'?'input':'output'}`);
+          setPatchHighlight('src');
+          termLog(`> selected ${origin.dataset.id} — tap an input`);
           return;
         }
 
-        clearTapPatch();
-        setPatchHighlight(null);
+        // Lay the cable WHILE dragfrom + patching-from-src are still active so
+        // jack centers match the drag preview. Clearing those first was resizing
+        // the outlet and measuring the settled path against the wrong size.
         const target = findPatchDropTarget(x, y, origin);
         if(target) tryCompletePatch(origin, target);
+        origin.classList.remove('dragfrom');
+        dragOrigin = null;
+        clearTapPatch();
+        setPatchHighlight(null);
+        updateCables();
       });
       j.addEventListener('pointercancel', () => {
         if(dragTemp){ dragTemp.remove(); dragTemp = null; }
@@ -3866,7 +3920,7 @@
       const dist = Math.hypot(e.clientX - jackDragMeta.x, e.clientY - jackDragMeta.y);
       if(dist > 10) jackDragMeta.moved = true;
     }
-    const p = faceRect();
+    const p = cableLayer.getBoundingClientRect();
     dragTemp.setAttribute('d', bezier(jackCenter(dragOrigin), { x: e.clientX - p.left, y: e.clientY - p.top }));
     const hover = findPatchDropTarget(e.clientX, e.clientY, dragOrigin);
     setDragHover(hover);
@@ -3877,13 +3931,29 @@
     const abs = Math.abs(cable.depth);
     cable.pathEl.setAttribute('stroke-width', 2 + abs*5);
     cable.pathEl.setAttribute('opacity', 0.4 + abs*0.6);
-    [cable.handleSrc, cable.handleDst].forEach(h => {
-      if(!h) return;
-      h.setAttribute('r', 5 + abs*4);
-      h.setAttribute('fill-opacity', 0.5 + abs*0.5);
-      h.setAttribute('stroke', cable.depth < 0 ? '#ff5d5d' : '#ffffff');
-    });
+    cable.pathEl.setAttribute('stroke-dasharray', cable.depth < 0 ? '6 3' : '');
     updateModRing(destOwner[cable.dstId]);
+  }
+  // Sum bus per destination so the inlet menu can scope combined modulation
+  const dstMonitors = {};
+  function ensureDstMonitor(dstId){
+    if(!ctx) return null;
+    if(dstMonitors[dstId]) return dstMonitors[dstId];
+    const sum = ctx.createGain(); sum.gain.value = 1;
+    const analyser = ctx.createAnalyser(); analyser.fftSize = 256;
+    const silent = ctx.createGain(); silent.gain.value = 0;
+    sum.connect(analyser);
+    analyser.connect(silent);
+    silent.connect(ctx.destination);
+    dstMonitors[dstId] = { sum, analyser, silent };
+    return dstMonitors[dstId];
+  }
+  function syncDstJackState(dstId){
+    const has = patchCables.some(c => c.dstId === dstId);
+    const esc = (typeof CSS !== 'undefined' && CSS.escape) ? CSS.escape(dstId) : dstId;
+    document.querySelectorAll(`.jack.dst[data-id="${esc}"]`).forEach(j => {
+      j.classList.toggle('has-cable', has);
+    });
   }
   function addPatch(srcId, dstId, opts){
     opts = opts || {};
@@ -3894,6 +3964,8 @@
     if(!srcNode || !dest) return;
     const depthGain = ctx.createGain(); depthGain.gain.value = 0.5;
     srcNode.connect(depthGain);
+    const mon = ensureDstMonitor(dstId);
+    if(mon) depthGain.connect(mon.sum);
     const sensGains = dest.targets.map(t => {
       const g = ctx.createGain(); g.gain.value = t.sens;
       depthGain.connect(g);
@@ -3908,33 +3980,19 @@
     pathEl.setAttribute('stroke', color); pathEl.setAttribute('fill', 'none'); pathEl.setAttribute('stroke-width', 4);
     pathEl.style.cursor = 'pointer';
     cableLayer.appendChild(pathEl);
-    // Attenuverter handles near both ends so knobs can't bury the only hit target
-    const coarse = window.matchMedia && window.matchMedia('(pointer:coarse)').matches;
-    function makeHandle(){
-      const h = document.createElementNS(svgNS, 'circle');
-      h.setAttribute('r', coarse ? 11 : 8); h.setAttribute('fill', color); h.setAttribute('stroke', '#fff');
-      h.setAttribute('stroke-width', 1.5); h.style.cursor = 'pointer';
-      cableLayer.appendChild(h);
-      return h;
-    }
-    const handleSrc = makeHandle();
-    const handleDst = makeHandle();
     const cable = {
-      srcId, dstId, depthGain, sensGains, pathEl, handleSrc, handleDst, depth: 0.5,
+      srcId, dstId, depthGain, sensGains, pathEl, depth: 0.5,
       srcElId: opts.srcElId || ('jack-src-' + srcId),
       dstElId: opts.dstElId || ('jack-dst-' + dstId)
     };
     pathEl.addEventListener('click', () => removePatch(cable));
-    [handleSrc, handleDst].forEach(h => {
-      h.addEventListener('pointerdown', e => e.stopPropagation());
-      h.addEventListener('click', e => { e.stopPropagation(); openCableMenu(cable, e); });
-      h.addEventListener('dblclick', e => { e.stopPropagation(); closeCableMenu(); removePatch(cable); });
-    });
     patchCables.push(cable);
     applyDepth(cable);
+    syncDstJackState(dstId);
     buzz(10);
     syncNormAudio();
     updateCables();
+    updateCablesSoon();
     if(!bulkOp) termLog(`> patched ${srcId} \u2192 ${dstId}`);
   }
   function removePatch(cable){
@@ -3947,10 +4005,16 @@
     if(cable.handleDst) cable.handleDst.remove();
     if(cable.handleEl) cable.handleEl.remove();
     patchCables = patchCables.filter(c => c !== cable);
+    syncDstJackState(cable.dstId);
     updateModRing(destOwner[cable.dstId]);
-    if(menuCable === cable) closeCableMenu();
+    if(menuCable === cable || menuDstId === cable.dstId){
+      const remaining = patchCables.filter(c => c.dstId === cable.dstId);
+      if(remaining.length && menuDstId === cable.dstId) rebuildCableMenuList(remaining);
+      else closeCableMenu();
+    }
     syncNormAudio();
     updateCables();
+    updateCablesSoon();
     if(!bulkOp) termLog(`> removed ${cable.srcId} \u2192 ${cable.dstId}`);
   }
   function updateCables(){
@@ -3960,11 +4024,10 @@
       if(!s || !d) return;
       const p1 = jackCenter(s), p2 = jackCenter(d);
       c.pathEl.setAttribute('d', bezier(p1, p2));
-      const nearSrc = bezierPoint(p1, p2, 0.18);
-      const nearDst = bezierPoint(p1, p2, 0.82);
-      if(c.handleSrc){ c.handleSrc.setAttribute('cx', nearSrc.x); c.handleSrc.setAttribute('cy', nearSrc.y); }
-      if(c.handleDst){ c.handleDst.setAttribute('cx', nearDst.x); c.handleDst.setAttribute('cy', nearDst.y); }
     });
+  }
+  function updateCablesSoon(){
+    requestAnimationFrame(() => updateCables());
   }
 
   // ---------- Normalized connections (audio hardwires only; no white SVG lines) ----------
@@ -4019,36 +4082,143 @@
   }
   function updateNormalizedPaths(){ /* visuals removed; hardwires via syncNormAudio */ }
 
-  // ---------- Cable contextual menu: click the dot for the attenuverter,
-  // double-click the dot (or click the wire) to delete ----------
+  // ---------- Cable menu on the inlet: attenuverter per source + combined CV scope ----------
   let menuCable = null;
+  let menuDstId = null;
+  let menuScopeRaf = null;
   const cableMenuEl = document.getElementById('cableMenu');
-  const cableMenuRange = document.getElementById('cableMenuRange');
-  const cableMenuVal = document.getElementById('cableMenuVal');
+  const cableMenuList = document.getElementById('cableMenuList');
   const cableMenuDel = document.getElementById('cableMenuDel');
-  function refreshCableMenuVal(){
-    const pct = Math.round(menuCable.depth*100);
-    cableMenuVal.innerText = (pct>=0?'+':'') + pct + '%';
+  const cableMenuScope = document.getElementById('cableMenuScope');
+  const cableMenuClip = document.getElementById('cableMenuClip');
+  const cableMenuScopeCtx = cableMenuScope ? cableMenuScope.getContext('2d') : null;
+
+  function selectMenuCable(cable){
+    menuCable = cable;
+    if(!cableMenuList) return;
+    cableMenuList.querySelectorAll('.cablemenu-src').forEach(el => {
+      el.classList.toggle('on', el.dataset.src === cable.srcId);
+    });
+  }
+  function rebuildCableMenuList(cables){
+    if(!cableMenuList) return;
+    cableMenuList.innerHTML = '';
+    cables.forEach(cable => {
+      const row = document.createElement('div');
+      row.className = 'cablemenu-row';
+      const head = document.createElement('div');
+      head.className = 'cablemenu-row-h';
+      const srcLab = document.createElement('span');
+      srcLab.className = 'cablemenu-src' + (menuCable === cable ? ' on' : '');
+      srcLab.dataset.src = cable.srcId;
+      srcLab.textContent = cable.srcId;
+      srcLab.addEventListener('click', () => selectMenuCable(cable));
+      const val = document.createElement('div');
+      val.className = 'cablemenu-val';
+      const pct = Math.round(cable.depth * 100);
+      val.textContent = (pct >= 0 ? '+' : '') + pct + '%';
+      head.appendChild(srcLab);
+      head.appendChild(val);
+      const range = document.createElement('input');
+      range.type = 'range'; range.min = '-100'; range.max = '100';
+      range.value = String(Math.round(cable.depth * 100));
+      range.addEventListener('pointerdown', e => e.stopPropagation());
+      range.addEventListener('input', () => {
+        cable.depth = clampv(parseInt(range.value, 10) / 100, -1, 1);
+        applyDepth(cable);
+        const p = Math.round(cable.depth * 100);
+        val.textContent = (p >= 0 ? '+' : '') + p + '%';
+        selectMenuCable(cable);
+      });
+      row.appendChild(head);
+      row.appendChild(range);
+      cableMenuList.appendChild(row);
+    });
+    if(!menuCable || !cables.includes(menuCable)) selectMenuCable(cables[0]);
+    else selectMenuCable(menuCable);
+  }
+  function drawMenuScope(){
+    if(!menuDstId || !cableMenuScopeCtx || cableMenuEl.style.display !== 'block'){
+      menuScopeRaf = null;
+      return;
+    }
+    const mon = dstMonitors[menuDstId];
+    const w = cableMenuScope.width, h = cableMenuScope.height;
+    const g = cableMenuScopeCtx;
+    g.fillStyle = '#0d0d0d';
+    g.fillRect(0, 0, w, h);
+    g.strokeStyle = 'rgba(255,255,255,0.12)';
+    g.beginPath(); g.moveTo(0, h/2); g.lineTo(w, h/2); g.stroke();
+    g.beginPath(); g.moveTo(0, h*0.1); g.lineTo(w, h*0.1); g.stroke();
+    g.beginPath(); g.moveTo(0, h*0.9); g.lineTo(w, h*0.9); g.stroke();
+    let peak = 0;
+    if(mon){
+      const buf = new Float32Array(mon.analyser.fftSize);
+      mon.analyser.getFloatTimeDomainData(buf);
+      g.strokeStyle = '#7ec8e3';
+      g.lineWidth = 1.25;
+      g.beginPath();
+      for(let i = 0; i < buf.length; i++){
+        const v = buf[i];
+        peak = Math.max(peak, Math.abs(v));
+        const x = (i / (buf.length - 1)) * w;
+        const y = h/2 - v * (h * 0.42);
+        if(i === 0) g.moveTo(x, y); else g.lineTo(x, y);
+      }
+      g.stroke();
+    }
+    if(cableMenuClip){
+      if(peak > 0.95){
+        cableMenuClip.textContent = 'clipping / hot';
+        cableMenuClip.classList.add('hot');
+      } else if(peak > 0.7){
+        cableMenuClip.textContent = 'near clip · ' + Math.round(peak * 100) + '%';
+        cableMenuClip.classList.add('hot');
+      } else {
+        cableMenuClip.textContent = 'combined CV · ' + Math.round(peak * 100) + '%';
+        cableMenuClip.classList.remove('hot');
+      }
+    }
+    menuScopeRaf = requestAnimationFrame(drawMenuScope);
+  }
+  function openDstCableMenu(dstId, evt){
+    const cables = patchCables.filter(c => c.dstId === dstId);
+    if(!cables.length) return;
+    menuDstId = dstId;
+    menuCable = cables[0];
+    ensureDstMonitor(dstId);
+    const p = faceRect();
+    const jack = document.getElementById(cables[0].dstElId || ('jack-dst-' + dstId));
+    let left = evt.clientX - p.left - 70;
+    let top = evt.clientY - p.top + 14;
+    if(jack){
+      const jc = jackCenter(jack);
+      left = jc.x - 70;
+      top = jc.y + 16;
+    }
+    cableMenuEl.style.left = Math.max(4, Math.min(left, p.width - 180)) + 'px';
+    cableMenuEl.style.top = Math.max(4, top) + 'px';
+    cableMenuEl.style.display = 'block';
+    rebuildCableMenuList(cables);
+    if(!menuScopeRaf) menuScopeRaf = requestAnimationFrame(drawMenuScope);
   }
   function openCableMenu(cable, evt){
-    menuCable = cable;
-    const p = faceRect();
-    cableMenuEl.style.left = Math.max(4, evt.clientX - p.left - 70) + 'px';
-    cableMenuEl.style.top = (evt.clientY - p.top + 14) + 'px';
-    cableMenuEl.style.display = 'block';
-    cableMenuRange.value = Math.round(cable.depth*100);
-    refreshCableMenuVal();
+    openDstCableMenu(cable.dstId, evt);
+    selectMenuCable(cable);
   }
-  function closeCableMenu(){ cableMenuEl.style.display = 'none'; menuCable = null; }
-  cableMenuRange.addEventListener('input', () => {
-    if(!menuCable) return;
-    menuCable.depth = clampv(parseInt(cableMenuRange.value,10)/100, -1, 1);
-    applyDepth(menuCable);
-    refreshCableMenuVal();
-  });
+  function closeCableMenu(){
+    cableMenuEl.style.display = 'none';
+    menuCable = null;
+    menuDstId = null;
+    if(menuScopeRaf){ cancelAnimationFrame(menuScopeRaf); menuScopeRaf = null; }
+  }
   cableMenuDel.addEventListener('click', () => { if(menuCable) removePatch(menuCable); });
   document.addEventListener('pointerdown', e => {
-    if(cableMenuEl.style.display === 'block' && !cableMenuEl.contains(e.target) && e.target.tagName !== 'circle') closeCableMenu();
+    if(cableMenuEl.style.display === 'block' && !cableMenuEl.contains(e.target)){
+      const jack = e.target.closest && e.target.closest('.jack.dst');
+      if(jack && jack.dataset.id === menuDstId) return;
+      closeCableMenu();
+    }
   });
   window.addEventListener('resize', closeCableMenu);
 
